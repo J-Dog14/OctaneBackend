@@ -4,13 +4,7 @@
 
 FROM node:20-bookworm-slim
 
-# ── System dependencies ────────────────────────────────────────────────────────
-# python3/pip: UAIS Python scripts
-# r-base: UAIS R scripts (pitching, hitting)
-# libssl/libcurl/libxml2: R package build deps (tidyverse, httr, xml2)
-# libpq-dev: RPostgres + psycopg2 PostgreSQL client
-# libsqlite3-dev: RSQLite
-# fonts-dejavu: reportlab PDF generation
+# ── System dependencies + R packages (all via apt — pre-compiled, fast) ────────
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
@@ -23,6 +17,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     libsqlite3-dev \
     fonts-dejavu-core \
+    r-cran-dbi \
+    r-cran-rsqlite \
+    r-cran-rpostgres \
+    r-cran-dplyr \
+    r-cran-readr \
+    r-cran-stringr \
+    r-cran-tibble \
+    r-cran-tidyr \
+    r-cran-purrr \
+    r-cran-ggplot2 \
+    r-cran-forcats \
+    r-cran-lubridate \
+    r-cran-fs \
+    r-cran-uuid \
+    r-cran-xml2 \
+    r-cran-yaml \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -34,10 +44,6 @@ RUN npm ci
 # ── Python dependencies ────────────────────────────────────────────────────────
 COPY uais/python/requirements.txt ./uais-python-requirements.txt
 RUN pip3 install --break-system-packages --no-cache-dir -r uais-python-requirements.txt
-
-# ── R packages ─────────────────────────────────────────────────────────────────
-COPY uais/R/install_packages.R ./uais-install-packages.R
-RUN Rscript uais-install-packages.R
 
 # ── Application code ───────────────────────────────────────────────────────────
 COPY . .
