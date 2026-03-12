@@ -2,7 +2,8 @@
 # Install all R packages required by UAIS scripts.
 # Run during Docker build: Rscript install_packages.R
 
-options(repos = c(CRAN = "https://cloud.r-project.org"))
+# Use Posit Package Manager for pre-built Linux binaries (much faster than source compilation)
+options(repos = c(CRAN = "https://packagemanager.posit.co/cran/__linux__/bookworm/latest"))
 
 packages <- c(
   # Core tidyverse (includes dplyr, readr, stringr, tibble, tidyr, purrr)
