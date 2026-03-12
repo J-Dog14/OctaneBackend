@@ -19,7 +19,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     fonts-dejavu-core \
     r-cran-dbi \
     r-cran-rsqlite \
-    r-cran-rpostgres \
     r-cran-dplyr \
     r-cran-readr \
     r-cran-stringr \
@@ -29,11 +28,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     r-cran-ggplot2 \
     r-cran-forcats \
     r-cran-lubridate \
-    r-cran-fs \
-    r-cran-uuid \
     r-cran-xml2 \
     r-cran-yaml \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    # Install R packages not in Debian repos using PPM pre-built binaries
+    && Rscript -e "options(repos=c(CRAN='https://packagemanager.posit.co/cran/__linux__/bookworm/latest')); install.packages(c('RPostgres','fs','uuid'), dependencies=TRUE)"
 
 WORKDIR /app
 
