@@ -30,9 +30,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     r-cran-lubridate \
     r-cran-xml2 \
     r-cran-yaml \
+    r-cran-fs \
+    r-cran-uuid \
     && rm -rf /var/lib/apt/lists/* \
-    # Install R packages not in Debian repos using PPM pre-built binaries
-    && Rscript -e "options(repos=c(CRAN='https://packagemanager.posit.co/cran/__linux__/bookworm/latest')); install.packages(c('RPostgres','fs','uuid'), dependencies=TRUE)"
+    && Rscript -e "options(repos=c(CRAN='https://packagemanager.posit.co/cran/__linux__/bookworm/latest')); install.packages('RPostgres', dependencies=FALSE)"
 
 WORKDIR /app
 
