@@ -1,0 +1,274 @@
+{
+  "data": [
+    {
+      "name": "session id",
+      "pandas_dtype": "int64",
+      "prisma_type": "Int",
+      "nullable": true
+    },
+    {
+      "name": "session createdAt",
+      "pandas_dtype": "object",
+      "prisma_type": "String",
+      "nullable": true
+    },
+    {
+      "name": "session name",
+      "pandas_dtype": "object",
+      "prisma_type": "String",
+      "nullable": true
+    },
+    {
+      "name": "exercise id",
+      "pandas_dtype": "int64",
+      "prisma_type": "Int",
+      "nullable": true
+    },
+    {
+      "name": "exercise createdAt",
+      "pandas_dtype": "object",
+      "prisma_type": "String",
+      "nullable": true
+    },
+    {
+      "name": "exercise name",
+      "pandas_dtype": "object",
+      "prisma_type": "String",
+      "nullable": true
+    },
+    {
+      "name": "reps",
+      "pandas_dtype": "int64",
+      "prisma_type": "Int",
+      "nullable": true
+    },
+    {
+      "name": "resistance",
+      "pandas_dtype": "int64",
+      "prisma_type": "Int",
+      "nullable": true
+    },
+    {
+      "name": "set number",
+      "pandas_dtype": "int64",
+      "prisma_type": "Int",
+      "nullable": true
+    },
+    {
+      "name": "dominance",
+      "pandas_dtype": "object",
+      "prisma_type": "String",
+      "nullable": true
+    },
+    {
+      "name": "personal record",
+      "pandas_dtype": "bool",
+      "prisma_type": "Boolean",
+      "nullable": true
+    },
+    {
+      "name": "power - low",
+      "pandas_dtype": "float64",
+      "prisma_type": "Decimal",
+      "nullable": true
+    },
+    {
+      "name": "power - high",
+      "pandas_dtype": "float64",
+      "prisma_type": "Decimal",
+      "nullable": true
+    },
+    {
+      "name": "power - mean",
+      "pandas_dtype": "float64",
+      "prisma_type": "Decimal",
+      "nullable": true
+    },
+    {
+      "name": "acceleration - low",
+      "pandas_dtype": "float64",
+      "prisma_type": "Decimal",
+      "nullable": true
+    },
+    {
+      "name": "acceleration - high",
+      "pandas_dtype": "float64",
+      "prisma_type": "Decimal",
+      "nullable": true
+    },
+    {
+      "name": "acceleration - mean",
+      "pandas_dtype": "float64",
+      "prisma_type": "Decimal",
+      "nullable": true
+    },
+    {
+      "name": "braking - low",
+      "pandas_dtype": "float64",
+      "prisma_type": "Decimal",
+      "nullable": true
+    },
+    {
+      "name": "braking - high",
+      "pandas_dtype": "float64",
+      "prisma_type": "Decimal",
+      "nullable": true
+    },
+    {
+      "name": "braking - mean",
+      "pandas_dtype": "float64",
+      "prisma_type": "Decimal",
+      "nullable": true
+    },
+    {
+      "name": "deceleration - low",
+      "pandas_dtype": "float64",
+      "prisma_type": "Decimal",
+      "nullable": true
+    },
+    {
+      "name": "deceleration - high",
+      "pandas_dtype": "float64",
+      "prisma_type": "Decimal",
+      "nullable": true
+    },
+    {
+      "name": "deceleration - mean",
+      "pandas_dtype": "float64",
+      "prisma_type": "Decimal",
+      "nullable": true
+    },
+    {
+      "name": "explosiveness - low",
+      "pandas_dtype": "float64",
+      "prisma_type": "Decimal",
+      "nullable": true
+    },
+    {
+      "name": "explosiveness - high",
+      "pandas_dtype": "float64",
+      "prisma_type": "Decimal",
+      "nullable": true
+    },
+    {
+      "name": "explosiveness - mean",
+      "pandas_dtype": "float64",
+      "prisma_type": "Decimal",
+      "nullable": true
+    },
+    {
+      "name": "consistency - low",
+      "pandas_dtype": "float64",
+      "prisma_type": "Decimal",
+      "nullable": true
+    },
+    {
+      "name": "consistency - high",
+      "pandas_dtype": "float64",
+      "prisma_type": "Decimal",
+      "nullable": true
+    },
+    {
+      "name": "consistency - mean",
+      "pandas_dtype": "float64",
+      "prisma_type": "Decimal",
+      "nullable": true
+    },
+    {
+      "name": "rangeOfMotion - low",
+      "pandas_dtype": "float64",
+      "prisma_type": "Decimal",
+      "nullable": true
+    },
+    {
+      "name": "rangeOfMotion - high",
+      "pandas_dtype": "float64",
+      "prisma_type": "Decimal",
+      "nullable": true
+    },
+    {
+      "name": "rangeOfMotion - mean",
+      "pandas_dtype": "float64",
+      "prisma_type": "Decimal",
+      "nullable": true
+    },
+    {
+      "name": "velocity - low",
+      "pandas_dtype": "float64",
+      "prisma_type": "Decimal",
+      "nullable": true
+    },
+    {
+      "name": "velocity - high",
+      "pandas_dtype": "float64",
+      "prisma_type": "Decimal",
+      "nullable": true
+    },
+    {
+      "name": "velocity - mean",
+      "pandas_dtype": "float64",
+      "prisma_type": "Decimal",
+      "nullable": true
+    },
+    {
+      "name": "movement",
+      "pandas_dtype": "object",
+      "prisma_type": "String",
+      "nullable": true
+    },
+    {
+      "name": "proteusAttachment",
+      "pandas_dtype": "object",
+      "prisma_type": "String",
+      "nullable": true
+    },
+    {
+      "name": "user id",
+      "pandas_dtype": "int64",
+      "prisma_type": "Int",
+      "nullable": true
+    },
+    {
+      "name": "user name",
+      "pandas_dtype": "object",
+      "prisma_type": "String",
+      "nullable": true
+    },
+    {
+      "name": "birth date",
+      "pandas_dtype": "object",
+      "prisma_type": "String",
+      "nullable": true
+    },
+    {
+      "name": "weight",
+      "pandas_dtype": "int64",
+      "prisma_type": "Int",
+      "nullable": true
+    },
+    {
+      "name": "height",
+      "pandas_dtype": "int64",
+      "prisma_type": "Int",
+      "nullable": true
+    },
+    {
+      "name": "sex",
+      "pandas_dtype": "object",
+      "prisma_type": "String",
+      "nullable": true
+    },
+    {
+      "name": "sport",
+      "pandas_dtype": "object",
+      "prisma_type": "String",
+      "nullable": true
+    },
+    {
+      "name": "position",
+      "pandas_dtype": "object",
+      "prisma_type": "String",
+      "nullable": true
+    }
+  ]
+}

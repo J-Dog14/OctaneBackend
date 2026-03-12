@@ -31,6 +31,18 @@ yarn-error.log*
 # UAIS runners config (machine-specific paths)
 config/uais-runners.json
 
+# UAIS - data exports, caches, logs
+uais/data/
+uais/**/logs/
+uais/**/*.log
+uais/**/*.db
+uais/**/*.sqlite
+uais/**/*.dump
+uais/**/*.xlsx
+uais/venv/
+uais/node_modules/
+uais/**/__pycache__/
+
 # vercel
 .vercel
 

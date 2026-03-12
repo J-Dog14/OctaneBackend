@@ -1,0 +1,47 @@
+# UAIS Database Connections Configuration
+# Copy this file to db_connections.yaml and update with your actual paths/credentials
+
+databases:
+  # App database (source of truth for athletes and athlete_uuid)
+  # RECOMMENDED: Use PostgreSQL for app database (better concurrent access)
+  app:
+    # PostgreSQL configuration (recommended for production)
+    postgres:
+      host: "localhost"
+      port: 5432
+      database: "uais_app"  # or your existing database name
+      user: "your_user"
+      password: "your_password"
+    
+    # OR use SQLite (simpler for development/testing):
+    # sqlite: "path/to/app_database.db"
+  
+  # Warehouse database (centralized fact tables)
+  # Can use SQLite (fine for < 100GB) or PostgreSQL (better for large scale)
+  warehouse:
+    # Option 1: SQLite (recommended for most use cases)
+    sqlite: "path/to/warehouse_database.db"
+    
+    # Option 2: PostgreSQL (better for large datasets or multi-user)
+    # postgres:
+    #   host: "localhost"
+    #   port: 5432
+    #   database: "uais_warehouse"
+    #   user: "your_user"
+    #   password: "your_password"
+
+# Raw data directory paths by domain
+raw_data_paths:
+  athletic_screen: "D:/Athletic Screen 2.0/Output Files/"
+  mobility: "path/to/mobility/raw/data/"
+  pro_sup: "D:/Pro-Sup Test/Data/"
+  proteus: "path/to/proteus/raw/data/"
+  hitting: "path/to/hitting/raw/data/"
+  pitching: "path/to/pitching/raw/data/"
+
+# Optional: Paths to legacy source databases for consolidation
+source_databases:
+  athletic_screen: "path/to/movement_database_v2.db"
+  pro_sup: "path/to/pro-sup_data.sqlite"
+  readiness_screen: "path/to/Readiness_Screen_Data_v2.db"
+  # Add other legacy databases as needed

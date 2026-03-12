@@ -1,0 +1,37 @@
+domain,metricKey,displayName,orientation,n,p15,p33,p66,p85
+pitching,Pelvis_Angle@Footstrike.X,Pelvis @ Foot Contact X,LOWER_IS_BETTER,86,1.389,6.445,12.859,18.408
+pitching,Pelvis_Angle@Footstrike.Y,Pelvis @ Foot Contact Y,LOWER_IS_BETTER,86,-12.933,-8.179,-1.828,3.565
+pitching,Pelvis_Angle@Footstrike.Z,Pelvis @ Foot Contact Z,LOWER_IS_BETTER,86,31.097,39.877,50.706,60.415
+pitching,Pelvis_Angle@Release.X,Pelvis @ Release X,LOWER_IS_BETTER,86,20.402,26.304,33.711,41.932
+pitching,Pelvis_Angle@Release.Y,Pelvis @ Release Y,LOWER_IS_BETTER,86,-5.082,2.062,9.333,14.285
+pitching,Pelvis_Angle@Release.Z,Pelvis @ Release Z,LOWER_IS_BETTER,86,-25.932,-21.344,-14.87,-8.95
+pitching,Trunk_Angle@Footstrike.X,Trunk @ Foot Contact X,HIGHER_IS_BETTER,86,-2.252,2.129,8.139,12.69
+pitching,Trunk_Angle@Footstrike.Y,Trunk @ Foot Contact Y,HIGHER_IS_BETTER,86,-1.287,6,13.745,18.955
+pitching,Trunk_Angle@Footstrike.Z,Trunk @ Foot Contact Z,HIGHER_IS_BETTER,86,82.662,88.761,99.398,108.893
+pitching,Trunk_Angle@Release.X,Trunk @ Release X,HIGHER_IS_BETTER,86,27.43,32.801,41.989,48.691
+pitching,Trunk_Angle@Release.Y,Trunk @ Release Y,HIGHER_IS_BETTER,86,29.713,33.054,39.668,44.945
+pitching,Trunk_Angle@Release.Z,Trunk @ Release Z,HIGHER_IS_BETTER,86,-11.75,-6.799,1.97,7.378
+pitching,HipShouldersSep@Footstrike.X,Hip-Shoulder Sep @ FC X,HIGHER_IS_BETTER,86,-25.139,-19.685,-9.615,-3.429
+pitching,HipShouldersSep@Footstrike.Y,Hip-Shoulder Sep @ FC Y,HIGHER_IS_BETTER,86,-12.743,-9.009,-3.411,3.725
+pitching,HipShouldersSep@Footstrike.Z,Hip-Shoulder Sep @ FC Z,HIGHER_IS_BETTER,86,38.779,43.32,52.761,59.228
+pitching,Trunk_Translation_FC_Release.X,Trunk translation FC→Release X,HIGHER_IS_BETTER,86,22.679,28.537,36.546,41.683
+pitching,Trunk_Translation_FC_Release.Y,Trunk translation FC→Release Y,HIGHER_IS_BETTER,86,18.404,22.865,30.927,34.617
+pitching,Trunk_Translation_FC_Release.Z,Trunk translation FC→Release Z,HIGHER_IS_BETTER,86,-113.048,-103.875,-90.756,-81.755
+pitching,Pelvis_Translation_FC_Release.X,Pelvis translation FC→Release X,HIGHER_IS_BETTER,86,11.469,16.995,24.105,30.273
+pitching,Pelvis_Translation_FC_Release.Y,Pelvis translation FC→Release Y,HIGHER_IS_BETTER,86,-0.492,4.253,15.566,21.25
+pitching,Pelvis_Translation_FC_Release.Z,Pelvis translation FC→Release Z,HIGHER_IS_BETTER,86,-78.499,-68.978,-57.249,-49.08
+pitching,Knee_Flexion_X_FC_to_Release,Knee flexion (X) diff FC→Release,HIGHER_IS_BETTER,86,5.195,11.33,20.723,29.268
+pitching,Back_Knee_Angle_max.X,Back knee angle max X,HIGHER_IS_BETTER,86,42.069,56.184,69.392,76.472
+pitching,Trunk_Angle@Max_Shoulder_Rot.X,Trunk @ Max Shoulder Rot X,HIGHER_IS_BETTER,86,19.525,24.429,32.866,37.203
+pitching,Trunk_Angle@Max_Shoulder_Rot.Y,Trunk @ Max Shoulder Rot Y,HIGHER_IS_BETTER,86,19.623,27.23,33.841,39.713
+pitching,Trunk_Angle@Max_Shoulder_Rot.Z,Trunk @ Max Shoulder Rot Z,HIGHER_IS_BETTER,86,-1.318,2.787,10.028,15.785
+hitting,Pelvis_Angle@Lead_Foot_Down,Pelvis @ Lead Foot Down,LOWER_IS_BETTER,62,61.927,71.831,87.693,101.57
+hitting,Pelvis_Angle@Contact,Pelvis @ Contact,LOWER_IS_BETTER,63,-5.693,-2.339,3.159,8.172
+hitting,Trunk_Angle@Lead_Foot_Down,Trunk @ Lead Foot Down,HIGHER_IS_BETTER,62,92.911,106.821,126.329,139.171
+hitting,Trunk_Angle@Contact,Trunk @ Contact,HIGHER_IS_BETTER,63,1.569,10.714,21.431,29.894
+hitting,Pelvis_Shoulders_Separation@Lead_Foot_Down,Hip-Shoulder Sep @ Lead Foot Down,HIGHER_IS_BETTER,62,-5.194,3.299,12.912,16.346
+hitting,Trunk_Total_Rotation,Trunk translation Lead Foot Down→Contact,HIGHER_IS_BETTER,62,-15.954,-9.221,-1.631,4.836
+hitting,Pelvis_Total_Rotation,Pelvis translation Lead Foot Down→Contact,HIGHER_IS_BETTER,62,-10.871,-6.7,1.943,9.516
+hitting,Lead_Knee_Extension,Knee flexion diff Lead Foot Down→Contact,HIGHER_IS_BETTER,62,21.474,27.073,37.339,46.23
+hitting,Lead_Knee_Angle@Lead_Foot_Down,Lead Knee @ Lead Foot Down,HIGHER_IS_BETTER,62,35.151,41.363,47.806,53.263
+hitting,Lead_Knee_Angle@Contact,Lead Knee @ Contact,HIGHER_IS_BETTER,63,-0.467,6.871,15.606,22.399

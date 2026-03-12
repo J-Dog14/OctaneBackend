@@ -63,16 +63,26 @@ function loadRunnersFromConfigSync(): UaisRunner[] | null {
   }
 }
 
-const RUNNER_DEFS: { id: string; label: string; cwdEnv: string; cmdEnv: string; defaultCmd: string }[] = [
-  { id: "athletic-screen", label: "Athletic Screen", cwdEnv: "UAIS_ATHLETIC_SCREEN_CWD", cmdEnv: "UAIS_ATHLETIC_SCREEN_CMD", defaultCmd: "python main.py" },
-  { id: "arm-action", label: "Arm Action", cwdEnv: "UAIS_ARM_ACTION_CWD", cmdEnv: "UAIS_ARM_ACTION_CMD", defaultCmd: "python main.py" },
-  { id: "curveball", label: "Curveball", cwdEnv: "UAIS_CURVEBALL_CWD", cmdEnv: "UAIS_CURVEBALL_CMD", defaultCmd: "python main.py" },
-  { id: "pitching", label: "Pitching", cwdEnv: "UAIS_PITCHING_CWD", cmdEnv: "UAIS_PITCHING_CMD", defaultCmd: "python main.py" },
-  { id: "hitting", label: "Hitting", cwdEnv: "UAIS_HITTING_CWD", cmdEnv: "UAIS_HITTING_CMD", defaultCmd: "python main.py" },
-  { id: "pro-sup", label: "Pro Sup", cwdEnv: "UAIS_PRO_SUP_CWD", cmdEnv: "UAIS_PRO_SUP_CMD", defaultCmd: "python main.py" },
-  { id: "proteus", label: "Proteus", cwdEnv: "UAIS_PROTEUS_CWD", cmdEnv: "UAIS_PROTEUS_CMD", defaultCmd: "python main.py" },
-  { id: "mobility", label: "Mobility", cwdEnv: "UAIS_MOBILITY_CWD", cmdEnv: "UAIS_MOBILITY_CMD", defaultCmd: "python main.py" },
-  { id: "readiness-screen", label: "Readiness Screen", cwdEnv: "UAIS_READINESS_SCREEN_CWD", cmdEnv: "UAIS_READINESS_SCREEN_CMD", defaultCmd: "python main.py" },
+const RUNNER_DEFS: {
+  id: string;
+  label: string;
+  /** Path relative to UAIS_ROOT (e.g. "python/athleticScreen"). Used when UAIS_ROOT is set. */
+  subpath: string;
+  /** Default command when running via UAIS_ROOT. */
+  rootCmd: string;
+  cwdEnv: string;
+  cmdEnv: string;
+  defaultCmd: string;
+}[] = [
+  { id: "athletic-screen", label: "Athletic Screen", subpath: "python/athleticScreen", rootCmd: "python3 main.py", cwdEnv: "UAIS_ATHLETIC_SCREEN_CWD", cmdEnv: "UAIS_ATHLETIC_SCREEN_CMD", defaultCmd: "python main.py" },
+  { id: "arm-action", label: "Arm Action", subpath: "python/armAction", rootCmd: "python3 main.py", cwdEnv: "UAIS_ARM_ACTION_CWD", cmdEnv: "UAIS_ARM_ACTION_CMD", defaultCmd: "python main.py" },
+  { id: "curveball", label: "Curveball", subpath: "python/curveballTest", rootCmd: "python3 main.py", cwdEnv: "UAIS_CURVEBALL_CWD", cmdEnv: "UAIS_CURVEBALL_CMD", defaultCmd: "python main.py" },
+  { id: "pitching", label: "Pitching", subpath: "R/pitching", rootCmd: "Rscript main.R", cwdEnv: "UAIS_PITCHING_CWD", cmdEnv: "UAIS_PITCHING_CMD", defaultCmd: "Rscript main.R" },
+  { id: "hitting", label: "Hitting", subpath: "R/hitting", rootCmd: "Rscript main.R", cwdEnv: "UAIS_HITTING_CWD", cmdEnv: "UAIS_HITTING_CMD", defaultCmd: "Rscript main.R" },
+  { id: "pro-sup", label: "Pro Sup", subpath: "python/proSupTest", rootCmd: "python3 main.py", cwdEnv: "UAIS_PRO_SUP_CWD", cmdEnv: "UAIS_PRO_SUP_CMD", defaultCmd: "python main.py" },
+  { id: "proteus", label: "Proteus", subpath: "python/proteus", rootCmd: "python3 main.py", cwdEnv: "UAIS_PROTEUS_CWD", cmdEnv: "UAIS_PROTEUS_CMD", defaultCmd: "python main.py" },
+  { id: "mobility", label: "Mobility", subpath: "python/mobility", rootCmd: "python3 main.py", cwdEnv: "UAIS_MOBILITY_CWD", cmdEnv: "UAIS_MOBILITY_CMD", defaultCmd: "python main.py" },
+  { id: "readiness-screen", label: "Readiness Screen", subpath: "python/readinessScreen", rootCmd: "python3 main.py", cwdEnv: "UAIS_READINESS_SCREEN_CWD", cmdEnv: "UAIS_READINESS_SCREEN_CMD", defaultCmd: "python main.py" },
 ];
 
 /**
@@ -93,9 +103,26 @@ export const UAIS_CANONICAL_RUN_ORDER: string[] = [
 /** Runner IDs used for "Run selected" multi-select (excludes proteus from default athlete-flow subset). */
 export const UAIS_RUN_SELECTED_SUBSET = UAIS_CANONICAL_RUN_ORDER.filter((id) => id !== "proteus");
 
+/** Build runners from UAIS_ROOT env var (used in Docker/Railway deployments). */
+function getRunnersFromUaisRoot(uaisRoot: string): UaisRunner[] {
+  return RUNNER_DEFS.map((d) => ({
+    id: d.id,
+    label: d.label,
+    cwd: path.join(uaisRoot, d.subpath),
+    command: d.rootCmd,
+  }));
+}
+
 export function getUaisRunners(): UaisRunner[] {
+  // Priority 1: explicit config file (local dev / custom installs)
   const fromConfig = loadRunnersFromConfigSync();
   if (fromConfig && fromConfig.length > 0) return fromConfig;
+
+  // Priority 2: UAIS_ROOT — auto-generates paths for all runners (Docker/Railway)
+  const uaisRoot = process.env.UAIS_ROOT?.trim();
+  if (uaisRoot) return getRunnersFromUaisRoot(uaisRoot);
+
+  // Priority 3: individual env vars per runner
   return RUNNER_DEFS
     .map((d) => {
       const cwd = process.env[d.cwdEnv]?.trim();

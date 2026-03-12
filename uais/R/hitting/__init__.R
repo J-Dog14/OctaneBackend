@@ -1,0 +1,2 @@
+# Hitting domain module
+

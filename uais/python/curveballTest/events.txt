@@ -1,0 +1,6 @@
+	D:\Youth Pitch Design\Data\Levi Bubeck_LB\2025-11-06_\Curve RH 2.c3d	D:\Youth Pitch Design\Data\Levi Bubeck_LB\2025-11-06_\Curve RH 2.c3d	D:\Youth Pitch Design\Data\Levi Bubeck_LB\2025-11-06_\Curve RH 3.c3d	D:\Youth Pitch Design\Data\Levi Bubeck_LB\2025-11-06_\Curve RH 3.c3d
+	Foot Contact	Release	Foot Contact	Release
+	EVENT_LABEL	EVENT_LABEL	EVENT_LABEL	EVENT_LABEL
+	ORIGINAL	ORIGINAL	ORIGINAL	ORIGINAL
+ITEM	X	X	X	X
+1	0.093	0.230	0.103	0.247

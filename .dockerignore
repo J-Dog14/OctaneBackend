@@ -1,0 +1,34 @@
+# Git
+.git
+.gitignore
+
+# Node
+node_modules
+.next
+
+# Env files (secrets injected via Railway env vars)
+.env
+.env.local
+.env*.local
+
+# UAIS artifacts (excluded from build context for speed)
+uais/venv/
+uais/node_modules/
+uais/data/
+uais/**/__pycache__/
+uais/**/*.db
+uais/**/*.sqlite
+uais/**/*.dump
+uais/**/*.xlsx
+uais/**/logs/
+uais/**/*.log
+
+# Dev/IDE
+.vscode
+.cursor
+*.tsbuildinfo
+
+# Docs and scripts (not needed in container)
+docs/
+scripts/output/
+README.md

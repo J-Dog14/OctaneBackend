@@ -1,0 +1,958 @@
+{
+  "generatedAt": "2026-03-10T22:32:38.798Z",
+  "legend": {
+    "Bad": "≤ 33rd percentile (higher-is-better) or ≥ 66th (lower-is-better)",
+    "Average": "33rd–66th percentile",
+    "Good": "≥ 66th percentile (higher-is-better) or ≤ 33rd (lower-is-better)",
+    "VeryBad": "≤ 15th (higher-is-better) or ≥ 85th (lower-is-better)",
+    "Elite": "≥ 85th (higher-is-better) or ≤ 15th (lower-is-better)"
+  },
+  "pitching": {
+    "nAthletes": 86,
+    "metrics": [
+      {
+        "metricKey": "Pelvis_Angle@Footstrike.X",
+        "displayName": "Pelvis @ Foot Contact X",
+        "domain": "pitching",
+        "orientation": "LOWER_IS_BETTER",
+        "percentiles": {
+          "p15": 1.389,
+          "p33": 6.445,
+          "p66": 12.859,
+          "p85": 18.408
+        },
+        "n": 86
+      },
+      {
+        "metricKey": "Pelvis_Angle@Footstrike.Y",
+        "displayName": "Pelvis @ Foot Contact Y",
+        "domain": "pitching",
+        "orientation": "LOWER_IS_BETTER",
+        "percentiles": {
+          "p15": -12.933,
+          "p33": -8.179,
+          "p66": -1.828,
+          "p85": 3.565
+        },
+        "n": 86
+      },
+      {
+        "metricKey": "Pelvis_Angle@Footstrike.Z",
+        "displayName": "Pelvis @ Foot Contact Z",
+        "domain": "pitching",
+        "orientation": "LOWER_IS_BETTER",
+        "percentiles": {
+          "p15": 31.097,
+          "p33": 39.877,
+          "p66": 50.706,
+          "p85": 60.415
+        },
+        "n": 86
+      },
+      {
+        "metricKey": "Pelvis_Angle@Release.X",
+        "displayName": "Pelvis @ Release X",
+        "domain": "pitching",
+        "orientation": "LOWER_IS_BETTER",
+        "percentiles": {
+          "p15": 20.402,
+          "p33": 26.304,
+          "p66": 33.711,
+          "p85": 41.932
+        },
+        "n": 86
+      },
+      {
+        "metricKey": "Pelvis_Angle@Release.Y",
+        "displayName": "Pelvis @ Release Y",
+        "domain": "pitching",
+        "orientation": "LOWER_IS_BETTER",
+        "percentiles": {
+          "p15": -5.082,
+          "p33": 2.062,
+          "p66": 9.333,
+          "p85": 14.285
+        },
+        "n": 86
+      },
+      {
+        "metricKey": "Pelvis_Angle@Release.Z",
+        "displayName": "Pelvis @ Release Z",
+        "domain": "pitching",
+        "orientation": "LOWER_IS_BETTER",
+        "percentiles": {
+          "p15": -25.932,
+          "p33": -21.344,
+          "p66": -14.87,
+          "p85": -8.95
+        },
+        "n": 86
+      },
+      {
+        "metricKey": "Trunk_Angle@Footstrike.X",
+        "displayName": "Trunk @ Foot Contact X",
+        "domain": "pitching",
+        "orientation": "HIGHER_IS_BETTER",
+        "percentiles": {
+          "p15": -2.252,
+          "p33": 2.129,
+          "p66": 8.139,
+          "p85": 12.69
+        },
+        "n": 86
+      },
+      {
+        "metricKey": "Trunk_Angle@Footstrike.Y",
+        "displayName": "Trunk @ Foot Contact Y",
+        "domain": "pitching",
+        "orientation": "HIGHER_IS_BETTER",
+        "percentiles": {
+          "p15": -1.287,
+          "p33": 6,
+          "p66": 13.745,
+          "p85": 18.955
+        },
+        "n": 86
+      },
+      {
+        "metricKey": "Trunk_Angle@Footstrike.Z",
+        "displayName": "Trunk @ Foot Contact Z",
+        "domain": "pitching",
+        "orientation": "HIGHER_IS_BETTER",
+        "percentiles": {
+          "p15": 82.662,
+          "p33": 88.761,
+          "p66": 99.398,
+          "p85": 108.893
+        },
+        "n": 86
+      },
+      {
+        "metricKey": "Trunk_Angle@Release.X",
+        "displayName": "Trunk @ Release X",
+        "domain": "pitching",
+        "orientation": "HIGHER_IS_BETTER",
+        "percentiles": {
+          "p15": 27.43,
+          "p33": 32.801,
+          "p66": 41.989,
+          "p85": 48.691
+        },
+        "n": 86
+      },
+      {
+        "metricKey": "Trunk_Angle@Release.Y",
+        "displayName": "Trunk @ Release Y",
+        "domain": "pitching",
+        "orientation": "HIGHER_IS_BETTER",
+        "percentiles": {
+          "p15": 29.713,
+          "p33": 33.054,
+          "p66": 39.668,
+          "p85": 44.945
+        },
+        "n": 86
+      },
+      {
+        "metricKey": "Trunk_Angle@Release.Z",
+        "displayName": "Trunk @ Release Z",
+        "domain": "pitching",
+        "orientation": "HIGHER_IS_BETTER",
+        "percentiles": {
+          "p15": -11.75,
+          "p33": -6.799,
+          "p66": 1.97,
+          "p85": 7.378
+        },
+        "n": 86
+      },
+      {
+        "metricKey": "HipShouldersSep@Footstrike.X",
+        "displayName": "Hip-Shoulder Sep @ FC X",
+        "domain": "pitching",
+        "orientation": "HIGHER_IS_BETTER",
+        "percentiles": {
+          "p15": -25.139,
+          "p33": -19.685,
+          "p66": -9.615,
+          "p85": -3.429
+        },
+        "n": 86
+      },
+      {
+        "metricKey": "HipShouldersSep@Footstrike.Y",
+        "displayName": "Hip-Shoulder Sep @ FC Y",
+        "domain": "pitching",
+        "orientation": "HIGHER_IS_BETTER",
+        "percentiles": {
+          "p15": -12.743,
+          "p33": -9.009,
+          "p66": -3.411,
+          "p85": 3.725
+        },
+        "n": 86
+      },
+      {
+        "metricKey": "HipShouldersSep@Footstrike.Z",
+        "displayName": "Hip-Shoulder Sep @ FC Z",
+        "domain": "pitching",
+        "orientation": "HIGHER_IS_BETTER",
+        "percentiles": {
+          "p15": 38.779,
+          "p33": 43.32,
+          "p66": 52.761,
+          "p85": 59.228
+        },
+        "n": 86
+      },
+      {
+        "metricKey": "Trunk_Translation_FC_Release.X",
+        "displayName": "Trunk translation FC→Release X",
+        "domain": "pitching",
+        "orientation": "HIGHER_IS_BETTER",
+        "percentiles": {
+          "p15": 22.679,
+          "p33": 28.537,
+          "p66": 36.546,
+          "p85": 41.683
+        },
+        "n": 86
+      },
+      {
+        "metricKey": "Trunk_Translation_FC_Release.Y",
+        "displayName": "Trunk translation FC→Release Y",
+        "domain": "pitching",
+        "orientation": "HIGHER_IS_BETTER",
+        "percentiles": {
+          "p15": 18.404,
+          "p33": 22.865,
+          "p66": 30.927,
+          "p85": 34.617
+        },
+        "n": 86
+      },
+      {
+        "metricKey": "Trunk_Translation_FC_Release.Z",
+        "displayName": "Trunk translation FC→Release Z",
+        "domain": "pitching",
+        "orientation": "HIGHER_IS_BETTER",
+        "percentiles": {
+          "p15": -113.048,
+          "p33": -103.875,
+          "p66": -90.756,
+          "p85": -81.755
+        },
+        "n": 86
+      },
+      {
+        "metricKey": "Pelvis_Translation_FC_Release.X",
+        "displayName": "Pelvis translation FC→Release X",
+        "domain": "pitching",
+        "orientation": "HIGHER_IS_BETTER",
+        "percentiles": {
+          "p15": 11.469,
+          "p33": 16.995,
+          "p66": 24.105,
+          "p85": 30.273
+        },
+        "n": 86
+      },
+      {
+        "metricKey": "Pelvis_Translation_FC_Release.Y",
+        "displayName": "Pelvis translation FC→Release Y",
+        "domain": "pitching",
+        "orientation": "HIGHER_IS_BETTER",
+        "percentiles": {
+          "p15": -0.492,
+          "p33": 4.253,
+          "p66": 15.566,
+          "p85": 21.25
+        },
+        "n": 86
+      },
+      {
+        "metricKey": "Pelvis_Translation_FC_Release.Z",
+        "displayName": "Pelvis translation FC→Release Z",
+        "domain": "pitching",
+        "orientation": "HIGHER_IS_BETTER",
+        "percentiles": {
+          "p15": -78.499,
+          "p33": -68.978,
+          "p66": -57.249,
+          "p85": -49.08
+        },
+        "n": 86
+      },
+      {
+        "metricKey": "Knee_Flexion_X_FC_to_Release",
+        "displayName": "Knee flexion (X) diff FC→Release",
+        "domain": "pitching",
+        "orientation": "HIGHER_IS_BETTER",
+        "percentiles": {
+          "p15": 5.195,
+          "p33": 11.33,
+          "p66": 20.723,
+          "p85": 29.268
+        },
+        "n": 86
+      },
+      {
+        "metricKey": "Back_Knee_Angle_max.X",
+        "displayName": "Back knee angle max X",
+        "domain": "pitching",
+        "orientation": "HIGHER_IS_BETTER",
+        "percentiles": {
+          "p15": 42.069,
+          "p33": 56.184,
+          "p66": 69.392,
+          "p85": 76.472
+        },
+        "n": 86
+      },
+      {
+        "metricKey": "Trunk_Angle@Max_Shoulder_Rot.X",
+        "displayName": "Trunk @ Max Shoulder Rot X",
+        "domain": "pitching",
+        "orientation": "HIGHER_IS_BETTER",
+        "percentiles": {
+          "p15": 19.525,
+          "p33": 24.429,
+          "p66": 32.866,
+          "p85": 37.203
+        },
+        "n": 86
+      },
+      {
+        "metricKey": "Trunk_Angle@Max_Shoulder_Rot.Y",
+        "displayName": "Trunk @ Max Shoulder Rot Y",
+        "domain": "pitching",
+        "orientation": "HIGHER_IS_BETTER",
+        "percentiles": {
+          "p15": 19.623,
+          "p33": 27.23,
+          "p66": 33.841,
+          "p85": 39.713
+        },
+        "n": 86
+      },
+      {
+        "metricKey": "Trunk_Angle@Max_Shoulder_Rot.Z",
+        "displayName": "Trunk @ Max Shoulder Rot Z",
+        "domain": "pitching",
+        "orientation": "HIGHER_IS_BETTER",
+        "percentiles": {
+          "p15": -1.318,
+          "p33": 2.787,
+          "p66": 10.028,
+          "p85": 15.785
+        },
+        "n": 86
+      }
+    ]
+  },
+  "hitting": {
+    "nAthletes": 63,
+    "metrics": [
+      {
+        "metricKey": "Pelvis_Angle@Lead_Foot_Down",
+        "displayName": "Pelvis @ Lead Foot Down",
+        "domain": "hitting",
+        "orientation": "LOWER_IS_BETTER",
+        "percentiles": {
+          "p15": 61.72,
+          "p33": 71.178,
+          "p66": 87.441,
+          "p85": 100.714
+        },
+        "n": 62
+      },
+      {
+        "metricKey": "Pelvis_Angle@Contact",
+        "displayName": "Pelvis @ Contact",
+        "domain": "hitting",
+        "orientation": "LOWER_IS_BETTER",
+        "percentiles": {
+          "p15": -6.155,
+          "p33": -2.529,
+          "p66": 3.159,
+          "p85": 8.172
+        },
+        "n": 63
+      },
+      {
+        "metricKey": "Trunk_Angle@Lead_Foot_Down",
+        "displayName": "Trunk @ Lead Foot Down",
+        "domain": "hitting",
+        "orientation": "HIGHER_IS_BETTER",
+        "percentiles": {
+          "p15": 89.463,
+          "p33": 104.36,
+          "p66": 124.835,
+          "p85": 138.456
+        },
+        "n": 62
+      },
+      {
+        "metricKey": "Trunk_Angle@Contact",
+        "displayName": "Trunk @ Contact",
+        "domain": "hitting",
+        "orientation": "HIGHER_IS_BETTER",
+        "percentiles": {
+          "p15": -2.06,
+          "p33": 7.984,
+          "p66": 21.098,
+          "p85": 29.894
+        },
+        "n": 63
+      },
+      {
+        "metricKey": "Pelvis_Shoulders_Separation@Lead_Foot_Down",
+        "displayName": "Hip-Shoulder Sep @ Lead Foot Down",
+        "domain": "hitting",
+        "orientation": "HIGHER_IS_BETTER",
+        "percentiles": {
+          "p15": -4.495,
+          "p33": 5.381,
+          "p66": 13.06,
+          "p85": 16.346
+        },
+        "n": 62
+      },
+      {
+        "metricKey": "Trunk_Total_Rotation",
+        "displayName": "Trunk translation Lead Foot Down→Contact",
+        "domain": "hitting",
+        "orientation": "HIGHER_IS_BETTER",
+        "percentiles": {
+          "p15": -15.954,
+          "p33": -9.472,
+          "p66": -1.918,
+          "p85": 3.739
+        },
+        "n": 62
+      },
+      {
+        "metricKey": "Pelvis_Total_Rotation",
+        "displayName": "Pelvis translation Lead Foot Down→Contact",
+        "domain": "hitting",
+        "orientation": "HIGHER_IS_BETTER",
+        "percentiles": {
+          "p15": -10.871,
+          "p33": -6.652,
+          "p66": 2.678,
+          "p85": 9.516
+        },
+        "n": 62
+      },
+      {
+        "metricKey": "Lead_Knee_Extension",
+        "displayName": "Knee flexion diff Lead Foot Down→Contact",
+        "domain": "hitting",
+        "orientation": "HIGHER_IS_BETTER",
+        "percentiles": {
+          "p15": 21.474,
+          "p33": 27.073,
+          "p66": 37.339,
+          "p85": 46.23
+        },
+        "n": 62
+      },
+      {
+        "metricKey": "Lead_Knee_Angle@Lead_Foot_Down",
+        "displayName": "Lead Knee @ Lead Foot Down",
+        "domain": "hitting",
+        "orientation": "HIGHER_IS_BETTER",
+        "percentiles": {
+          "p15": 35.151,
+          "p33": 41.363,
+          "p66": 47.806,
+          "p85": 53.263
+        },
+        "n": 62
+      },
+      {
+        "metricKey": "Lead_Knee_Angle@Contact",
+        "displayName": "Lead Knee @ Contact",
+        "domain": "hitting",
+        "orientation": "HIGHER_IS_BETTER",
+        "percentiles": {
+          "p15": -0.467,
+          "p33": 6.871,
+          "p66": 15.606,
+          "p85": 22.399
+        },
+        "n": 63
+      }
+    ]
+  },
+  "all": [
+    {
+      "metricKey": "Pelvis_Angle@Footstrike.X",
+      "displayName": "Pelvis @ Foot Contact X",
+      "domain": "pitching",
+      "orientation": "LOWER_IS_BETTER",
+      "percentiles": {
+        "p15": 1.389,
+        "p33": 6.445,
+        "p66": 12.859,
+        "p85": 18.408
+      },
+      "n": 86
+    },
+    {
+      "metricKey": "Pelvis_Angle@Footstrike.Y",
+      "displayName": "Pelvis @ Foot Contact Y",
+      "domain": "pitching",
+      "orientation": "LOWER_IS_BETTER",
+      "percentiles": {
+        "p15": -12.933,
+        "p33": -8.179,
+        "p66": -1.828,
+        "p85": 3.565
+      },
+      "n": 86
+    },
+    {
+      "metricKey": "Pelvis_Angle@Footstrike.Z",
+      "displayName": "Pelvis @ Foot Contact Z",
+      "domain": "pitching",
+      "orientation": "LOWER_IS_BETTER",
+      "percentiles": {
+        "p15": 31.097,
+        "p33": 39.877,
+        "p66": 50.706,
+        "p85": 60.415
+      },
+      "n": 86
+    },
+    {
+      "metricKey": "Pelvis_Angle@Release.X",
+      "displayName": "Pelvis @ Release X",
+      "domain": "pitching",
+      "orientation": "LOWER_IS_BETTER",
+      "percentiles": {
+        "p15": 20.402,
+        "p33": 26.304,
+        "p66": 33.711,
+        "p85": 41.932
+      },
+      "n": 86
+    },
+    {
+      "metricKey": "Pelvis_Angle@Release.Y",
+      "displayName": "Pelvis @ Release Y",
+      "domain": "pitching",
+      "orientation": "LOWER_IS_BETTER",
+      "percentiles": {
+        "p15": -5.082,
+        "p33": 2.062,
+        "p66": 9.333,
+        "p85": 14.285
+      },
+      "n": 86
+    },
+    {
+      "metricKey": "Pelvis_Angle@Release.Z",
+      "displayName": "Pelvis @ Release Z",
+      "domain": "pitching",
+      "orientation": "LOWER_IS_BETTER",
+      "percentiles": {
+        "p15": -25.932,
+        "p33": -21.344,
+        "p66": -14.87,
+        "p85": -8.95
+      },
+      "n": 86
+    },
+    {
+      "metricKey": "Trunk_Angle@Footstrike.X",
+      "displayName": "Trunk @ Foot Contact X",
+      "domain": "pitching",
+      "orientation": "HIGHER_IS_BETTER",
+      "percentiles": {
+        "p15": -2.252,
+        "p33": 2.129,
+        "p66": 8.139,
+        "p85": 12.69
+      },
+      "n": 86
+    },
+    {
+      "metricKey": "Trunk_Angle@Footstrike.Y",
+      "displayName": "Trunk @ Foot Contact Y",
+      "domain": "pitching",
+      "orientation": "HIGHER_IS_BETTER",
+      "percentiles": {
+        "p15": -1.287,
+        "p33": 6,
+        "p66": 13.745,
+        "p85": 18.955
+      },
+      "n": 86
+    },
+    {
+      "metricKey": "Trunk_Angle@Footstrike.Z",
+      "displayName": "Trunk @ Foot Contact Z",
+      "domain": "pitching",
+      "orientation": "HIGHER_IS_BETTER",
+      "percentiles": {
+        "p15": 82.662,
+        "p33": 88.761,
+        "p66": 99.398,
+        "p85": 108.893
+      },
+      "n": 86
+    },
+    {
+      "metricKey": "Trunk_Angle@Release.X",
+      "displayName": "Trunk @ Release X",
+      "domain": "pitching",
+      "orientation": "HIGHER_IS_BETTER",
+      "percentiles": {
+        "p15": 27.43,
+        "p33": 32.801,
+        "p66": 41.989,
+        "p85": 48.691
+      },
+      "n": 86
+    },
+    {
+      "metricKey": "Trunk_Angle@Release.Y",
+      "displayName": "Trunk @ Release Y",
+      "domain": "pitching",
+      "orientation": "HIGHER_IS_BETTER",
+      "percentiles": {
+        "p15": 29.713,
+        "p33": 33.054,
+        "p66": 39.668,
+        "p85": 44.945
+      },
+      "n": 86
+    },
+    {
+      "metricKey": "Trunk_Angle@Release.Z",
+      "displayName": "Trunk @ Release Z",
+      "domain": "pitching",
+      "orientation": "HIGHER_IS_BETTER",
+      "percentiles": {
+        "p15": -11.75,
+        "p33": -6.799,
+        "p66": 1.97,
+        "p85": 7.378
+      },
+      "n": 86
+    },
+    {
+      "metricKey": "HipShouldersSep@Footstrike.X",
+      "displayName": "Hip-Shoulder Sep @ FC X",
+      "domain": "pitching",
+      "orientation": "HIGHER_IS_BETTER",
+      "percentiles": {
+        "p15": -25.139,
+        "p33": -19.685,
+        "p66": -9.615,
+        "p85": -3.429
+      },
+      "n": 86
+    },
+    {
+      "metricKey": "HipShouldersSep@Footstrike.Y",
+      "displayName": "Hip-Shoulder Sep @ FC Y",
+      "domain": "pitching",
+      "orientation": "HIGHER_IS_BETTER",
+      "percentiles": {
+        "p15": -12.743,
+        "p33": -9.009,
+        "p66": -3.411,
+        "p85": 3.725
+      },
+      "n": 86
+    },
+    {
+      "metricKey": "HipShouldersSep@Footstrike.Z",
+      "displayName": "Hip-Shoulder Sep @ FC Z",
+      "domain": "pitching",
+      "orientation": "HIGHER_IS_BETTER",
+      "percentiles": {
+        "p15": 38.779,
+        "p33": 43.32,
+        "p66": 52.761,
+        "p85": 59.228
+      },
+      "n": 86
+    },
+    {
+      "metricKey": "Trunk_Translation_FC_Release.X",
+      "displayName": "Trunk translation FC→Release X",
+      "domain": "pitching",
+      "orientation": "HIGHER_IS_BETTER",
+      "percentiles": {
+        "p15": 22.679,
+        "p33": 28.537,
+        "p66": 36.546,
+        "p85": 41.683
+      },
+      "n": 86
+    },
+    {
+      "metricKey": "Trunk_Translation_FC_Release.Y",
+      "displayName": "Trunk translation FC→Release Y",
+      "domain": "pitching",
+      "orientation": "HIGHER_IS_BETTER",
+      "percentiles": {
+        "p15": 18.404,
+        "p33": 22.865,
+        "p66": 30.927,
+        "p85": 34.617
+      },
+      "n": 86
+    },
+    {
+      "metricKey": "Trunk_Translation_FC_Release.Z",
+      "displayName": "Trunk translation FC→Release Z",
+      "domain": "pitching",
+      "orientation": "HIGHER_IS_BETTER",
+      "percentiles": {
+        "p15": -113.048,
+        "p33": -103.875,
+        "p66": -90.756,
+        "p85": -81.755
+      },
+      "n": 86
+    },
+    {
+      "metricKey": "Pelvis_Translation_FC_Release.X",
+      "displayName": "Pelvis translation FC→Release X",
+      "domain": "pitching",
+      "orientation": "HIGHER_IS_BETTER",
+      "percentiles": {
+        "p15": 11.469,
+        "p33": 16.995,
+        "p66": 24.105,
+        "p85": 30.273
+      },
+      "n": 86
+    },
+    {
+      "metricKey": "Pelvis_Translation_FC_Release.Y",
+      "displayName": "Pelvis translation FC→Release Y",
+      "domain": "pitching",
+      "orientation": "HIGHER_IS_BETTER",
+      "percentiles": {
+        "p15": -0.492,
+        "p33": 4.253,
+        "p66": 15.566,
+        "p85": 21.25
+      },
+      "n": 86
+    },
+    {
+      "metricKey": "Pelvis_Translation_FC_Release.Z",
+      "displayName": "Pelvis translation FC→Release Z",
+      "domain": "pitching",
+      "orientation": "HIGHER_IS_BETTER",
+      "percentiles": {
+        "p15": -78.499,
+        "p33": -68.978,
+        "p66": -57.249,
+        "p85": -49.08
+      },
+      "n": 86
+    },
+    {
+      "metricKey": "Knee_Flexion_X_FC_to_Release",
+      "displayName": "Knee flexion (X) diff FC→Release",
+      "domain": "pitching",
+      "orientation": "HIGHER_IS_BETTER",
+      "percentiles": {
+        "p15": 5.195,
+        "p33": 11.33,
+        "p66": 20.723,
+        "p85": 29.268
+      },
+      "n": 86
+    },
+    {
+      "metricKey": "Back_Knee_Angle_max.X",
+      "displayName": "Back knee angle max X",
+      "domain": "pitching",
+      "orientation": "HIGHER_IS_BETTER",
+      "percentiles": {
+        "p15": 42.069,
+        "p33": 56.184,
+        "p66": 69.392,
+        "p85": 76.472
+      },
+      "n": 86
+    },
+    {
+      "metricKey": "Trunk_Angle@Max_Shoulder_Rot.X",
+      "displayName": "Trunk @ Max Shoulder Rot X",
+      "domain": "pitching",
+      "orientation": "HIGHER_IS_BETTER",
+      "percentiles": {
+        "p15": 19.525,
+        "p33": 24.429,
+        "p66": 32.866,
+        "p85": 37.203
+      },
+      "n": 86
+    },
+    {
+      "metricKey": "Trunk_Angle@Max_Shoulder_Rot.Y",
+      "displayName": "Trunk @ Max Shoulder Rot Y",
+      "domain": "pitching",
+      "orientation": "HIGHER_IS_BETTER",
+      "percentiles": {
+        "p15": 19.623,
+        "p33": 27.23,
+        "p66": 33.841,
+        "p85": 39.713
+      },
+      "n": 86
+    },
+    {
+      "metricKey": "Trunk_Angle@Max_Shoulder_Rot.Z",
+      "displayName": "Trunk @ Max Shoulder Rot Z",
+      "domain": "pitching",
+      "orientation": "HIGHER_IS_BETTER",
+      "percentiles": {
+        "p15": -1.318,
+        "p33": 2.787,
+        "p66": 10.028,
+        "p85": 15.785
+      },
+      "n": 86
+    },
+    {
+      "metricKey": "Pelvis_Angle@Lead_Foot_Down",
+      "displayName": "Pelvis @ Lead Foot Down",
+      "domain": "hitting",
+      "orientation": "LOWER_IS_BETTER",
+      "percentiles": {
+        "p15": 61.72,
+        "p33": 71.178,
+        "p66": 87.441,
+        "p85": 100.714
+      },
+      "n": 62
+    },
+    {
+      "metricKey": "Pelvis_Angle@Contact",
+      "displayName": "Pelvis @ Contact",
+      "domain": "hitting",
+      "orientation": "LOWER_IS_BETTER",
+      "percentiles": {
+        "p15": -6.155,
+        "p33": -2.529,
+        "p66": 3.159,
+        "p85": 8.172
+      },
+      "n": 63
+    },
+    {
+      "metricKey": "Trunk_Angle@Lead_Foot_Down",
+      "displayName": "Trunk @ Lead Foot Down",
+      "domain": "hitting",
+      "orientation": "HIGHER_IS_BETTER",
+      "percentiles": {
+        "p15": 89.463,
+        "p33": 104.36,
+        "p66": 124.835,
+        "p85": 138.456
+      },
+      "n": 62
+    },
+    {
+      "metricKey": "Trunk_Angle@Contact",
+      "displayName": "Trunk @ Contact",
+      "domain": "hitting",
+      "orientation": "HIGHER_IS_BETTER",
+      "percentiles": {
+        "p15": -2.06,
+        "p33": 7.984,
+        "p66": 21.098,
+        "p85": 29.894
+      },
+      "n": 63
+    },
+    {
+      "metricKey": "Pelvis_Shoulders_Separation@Lead_Foot_Down",
+      "displayName": "Hip-Shoulder Sep @ Lead Foot Down",
+      "domain": "hitting",
+      "orientation": "HIGHER_IS_BETTER",
+      "percentiles": {
+        "p15": -4.495,
+        "p33": 5.381,
+        "p66": 13.06,
+        "p85": 16.346
+      },
+      "n": 62
+    },
+    {
+      "metricKey": "Trunk_Total_Rotation",
+      "displayName": "Trunk translation Lead Foot Down→Contact",
+      "domain": "hitting",
+      "orientation": "HIGHER_IS_BETTER",
+      "percentiles": {
+        "p15": -15.954,
+        "p33": -9.472,
+        "p66": -1.918,
+        "p85": 3.739
+      },
+      "n": 62
+    },
+    {
+      "metricKey": "Pelvis_Total_Rotation",
+      "displayName": "Pelvis translation Lead Foot Down→Contact",
+      "domain": "hitting",
+      "orientation": "HIGHER_IS_BETTER",
+      "percentiles": {
+        "p15": -10.871,
+        "p33": -6.652,
+        "p66": 2.678,
+        "p85": 9.516
+      },
+      "n": 62
+    },
+    {
+      "metricKey": "Lead_Knee_Extension",
+      "displayName": "Knee flexion diff Lead Foot Down→Contact",
+      "domain": "hitting",
+      "orientation": "HIGHER_IS_BETTER",
+      "percentiles": {
+        "p15": 21.474,
+        "p33": 27.073,
+        "p66": 37.339,
+        "p85": 46.23
+      },
+      "n": 62
+    },
+    {
+      "metricKey": "Lead_Knee_Angle@Lead_Foot_Down",
+      "displayName": "Lead Knee @ Lead Foot Down",
+      "domain": "hitting",
+      "orientation": "HIGHER_IS_BETTER",
+      "percentiles": {
+        "p15": 35.151,
+        "p33": 41.363,
+        "p66": 47.806,
+        "p85": 53.263
+      },
+      "n": 62
+    },
+    {
+      "metricKey": "Lead_Knee_Angle@Contact",
+      "displayName": "Lead Knee @ Contact",
+      "domain": "hitting",
+      "orientation": "HIGHER_IS_BETTER",
+      "percentiles": {
+        "p15": -0.467,
+        "p33": 6.871,
+        "p66": 15.606,
+        "p85": 22.399
+      },
+      "n": 63
+    }
+  ]
+}

@@ -1,0 +1,761 @@
+{
+  "CMJ": [
+    {
+      "name": "id",
+      "type": "INTEGER",
+      "nullable": true,
+      "primary_key": true,
+      "default": null
+    },
+    {
+      "name": "name",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "date",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "trial_name",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "JH_IN",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Peak_Power",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "PP_FORCEPLATE",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Force_at_PP",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Vel_at_PP",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "PP_W_per_kg",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "peak_power_w",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "time_to_peak_s",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "rpd_max_w_per_s",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "time_to_rpd_max_s",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "rise_time_10_90_s",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "fwhm_s",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "auc_j",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "work_early_pct",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "decay_90_10_s",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "t_com_norm_0to1",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "skewness",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "kurtosis",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "spectral_centroid_hz",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "demographic",
+      "type": "TEXT",
+      "nullable": false,
+      "primary_key": true,
+      "default": null
+    }
+  ],
+  "DJ": [
+    {
+      "name": "id",
+      "type": "INTEGER",
+      "nullable": true,
+      "primary_key": true,
+      "default": null
+    },
+    {
+      "name": "name",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "date",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "trial_name",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "JH_IN",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Peak_Power",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "PP_FORCEPLATE",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Force_at_PP",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Vel_at_PP",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "PP_W_per_kg",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "CT",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "RSI",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "peak_power_w",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "time_to_peak_s",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "rpd_max_w_per_s",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "time_to_rpd_max_s",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "rise_time_10_90_s",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "fwhm_s",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "auc_j",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "work_early_pct",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "decay_90_10_s",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "t_com_norm_0to1",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "skewness",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "kurtosis",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "spectral_centroid_hz",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "demographic",
+      "type": "TEXT",
+      "nullable": false,
+      "primary_key": true,
+      "default": null
+    }
+  ],
+  "SLV": [
+    {
+      "name": "id",
+      "type": "INTEGER",
+      "nullable": true,
+      "primary_key": true,
+      "default": null
+    },
+    {
+      "name": "name",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "date",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "trial_name",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "side",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "JH_IN",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "PP_FORCEPLATE",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Force_at_PP",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Vel_at_PP",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "PP_W_per_kg",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "peak_power_w",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "time_to_peak_s",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "rpd_max_w_per_s",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "time_to_rpd_max_s",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "rise_time_10_90_s",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "fwhm_s",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "auc_j",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "work_early_pct",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "decay_90_10_s",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "t_com_norm_0to1",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "skewness",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "kurtosis",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "spectral_centroid_hz",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "demographic",
+      "type": "TEXT",
+      "nullable": false,
+      "primary_key": true,
+      "default": null
+    }
+  ],
+  "NMT": [
+    {
+      "name": "id",
+      "type": "INTEGER",
+      "nullable": true,
+      "primary_key": true,
+      "default": null
+    },
+    {
+      "name": "name",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "date",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "trial_name",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "NUM_TAPS_10s",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "NUM_TAPS_20s",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "NUM_TAPS_30s",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "NUM_TAPS",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "demographic",
+      "type": "TEXT",
+      "nullable": false,
+      "primary_key": true,
+      "default": null
+    }
+  ],
+  "PPU": [
+    {
+      "name": "id",
+      "type": "INTEGER",
+      "nullable": true,
+      "primary_key": true,
+      "default": null
+    },
+    {
+      "name": "name",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "date",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "trial_name",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "JH_IN",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Peak_Power",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "PP_FORCEPLATE",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Force_at_PP",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Vel_at_PP",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "PP_W_per_kg",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "peak_power_w",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "time_to_peak_s",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "rpd_max_w_per_s",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "time_to_rpd_max_s",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "rise_time_10_90_s",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "fwhm_s",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "auc_j",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "work_early_pct",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "decay_90_10_s",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "t_com_norm_0to1",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "skewness",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "kurtosis",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "spectral_centroid_hz",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "demographic",
+      "type": "TEXT",
+      "nullable": false,
+      "primary_key": true,
+      "default": null
+    }
+  ]
+}

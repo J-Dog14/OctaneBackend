@@ -1,0 +1,54 @@
+# Prisma
+prisma/generated/
+node_modules/
+.env
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# R
+.Rhistory
+.RData
+.Ruserdata
+renv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Database backup files (keep schema/migration files in sql/ and prisma/)
+*.sql.gz
+*.db.gz
+backups/
+*.backup
+*.dump
+
+# Secrets and credentials
+.env
+config/client_secret_*.json
+config/token.pickle
+config/*.pickle
+config/db_connections.yaml

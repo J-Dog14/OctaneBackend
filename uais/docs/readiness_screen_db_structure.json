@@ -1,0 +1,480 @@
+{
+  "sqlite_sequence": [
+    {
+      "name": "name",
+      "type": "",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "seq",
+      "type": "",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    }
+  ],
+  "Participant": [
+    {
+      "name": "Participant_ID",
+      "type": "INT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Name",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Height",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Weight",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Plyo_Day",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Creation_Date",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    }
+  ],
+  "I": [
+    {
+      "name": "Trial_ID",
+      "type": "INT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Name",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Participant_ID",
+      "type": "INT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Avg_Force",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Avg_Force_Norm",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Max_Force",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Max_Force_Norm",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Time_to_Max",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Creation_Date",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    }
+  ],
+  "Y": [
+    {
+      "name": "Trial_ID",
+      "type": "INT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Name",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Participant_ID",
+      "type": "INT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Avg_Force",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Avg_Force_Norm",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Max_Force",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Max_Force_Norm",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Time_to_Max",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Creation_Date",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    }
+  ],
+  "T": [
+    {
+      "name": "Trial_ID",
+      "type": "INT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Name",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Participant_ID",
+      "type": "INT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Avg_Force",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Avg_Force_Norm",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Max_Force",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Max_Force_Norm",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Time_to_Max",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Creation_Date",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    }
+  ],
+  "IR90": [
+    {
+      "name": "Trial_ID",
+      "type": "INT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Name",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Participant_ID",
+      "type": "INT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Avg_Force",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Avg_Force_Norm",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Max_Force",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Max_Force_Norm",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Time_to_Max",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Creation_Date",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    }
+  ],
+  "CMJ": [
+    {
+      "name": "Trial_ID",
+      "type": "INT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Name",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Participant_ID",
+      "type": "INT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Jump_Height",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Peak_Power",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Peak_Force",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Creation_Date",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "PP_W_per_kg",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "PP_FORCEPLATE",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Force_at_PP",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Vel_at_PP",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    }
+  ],
+  "PPU": [
+    {
+      "name": "Trial_ID",
+      "type": "INT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Name",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Participant_ID",
+      "type": "INT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Jump_Height",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Peak_Power",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Peak_Force",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Creation_Date",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "PP_W_per_kg",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "PP_FORCEPLATE",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Force_at_PP",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Vel_at_PP",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    }
+  ]
+}

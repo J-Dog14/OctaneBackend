@@ -1,0 +1,15 @@
+pandas
+numpy
+scipy
+scikit-learn  # For anomaly detection (IsolationForest)
+SQLAlchemy
+psycopg2-binary   # if Postgres
+duckdb
+python-dotenv
+pyyaml
+dash
+plotly
+reportlab
+boto3  # For AWS S3 uploads
+openpyxl  # For reading Excel files
+requests  # For HTTP requests (if needed)

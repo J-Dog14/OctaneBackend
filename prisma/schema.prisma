@@ -1084,3 +1084,15 @@ model f_pitching_trials {
   @@index([owner_filename], map: "idx_f_pitching_trials_owner")
   @@schema("public")
 }
+
+/// Organization settings — key/value store for configurable values that previously lived in .env.
+/// Editable via the /dashboard/settings UI without requiring a redeployment.
+model OrgSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@map("org_settings")
+  @@schema("public")
+}
+

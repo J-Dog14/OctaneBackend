@@ -9,6 +9,7 @@ const TABS = [
   { href: "/dashboard/athlete-tracking", label: "Athlete Tracking" },
   { href: "/dashboard/send-payload", label: "Send Payload" },
   { href: "/dashboard/uais-maintenance", label: "UAIS Maintenance" },
+  { href: "/dashboard/settings", label: "Settings" },
 ] as const;
 
 export function DashboardNav() {

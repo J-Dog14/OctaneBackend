@@ -1,0 +1,100 @@
+{
+  "62625": [
+    {
+      "name": "ASSESSMENT KEY",
+      "pandas_dtype": "object",
+      "prisma_type": "String",
+      "nullable": true
+    },
+    {
+      "name": "Unnamed: 1",
+      "pandas_dtype": "object",
+      "prisma_type": "String",
+      "nullable": true
+    },
+    {
+      "name": "Unnamed: 2",
+      "pandas_dtype": "object",
+      "prisma_type": "String",
+      "nullable": true
+    },
+    {
+      "name": "Unnamed: 3",
+      "pandas_dtype": "float64",
+      "prisma_type": "Decimal",
+      "nullable": true
+    },
+    {
+      "name": "Unnamed: 4",
+      "pandas_dtype": "object",
+      "prisma_type": "String",
+      "nullable": true
+    }
+  ],
+  "RAST": [
+    {
+      "name": "Mass (kg)",
+      "pandas_dtype": "object",
+      "prisma_type": "String",
+      "nullable": true
+    },
+    {
+      "name": "Unnamed: 1",
+      "pandas_dtype": "object",
+      "prisma_type": "String",
+      "nullable": true
+    }
+  ],
+  "Proteus": [
+    {
+      "name": "DATE",
+      "pandas_dtype": "object",
+      "prisma_type": "String",
+      "nullable": true
+    }
+  ],
+  "Timeline": [
+    {
+      "name": "Pitcher Name",
+      "pandas_dtype": "object",
+      "prisma_type": "String",
+      "nullable": true
+    },
+    {
+      "name": "Team",
+      "pandas_dtype": "object",
+      "prisma_type": "String",
+      "nullable": true
+    },
+    {
+      "name": "Innings Pitched",
+      "pandas_dtype": "object",
+      "prisma_type": "String",
+      "nullable": true
+    },
+    {
+      "name": "Areas of Concern/Injury",
+      "pandas_dtype": "object",
+      "prisma_type": "String",
+      "nullable": true
+    },
+    {
+      "name": "Unnamed: 4",
+      "pandas_dtype": "object",
+      "prisma_type": "String",
+      "nullable": true
+    },
+    {
+      "name": "Unnamed: 5",
+      "pandas_dtype": "object",
+      "prisma_type": "String",
+      "nullable": true
+    },
+    {
+      "name": "Unnamed: 6",
+      "pandas_dtype": "object",
+      "prisma_type": "String",
+      "nullable": true
+    }
+  ]
+}

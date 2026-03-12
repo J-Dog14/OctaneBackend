@@ -1,0 +1,235 @@
+{
+  "pro_sup_data": [
+    {
+      "name": "name",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "test_date",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "age",
+      "type": "INT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "height",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "weight",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "injury_history",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "season_phase",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "dynomometer_score",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "Comments",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "forearm_rom_0to10",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "forearm_rom_10to20",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "forearm_rom_20to30",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "forearm_rom",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "tot_rom_0to10",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "tot_rom_10to20",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "tot_rom_20to30",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "tot_rom",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "num_of_flips_0_10",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "num_of_flips_10_20",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "num_of_flips_20_30",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "num_of_flips",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "avg_velo_0_10",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "avg_velo_10_20",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "avg_velo_20_30",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "avg_velo",
+      "type": "TEXT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "fatigue_index_10",
+      "type": "INT",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "fatigue_index_20",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "fatigue_index_30",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "total_fatigue_score",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "consistency_penalty",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "total_score",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "cumulative_rom",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    },
+    {
+      "name": "raw_total_score",
+      "type": "REAL",
+      "nullable": true,
+      "primary_key": false,
+      "default": null
+    }
+  ]
+}

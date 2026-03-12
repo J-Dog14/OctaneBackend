@@ -44,6 +44,48 @@ export default function UaisMaintenancePage() {
   const [checkDuplicatesResult, setCheckDuplicatesResult] = useState<{ athlete_uuid: string; name: string; email: string | null }[] | null>(null);
   const [checkDuplicatesLoading, setCheckDuplicatesLoading] = useState(false);
 
+  type UploadedFile = { key: string; filename: string; size: number };
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [r2Available, setR2Available] = useState<boolean | null>(null);
+
+  // Probe R2 availability by attempting a dry-run OPTIONS check
+  useEffect(() => {
+    fetch("/api/dashboard/uais/upload", { method: "HEAD" })
+      .then((r) => setR2Available(r.status !== 503))
+      .catch(() => setR2Available(false));
+  }, []);
+
+  const handleFileSelect = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    setUploadError(null);
+    const primaryRunnerId = selectedRunnerIds.size > 0 ? Array.from(selectedRunnerIds)[0] : "generic";
+    try {
+      const results: UploadedFile[] = [];
+      for (const file of Array.from(files)) {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("assessmentType", primaryRunnerId);
+        const res = await fetch("/api/dashboard/uais/upload", { method: "POST", body: formData });
+        const data = await res.json() as UploadedFile & { error?: string };
+        if (!res.ok) throw new Error(data.error ?? "Upload failed");
+        results.push(data);
+      }
+      setUploadedFiles((prev) => [...prev, ...results]);
+    } catch (e) {
+      setUploadError(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeUploadedFile = async (key: string) => {
+    await fetch(`/api/dashboard/uais/upload?key=${encodeURIComponent(key)}`, { method: "DELETE" });
+    setUploadedFiles((prev) => prev.filter((f) => f.key !== key));
+  };
+
   const loadRunners = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -155,10 +197,11 @@ export default function UaisMaintenancePage() {
       const runner = ordered[i];
       setRunSelectedProgress({ current: i + 1, total, label: runner.label });
       try {
+        const uploadedFileKeys = uploadedFiles.length > 0 ? uploadedFiles.map((f) => f.key) : undefined;
         const res = await fetch("/api/dashboard/uais/run", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ runnerId: runner.id, athleteUuid }),
+          body: JSON.stringify({ runnerId: runner.id, athleteUuid, uploadedFileKeys }),
         });
         const data = await res.json();
         if (!res.ok) {
@@ -213,6 +256,7 @@ export default function UaisMaintenancePage() {
     }
     setRunSelectedProgress(null);
     setStreaming(false);
+    setUploadedFiles([]);
     if (runMode === "new") {
       const latestRes = await fetch("/api/dashboard/athletes/latest?updated=1");
       const latestData = await latestRes.json();
@@ -511,8 +555,66 @@ export default function UaisMaintenancePage() {
                 );
               })}
             </div>
+            {/* File upload section — shown when R2 is available */}
+            {r2Available && selectedRunnerIds.size > 0 && (
+              <div style={{ margin: "1rem 0", padding: "0.75rem 1rem", border: "1px dashed var(--border)", borderRadius: "8px" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.5rem" }}>
+                  <span style={{ fontSize: "14px", fontWeight: 600 }}>Upload data files</span>
+                  <span className="text-muted" style={{ fontSize: "12px" }}>Files are sent to the cloud processor before running</span>
+                </div>
+                {uploadError && (
+                  <p style={{ color: "var(--error, #e53e3e)", fontSize: "13px", margin: "0 0 0.5rem" }}>{uploadError}</p>
+                )}
+                <label
+                  style={{ display: "inline-block", cursor: "pointer" }}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => { e.preventDefault(); void handleFileSelect(e.dataTransfer.files); }}
+                >
+                  <input
+                    type="file"
+                    multiple
+                    style={{ display: "none" }}
+                    onChange={(e) => void handleFileSelect(e.target.files)}
+                    disabled={uploading || streaming}
+                  />
+                  <span className="btn-ghost" style={{ pointerEvents: "none" }}>
+                    {uploading ? "Uploading…" : "Choose files or drop here"}
+                  </span>
+                </label>
+                {uploadedFiles.length > 0 && (
+                  <ul style={{ listStyle: "none", margin: "0.5rem 0 0", padding: 0, display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                    {uploadedFiles.map((f) => (
+                      <li
+                        key={f.key}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.4rem",
+                          padding: "0.3rem 0.6rem",
+                          background: "rgba(34,197,94,0.15)",
+                          borderRadius: "6px",
+                          fontSize: "13px",
+                        }}
+                      >
+                        <span>{f.filename}</span>
+                        <span className="text-muted">({(f.size / 1024).toFixed(0)} KB)</span>
+                        <button
+                          type="button"
+                          onClick={() => void removeUploadedFile(f.key)}
+                          style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-secondary)", fontSize: "14px", lineHeight: 1, padding: "0 2px" }}
+                          title="Remove"
+                        >
+                          ×
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+
             <button type="button" className="btn-primary" onClick={runSelected} disabled={streaming}>
-              Run selected
+              {uploadedFiles.length > 0 ? `Run selected (${uploadedFiles.length} file${uploadedFiles.length !== 1 ? "s" : ""} uploaded)` : "Run selected"}
             </button>
             <p className="text-muted" style={{ marginTop: "0.75rem", fontSize: "13px" }}>
               <Link href="/docs/UAIS_RUNNERS_TROUBLESHOOTING">Troubleshooting</Link>

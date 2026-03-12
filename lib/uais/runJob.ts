@@ -1,5 +1,6 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
+import { rm } from "node:fs/promises";
 import path from "node:path";
 import type { UaisRunner } from "./runners";
 
@@ -67,9 +68,27 @@ function onExit(jobId: string) {
   jobs.delete(jobId);
 }
 
+/** Maps assessment runner IDs to their data-directory env var name. */
+const ASSESSMENT_DATA_DIR_ENV: Record<string, string> = {
+  pitching: "PITCHING_DATA_DIR",
+  hitting: "HITTING_DATA_DIR",
+  "athletic-screen": "ATHLETIC_SCREEN_DATA_DIR",
+  "arm-action": "ARM_ACTION_DATA_DIR",
+  curveball: "CURVEBALL_DATA_DIR",
+  "pro-sup": "PRO_SUP_DATA_DIR",
+  mobility: "MOBILITY_DATA_DIR",
+  "readiness-screen": "READINESS_SCREEN_DATA_DIR",
+  proteus: "PROTEUS_DATA_DIR",
+};
+
 export type CreateJobOptions = {
   /** When set (Existing Athlete flow), passed as ATHLETE_UUID to the process. */
   athleteUuid?: string | null;
+  /**
+   * R2 object keys of uploaded files to download to a temp dir before running.
+   * When provided, the appropriate DATA_DIR env var is set to that temp dir.
+   */
+  uploadedFileKeys?: string[];
 };
 
 export function createJob(runner: UaisRunner, options?: CreateJobOptions): string {
@@ -78,6 +97,55 @@ export function createJob(runner: UaisRunner, options?: CreateJobOptions): strin
   if (options?.athleteUuid?.trim()) {
     env.ATHLETE_UUID = options.athleteUuid.trim();
   }
+
+  // If uploaded file keys are provided, download them from R2 to a temp dir
+  // and set the assessment's DATA_DIR env var. Done asynchronously; process
+  // starts after downloads complete (or immediately if no uploads).
+  const tempDir = path.join(process.cwd(), "tmp", `uais-${jobId}`);
+  const fileKeys = options?.uploadedFileKeys ?? [];
+
+  if (fileKeys.length > 0) {
+    // Download files, then spawn. Return jobId immediately so the stream can attach.
+    const job: Job = { runner, process: null as unknown as ChildProcess, chunks: [], controller: null, done: false };
+    jobs.set(jobId, job);
+
+    void (async () => {
+      try {
+        const { downloadFromR2ToDir } = await import("../r2/upload");
+        for (const key of fileKeys) {
+          await downloadFromR2ToDir(key, tempDir);
+        }
+        // Set the data dir env var for this runner
+        const dataDirVar = ASSESSMENT_DATA_DIR_ENV[runner.id];
+        if (dataDirVar) env[dataDirVar] = tempDir;
+
+        const envWithPath = getEnvWithROnPath(env);
+        const proc = spawn(runner.command, [], { shell: true, cwd: runner.cwd, env: envWithPath });
+        job.process = proc;
+        proc.stdout?.on("data", (data: Buffer) => pushChunk(jobId, data));
+        proc.stderr?.on("data", (data: Buffer) => pushChunk(jobId, data));
+        proc.on("error", (err) => {
+          pushChunk(jobId, new TextEncoder().encode(`\n[Process error] ${err.message}\n`));
+        });
+        proc.on("exit", (code, signal) => {
+          const msg = code != null
+            ? `\n[Process exited with code ${code}]\n`
+            : `\n[Process exited with signal ${signal}]\n`;
+          pushChunk(jobId, new TextEncoder().encode(msg));
+          onExit(jobId);
+          // Clean up temp dir
+          rm(tempDir, { recursive: true, force: true }).catch(() => undefined);
+        });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        pushChunk(jobId, new TextEncoder().encode(`\n[R2 download error] ${msg}\n`));
+        onExit(jobId);
+      }
+    })();
+
+    return jobId;
+  }
+
   const envWithPath = getEnvWithROnPath(env);
   const proc = spawn(runner.command, [], {
     shell: true,

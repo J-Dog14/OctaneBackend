@@ -5,14 +5,14 @@ import { createJob } from "@/lib/uais/runJob";
 
 /**
  * POST /api/dashboard/uais/run
- * Body: { runnerId: string, athleteUuid?: string }
- * Starts the UAIS process for that runner. When athleteUuid is set (Existing Athlete),
- * it is passed as ATHLETE_UUID env to the process. Returns jobId; client should then
- * fetch GET /api/dashboard/uais/stream?jobId=... to receive output.
+ * Body: { runnerId: string, athleteUuid?: string, uploadedFileKeys?: string[] }
+ * Starts the UAIS process for that runner. When uploadedFileKeys is set, files are
+ * downloaded from R2 to a temp dir and the data-dir env var is set before spawning.
+ * Returns jobId; client should then fetch GET /api/dashboard/uais/stream?jobId=...
  */
 export async function POST(request: NextRequest) {
   try {
-    let body: { runnerId?: string; athleteUuid?: string | null };
+    let body: { runnerId?: string; athleteUuid?: string | null; uploadedFileKeys?: string[] };
     try {
       body = await request.json();
     } catch {
@@ -27,7 +27,8 @@ export async function POST(request: NextRequest) {
       return badRequest("Unknown or unconfigured runner. Set the runner's CWD env var.");
     }
     const athleteUuid = body.athleteUuid ?? null;
-    const jobId = createJob(runner, { athleteUuid: athleteUuid ?? undefined });
+    const uploadedFileKeys = Array.isArray(body.uploadedFileKeys) ? body.uploadedFileKeys : undefined;
+    const jobId = createJob(runner, { athleteUuid: athleteUuid ?? undefined, uploadedFileKeys });
     return success({ jobId });
   } catch (error) {
     console.error("Error in POST /api/dashboard/uais/run:", error);
