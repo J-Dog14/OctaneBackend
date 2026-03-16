@@ -97,7 +97,7 @@ export type CreateJobOptions = {
    * Extra environment variables to inject into the spawned process.
    * Merged on top of process.env before any other overrides (uploads take precedence).
    */
-  extraEnv?: NodeJS.ProcessEnv;
+  extraEnv?: Record<string, string>;
 };
 
 export function createJob(runner: UaisRunner, options?: CreateJobOptions): string {

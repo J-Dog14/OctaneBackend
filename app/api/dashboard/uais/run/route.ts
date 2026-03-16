@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     const uploadedFileKeys = Array.isArray(body.uploadedFileKeys) ? body.uploadedFileKeys : undefined;
 
     // Build extra env vars from org settings (warehouse DB URL + per-runner data dir).
-    const extraEnv: NodeJS.ProcessEnv = {};
+    const extraEnv: Record<string, string> = {};
     try {
       const rows = await prisma.orgSetting.findMany();
       const s = Object.fromEntries(rows.map((r) => [r.key, r.value]));
