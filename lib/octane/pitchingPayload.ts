@@ -673,7 +673,8 @@ export function buildPitchingPayloadWithDebug(
  * Picks the single best trial by velocity_mph, then parses metrics from that row.
  */
 export async function buildPitchingPayloadFromTrials(
-  athleteUuid: string
+  athleteUuid: string,
+  sessionDate?: string
 ): Promise<PitchingPayload> {
   const athlete = await prisma.d_athletes.findUnique({
     where: { athlete_uuid: athleteUuid },
@@ -686,7 +687,10 @@ export async function buildPitchingPayloadFromTrials(
 
   // Best trial by velocity (one row = one trial with all metrics in JSON).
   const bestTrial = await prisma.f_pitching_trials.findFirst({
-    where: { athlete_uuid: athleteUuid },
+    where: {
+      athlete_uuid: athleteUuid,
+      ...(sessionDate ? { session_date: new Date(sessionDate) } : {}),
+    },
     orderBy: [{ velocity_mph: "desc" }, { session_date: "desc" }, { trial_index: "asc" }],
     select: { metrics: true, velocity_mph: true, weight: true, session_date: true },
   });
@@ -710,8 +714,8 @@ export async function buildPitchingPayloadFromTrials(
       : athlete;
 
   const payload = buildMetricsFromValueMap(valueByMetricName, athleteForBuild);
-  const sessionDate = bestTrial.session_date.toISOString().split("T")[0];
-  return { ...payload, sessionDate };
+  const sessionDateStr = bestTrial.session_date.toISOString().split("T")[0];
+  return { ...payload, sessionDate: sessionDateStr };
 }
 
 /**
@@ -755,7 +759,8 @@ export async function getPitchingTrialValueMapAndAthlete(athleteUuid: string): P
  * Used for comparison and as fallback when no trials data exists.
  */
 export async function buildPitchingPayloadFromKinematics(
-  athleteUuid: string
+  athleteUuid: string,
+  sessionDate?: string
 ): Promise<PitchingPayload> {
   const athlete = await prisma.d_athletes.findUnique({
     where: { athlete_uuid: athleteUuid },
@@ -766,24 +771,30 @@ export async function buildPitchingPayloadFromKinematics(
     throw notFound("Athlete not found");
   }
 
-  const bestByVelocity = await prisma.f_kinematics_pitching.findFirst({
-    where: { athlete_uuid: athleteUuid, metric_name: "BALLSPEED.BALL_RELEASE_SPEED" },
-    orderBy: [{ value: "desc" }, { session_date: "desc" }],
-    select: { session_date: true, value: true },
-  });
+  let resolvedSessionDate: Date;
+  if (sessionDate) {
+    resolvedSessionDate = new Date(sessionDate);
+  } else {
+    const bestByVelocity = await prisma.f_kinematics_pitching.findFirst({
+      where: { athlete_uuid: athleteUuid, metric_name: "BALLSPEED.BALL_RELEASE_SPEED" },
+      orderBy: [{ value: "desc" }, { session_date: "desc" }],
+      select: { session_date: true, value: true },
+    });
 
-  const bestSessionDate =
-    bestByVelocity?.session_date ??
-    (
-      await prisma.f_kinematics_pitching.findFirst({
-        where: { athlete_uuid: athleteUuid },
-        orderBy: { session_date: "desc" },
-        select: { session_date: true },
-      })
-    )?.session_date;
+    const bestSessionDate =
+      bestByVelocity?.session_date ??
+      (
+        await prisma.f_kinematics_pitching.findFirst({
+          where: { athlete_uuid: athleteUuid },
+          orderBy: { session_date: "desc" },
+          select: { session_date: true },
+        })
+      )?.session_date;
 
-  if (!bestSessionDate) {
-    throw notFound("No pitching data found for athlete");
+    if (!bestSessionDate) {
+      throw notFound("No pitching data found for athlete");
+    }
+    resolvedSessionDate = bestSessionDate;
   }
 
   const candidateMetricNames = Array.from(
@@ -797,7 +808,7 @@ export async function buildPitchingPayloadFromKinematics(
   const rows = await prisma.f_kinematics_pitching.findMany({
     where: {
       athlete_uuid: athleteUuid,
-      session_date: bestSessionDate,
+      session_date: resolvedSessionDate,
       ...(candidateMetricNames.length > 0
         ? { metric_name: { in: candidateMetricNames } }
         : {}),
@@ -813,8 +824,8 @@ export async function buildPitchingPayloadFromKinematics(
   }
 
   const payload = buildMetricsFromValueMap(valueByMetricName, athlete);
-  const sessionDate = bestSessionDate.toISOString().split("T")[0];
-  return { ...payload, sessionDate };
+  const sessionDateStr = resolvedSessionDate.toISOString().split("T")[0];
+  return { ...payload, sessionDate: sessionDateStr };
 }
 
 /**
@@ -822,7 +833,8 @@ export async function buildPitchingPayloadFromKinematics(
  * Uses f_pitching_trials (metrics JSON) when available; falls back to f_kinematics_pitching otherwise.
  */
 export async function buildPitchingPayload(
-  athleteUuid: string
+  athleteUuid: string,
+  sessionDate?: string
 ): Promise<PitchingPayload> {
   const athlete = await prisma.d_athletes.findUnique({
     where: { athlete_uuid: athleteUuid },
@@ -834,15 +846,18 @@ export async function buildPitchingPayload(
   }
 
   const hasTrials = await prisma.f_pitching_trials.findFirst({
-    where: { athlete_uuid: athleteUuid },
+    where: {
+      athlete_uuid: athleteUuid,
+      ...(sessionDate ? { session_date: new Date(sessionDate) } : {}),
+    },
     select: { id: true },
   });
 
   if (hasTrials) {
-    return buildPitchingPayloadFromTrials(athleteUuid);
+    return buildPitchingPayloadFromTrials(athleteUuid, sessionDate);
   }
 
-  return buildPitchingPayloadFromKinematics(athleteUuid);
+  return buildPitchingPayloadFromKinematics(athleteUuid, sessionDate);
 }
 
 /** Result of comparing payloads from trials vs kinematics for the same athlete. */

@@ -4,15 +4,17 @@
 
 import { buildAthleteReportPayload } from "@/lib/octane/reportPayload";
 import { buildDomainsWithPercentiles } from "@/lib/athlete-tracking/percentiles";
-import type { AthleteTrackingReport } from "@/lib/athlete-tracking/types";
+import type { AthleteTrackingReport, DomainId } from "@/lib/athlete-tracking/types";
 
 export async function buildAthleteTrackingReport(
-  athleteUuid: string
+  athleteUuid: string,
+  sessionDates?: Partial<Record<DomainId, string>>
 ): Promise<AthleteTrackingReport> {
   const reportPayload = await buildAthleteReportPayload(athleteUuid);
   const domains = await buildDomainsWithPercentiles(
     athleteUuid,
-    reportPayload.counts
+    reportPayload.counts,
+    sessionDates
   );
 
   return {

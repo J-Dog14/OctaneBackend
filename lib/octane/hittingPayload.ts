@@ -333,7 +333,10 @@ const HITTING_METRIC_NAMES = Array.from(
   )
 );
 
-export async function buildHittingPayload(athleteUuid: string): Promise<HittingPayload> {
+export async function buildHittingPayload(
+  athleteUuid: string,
+  sessionDate?: string
+): Promise<HittingPayload> {
   const athlete = await prisma.d_athletes.findUnique({
     where: { athlete_uuid: athleteUuid },
     select: { athlete_uuid: true, age_group: true },
@@ -343,20 +346,25 @@ export async function buildHittingPayload(athleteUuid: string): Promise<HittingP
     throw notFound("Athlete not found");
   }
 
-  const mostRecentSession = await prisma.f_kinematics_hitting.findFirst({
-    where: { athlete_uuid: athleteUuid },
-    orderBy: { session_date: "desc" },
-    select: { session_date: true },
-  });
-
-  if (!mostRecentSession) {
-    throw notFound("No hitting data found for athlete");
+  let resolvedSessionDate: Date;
+  if (sessionDate) {
+    resolvedSessionDate = new Date(sessionDate);
+  } else {
+    const mostRecentSession = await prisma.f_kinematics_hitting.findFirst({
+      where: { athlete_uuid: athleteUuid },
+      orderBy: { session_date: "desc" },
+      select: { session_date: true },
+    });
+    if (!mostRecentSession) {
+      throw notFound("No hitting data found for athlete");
+    }
+    resolvedSessionDate = mostRecentSession.session_date;
   }
 
   const rows = await prisma.f_kinematics_hitting.findMany({
     where: {
       athlete_uuid: athleteUuid,
-      session_date: mostRecentSession.session_date,
+      session_date: resolvedSessionDate,
       metric_name: { in: [...HITTING_METRIC_NAMES] },
     },
     select: { metric_name: true, value: true },
@@ -384,12 +392,12 @@ export async function buildHittingPayload(athleteUuid: string): Promise<HittingP
     };
   });
 
-  const sessionDate = mostRecentSession.session_date.toISOString().split("T")[0];
+  const sessionDateStr = resolvedSessionDate.toISOString().split("T")[0];
   return {
     athleteUuid: athlete.athlete_uuid,
     level: deriveLevelFromAthlete({ age_group: athlete.age_group ?? null }),
     score: null,
     metrics,
-    sessionDate,
+    sessionDate: sessionDateStr,
   };
 }

@@ -100,183 +100,108 @@ function metricsToRadarData(metrics: MetricWithPercentile[], domainId?: string):
   return out;
 }
 
-/** Top 5 highest and top 5 lowest percentiles across all domains (for Highlights vs Lowlights). */
-function getHighlightsAndLowlights(
-  domains: DomainWithMetrics[]
-): { highlights: Array<{ domainLabel: string; domainId: string; metric: MetricWithPercentile }>; lowlights: Array<{ domainLabel: string; domainId: string; metric: MetricWithPercentile }> } {
-  const withPct: Array<{ domainLabel: string; domainId: string; metric: MetricWithPercentile }> = [];
+/** Returns highlights (top 3) and lowlights (bottom 3) across all domains. */
+function getHighlightsAndLowlights(domains: DomainWithMetrics[]) {
+  const all: Array<{ domainLabel: string; domainId: string; metric: MetricWithPercentile }> = [];
   for (const d of domains) {
     for (const m of d.metrics) {
-      if (m.percentile != null && Number.isFinite(m.percentile)) {
-        withPct.push({ domainLabel: d.label, domainId: d.domainId, metric: m });
+      if (
+        m.percentile != null &&
+        Number.isFinite(m.percentile) &&
+        m.mobilityMetricKind !== "GROUP" &&
+        m.mobilityMetricKind !== "COMPONENT"
+      ) {
+        all.push({ domainLabel: d.label, domainId: d.domainId, metric: m });
       }
     }
   }
-  const sorted = [...withPct].sort(
-    (a, b) => (a.metric.percentile ?? 0) - (b.metric.percentile ?? 0)
-  );
-  const lowlights = sorted.slice(0, 5);
-  const highlights = sorted.slice(-5).reverse();
-  return { highlights, lowlights };
+  all.sort((a, b) => (b.metric.percentile ?? 0) - (a.metric.percentile ?? 0));
+  return { highlights: all.slice(0, 3), lowlights: all.slice(-3).reverse() };
 }
 
-function formatMetricValueParts(m: MetricWithPercentile): { valuePart: string; unitPart: string } {
-  if (
-    (m.category === "ABDUCTION_PROGRESS" || m.category === "HIP_SHOULDER_PROGRESS") &&
-    m.name === "GAIN_OR_LOSS"
-  ) {
-    if (m.value === 1) return { valuePart: "GAIN", unitPart: "" };
-    if (m.value === -1) return { valuePart: "LOSS", unitPart: "" };
-    if (m.value === 0) return { valuePart: "NO_CHANGE", unitPart: "" };
-    return { valuePart: "—", unitPart: "" };
+function getPercentileStyle(percentile: number | null): React.CSSProperties | undefined {
+  if (percentile == null) return undefined;
+  if (percentile >= 75) return { color: "#16a34a" };
+  if (percentile <= 25) return { color: "var(--accent-secondary)" };
+  return { color: "var(--text-primary)" };
+}
+
+function formatMetricValueParts(metric: MetricWithPercentile): { valuePart: string; unitPart: string } {
+  return formatValueWithUnit(metric.value, metric.valueUnit, metric.max);
+}
+
+/** Mobility helpers */
+type MobilityGroupMetric = MetricWithPercentile & { mobilityMetricKind: "GROUP" };
+type MobilityComponentMetric = MetricWithPercentile & { mobilityMetricKind: "COMPONENT" };
+
+function isShoulderRomMetric(m: MetricWithPercentile): boolean {
+  return m.mobilityGroup === "Shoulder Mobility";
+}
+
+function getMobilityComponentScoreValue(m: MetricWithPercentile): number | null {
+  if (m.mobilityOutOf == null || m.mobilityOutOf === 0) return null;
+  if (m.value == null || !Number.isFinite(m.value)) return null;
+  return m.value;
+}
+
+function scoreOutOfThreeFromPercentile(percentile: number | null): string {
+  if (percentile == null) return "—";
+  if (percentile >= 66) return "3/3";
+  if (percentile >= 33) return "2/3";
+  return "1/3";
+}
+
+function formatMobilityComponentLabel(m: MetricWithPercentile, domainId?: string): string {
+  return formatMetricDisplayName(m.name, m.category, domainId);
+}
+
+function formatMobilityComponentValue(m: MetricWithPercentile): string {
+  const { valuePart, unitPart } = formatValueWithUnit(m.value, m.valueUnit, m.mobilityOutOf ?? m.max);
+  if (valuePart === "—") return "—";
+  if (m.mobilityOutOf != null && m.mobilityOutOf > 0 && m.value != null) {
+    return `${valuePart}/${m.mobilityOutOf}`;
   }
-  return formatValueWithUnit(m.value, m.valueUnit, m.max);
+  return `${valuePart}${unitPart}`;
 }
 
-function getPercentileStyle(percentile: number | null | undefined) {
-  if (percentile == null || !Number.isFinite(percentile)) return undefined;
-  if (percentile < 25) return { color: "var(--accent-secondary)" };
-  if (percentile > 75) return { color: "#16a34a" };
-  return undefined;
+function buildMobilityGroupSections(metrics: MetricWithPercentile[]): Array<{
+  group: MobilityGroupMetric;
+  components: MobilityComponentMetric[];
+}> {
+  const groups = metrics.filter((m) => m.mobilityMetricKind === "GROUP") as MobilityGroupMetric[];
+  return groups.map((group) => ({
+    group,
+    components: metrics.filter(
+      (m) => m.mobilityMetricKind === "COMPONENT" && m.mobilityGroup === group.category
+    ) as MobilityComponentMetric[],
+  }));
 }
 
-type MobilityGroupTableSection = {
-  group: MetricWithPercentile;
-  components: MetricWithPercentile[];
-};
-
-function buildMobilityGroupSections(metrics: MetricWithPercentile[]): MobilityGroupTableSection[] {
-  const sections: MobilityGroupTableSection[] = [];
-  const byGroup = new Map<string, MobilityGroupTableSection>();
-
-  for (const metric of metrics) {
-    if (metric.mobilityMetricKind === "GROUP") {
-      const section = { group: metric, components: [] as MetricWithPercentile[] };
-      sections.push(section);
-      byGroup.set(metric.mobilityGroup ?? metric.category, section);
-    }
-  }
-
-  for (const metric of metrics) {
-    if (metric.mobilityMetricKind !== "COMPONENT") continue;
-    const key = metric.mobilityGroup ?? metric.category;
-    const section = byGroup.get(key);
-    if (section) section.components.push(metric);
-  }
-
-  // Backward-compatible fallback in case metadata is not present.
-  if (sections.length === 0) {
-    return metrics.map((m) => ({ group: m, components: [] }));
-  }
-  return sections;
-}
-
-function formatMobilityComponentValue(metric: MetricWithPercentile): string {
-  if (metric.value == null || !Number.isFinite(metric.value)) return "—";
-  if (metric.name === "shoulder_ir" || metric.name === "shoulder_er") {
-    return `${Math.round(metric.value)}°`;
-  }
-  if (metric.mobilityOutOf != null && metric.mobilityOutOf > 0) {
-    return `${Math.round(metric.value)}/${metric.mobilityOutOf}`;
-  }
-  return Number(metric.value).toFixed(0);
-}
-
-const MOBILITY_COMPONENT_LABEL_OVERRIDES: Record<string, string> = {
-  shoulder_stability_flexion: "Stability Flexion",
-  shoulder_stability_abduction: "Stability Abduction",
-  shoulder_stability_er_at_0_deg_horiz_abuduction: "Stability ER @ 0° HABD",
-  shoulder_stability_ir_at_0_deg_horiz_abduction: "Stability IR @ 0° HABD",
-  young_stretch_passive: "Young Stretch + Passive",
-  shoulder_total_arc: "Total Arc",
-  back_to_wall_shoulder_flexion: "Back To Wall Flexion",
-  elbow_extension_rom: "Extension ROM",
-  elbow_flexion_rom: "Flexion ROM",
-  elbow_pronation_rom: "Pronation ROM",
-  elbow_supination_rom: "Supination ROM",
-  radial_nerve_glide: "Radial Nerve Glide",
-  ulnar_nerve_glide: "Ulnar Nerve Glide",
-  glute_strength_test_prone_hammy_push: "Glute Strength",
-  prone_hamstring_raise: "Prone Ham Raise",
-  pelvic_tilt_against_wall: "Pelvic Tilt Wall",
-};
-
-function formatMobilityComponentLabel(metric: MetricWithPercentile, domainId: string): string {
-  return (
-    MOBILITY_COMPONENT_LABEL_OVERRIDES[metric.name] ??
-    metric.mobilityDisplayLabel ??
-    formatMetricDisplayName(metric.name, metric.category, domainId)
-  );
-}
-
-function isShoulderRomMetric(metric: MetricWithPercentile): boolean {
-  return metric.name === "shoulder_ir" || metric.name === "shoulder_er";
-}
-
-function scoreOutOfThreeFromPercentile(percentile: number | null | undefined): string {
-  if (percentile == null || !Number.isFinite(percentile)) return "—";
-  if (percentile < 33.34) return "1/3";
-  if (percentile < 66.67) return "2/3";
-  return "3/3";
-}
-
-function scoreOutOfThreeFromPercentileValue(percentile: number | null | undefined): number | null {
-  if (percentile == null || !Number.isFinite(percentile)) return null;
-  if (percentile < 33.34) return 1;
-  if (percentile < 66.67) return 2;
-  return 3;
-}
-
-function getMobilityComponentScoreValue(metric: MetricWithPercentile): number | null {
-  if (metric.value == null || !Number.isFinite(metric.value)) return null;
-  if (isShoulderRomMetric(metric)) {
-    return scoreOutOfThreeFromPercentileValue(metric.percentile);
-  }
-  if (metric.mobilityOutOf != null && metric.mobilityOutOf > 0) {
-    return Math.round(metric.value);
-  }
-  return metric.value;
-}
-
-function getRadarMetricsForDomain(metrics: MetricWithPercentile[], domainId: string): MetricWithPercentile[] {
+function getRadarMetricsForDomain(
+  metrics: MetricWithPercentile[],
+  domainId: string
+): MetricWithPercentile[] {
   if (domainId === "pitching") {
     return metrics.filter((m) => PITCHING_RADAR_ALLOWLIST.has(`${m.category}|${m.name}`));
   }
   if (domainId === "hitting") {
     return metrics.filter((m) => HITTING_RADAR_ALLOWLIST.has(`${m.category}|${m.name}`));
   }
-  // Keep mobility radar at category-level scores only.
   if (domainId === "mobility") {
-    const sections = buildMobilityGroupSections(metrics);
-    if (sections.length > 0) {
-      return sections.map((section) => {
-        if (section.group.category !== "Shoulder Mobility") return section.group;
-        const derivedScore = section.components.reduce((sum, component) => {
-          const score = getMobilityComponentScoreValue(component);
-          return score == null ? sum : sum + score;
-        }, 0);
-        return {
-          ...section.group,
-          value: derivedScore,
-        };
-      });
-    }
-    return metrics.filter((m) => m.mobilityMetricKind !== "COMPONENT");
+    return metrics.filter((m) => m.mobilityMetricKind === "GROUP");
   }
   return metrics;
 }
 
-type PitchingSectionMetricItem =
-  | { kind: "metric"; key: string; label: string }
-  | { kind: "derived"; derivedId: "MAX_HSS" | "ARM_TIMING_FLAG"; label: string };
-
+/** ---- Pitching table section types ---- */
+type PitchingSectionMetricItem = { kind: "metric"; key: string; label: string };
+type PitchingSectionDerivedItem = { kind: "derived"; derivedId: string; label: string };
 type PitchingSection = {
   id: string;
   title?: string;
   description: string;
-  items: PitchingSectionMetricItem[];
+  items: Array<PitchingSectionMetricItem | PitchingSectionDerivedItem>;
 };
-
 type PitchingDisplayCell = {
   key: string;
   label: string;
@@ -284,9 +209,7 @@ type PitchingDisplayCell = {
   unitPart: string;
   percentile: number | null;
 };
-
 type HittingSectionMetricItem = { key: string; label: string };
-
 type HittingSection = {
   id: string;
   title: string;
@@ -296,24 +219,31 @@ type HittingSection = {
 
 const PITCHING_TABLE_SECTIONS: PitchingSection[] = [
   {
-    id: "top-basics",
+    id: "velocity",
+    title: "Velocity / Score",
     description:
-      "The Octane Biomechanics Score is made up of multiple movement variables that are crucial for producing velocity efficiently and safely.",
+      "Trackman velocity and overall pitching score. Velocity is the primary output metric; score aggregates key kinematic contributors.",
     items: [
-      { kind: "metric", key: "SUBJECT_METRICS|SCORE", label: "Octane Biomechanics Score" },
-      { kind: "metric", key: "TRACKMAN_METRICS|VELOCITY", label: "Velo" },
+      { kind: "metric", key: "TRACKMAN_METRICS|VELOCITY", label: "Velocity" },
+      { kind: "metric", key: "SUBJECT_METRICS|SCORE", label: "Score" },
     ],
   },
   {
-    id: "ground-reaction-forces",
-    title: "Ground Reaction Forces",
+    id: "stride",
+    title: "Stride",
     description:
-      "Ground reaction forces follow Newton's 3rd Law: when you push into the ground, the ground pushes back. The more force you can produce at the right time, the more energy you can transfer up the body and into the ball.",
+      "Stride length describes how far the lead foot lands from the rubber. A longer stride generally increases mechanical efficiency and velocity, though optimal length varies by height and mechanics.",
     items: [
-      { kind: "metric", key: "GRF|MID_POINT", label: "Midpoint" },
-      { kind: "metric", key: "GRF|GRF_MAG_MAX", label: "Magnitude Max" },
-      { kind: "metric", key: "GRF|Z_DIR", label: "Z" },
-      { kind: "metric", key: "GRF|Y_DIR", label: "Y" },
+      { kind: "metric", key: "STRIDE|STRIDE_LENGTH", label: "Stride Length" },
+    ],
+  },
+  {
+    id: "grf",
+    title: "Ground Reaction Force",
+    description:
+      "Ground reaction force mid-point is the percentage of stride completed when peak vertical GRF occurs. Earlier midpoint values generally indicate better energy transfer.",
+    items: [
+      { kind: "metric", key: "GRF|MID_POINT", label: "GRF Mid-Point" },
     ],
   },
   {
@@ -507,7 +437,7 @@ function getMetricByKey(metrics: MetricWithPercentile[], key: string): MetricWit
 
 function buildPitchingDisplayCells(
   metrics: MetricWithPercentile[],
-  items: PitchingSectionMetricItem[]
+  items: Array<PitchingSectionMetricItem | PitchingSectionDerivedItem>
 ): PitchingDisplayCell[] {
   return items.map((item) => {
     if (item.kind === "metric") {
@@ -610,6 +540,46 @@ function buildHittingDisplayCells(
   });
 }
 
+// ---------------------------------------------------------------------------
+// Timeline helpers
+// ---------------------------------------------------------------------------
+
+/** Key radar metrics to show per domain in the timeline table. */
+function getTimelineMetricKeys(domainId: string): string[] {
+  if (domainId === "pitching") {
+    return [
+      "TRACKMAN_METRICS|VELOCITY",
+      "SUBJECT_METRICS|SCORE",
+      "HIP_SHOULDER_SEPARATION|FOOT_PLANT",
+      "ABDUCTION|FOOT_PLANT",
+      "KINEMATIC_SEQUENCE|PELVIS",
+      "KINEMATIC_SEQUENCE|TORSO",
+      "KINEMATIC_SEQUENCE|ARM",
+      "GRF|MID_POINT",
+    ];
+  }
+  if (domainId === "hitting") {
+    return [
+      "PROCESSED|Max_Pelvis_Ang_Vel",
+      "PROCESSED|Max_Thorax_Ang_Vel",
+      "PROCESSED|Max_Lead_Forearm_Ang_Vel",
+      "PROCESSED|Max_Lead_Hand_Ang_Vel",
+      "PROCESSED|Max_Bat_Ang_Vel",
+      "PROCESSED|Pelvis_Shoulders_Separation@Lead_Foot_Down",
+    ];
+  }
+  if (domainId === "armAction") {
+    return [
+      "ARM_ACTION|Score",
+      "ARM_ACTION|Abduction",
+      "ARM_ACTION|MER",
+      "ARM_ACTION|Arm Velo",
+      "ARM_ACTION|Torso Velo",
+    ];
+  }
+  return [];
+}
+
 function AthleteTrackingContentInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -623,13 +593,27 @@ function AthleteTrackingContentInner() {
   const [report, setReport] = useState<AthleteTrackingReport | null>(null);
   const [loadingReport, setLoadingReport] = useState(false);
   const [reportError, setReportError] = useState<string | null>(null);
-  const [compareUuid, setCompareUuid] = useState<string | null>(null);
-  const [compareReport, setCompareReport] = useState<AthleteTrackingReport | null>(null);
-  const [loadingCompare, setLoadingCompare] = useState(false);
   const [pageIndex, setPageIndex] = useState(0);
   const [athleticScreenSubIndex, setAthleticScreenSubIndex] = useState(0);
   const [expandedMobilityGroups, setExpandedMobilityGroups] = useState<Record<string, boolean>>({});
   const [addAthleteQuery, setAddAthleteQuery] = useState("");
+
+  // --- Session date comparison (primary mode) ---
+  const [availableDates, setAvailableDates] = useState<Record<string, string[]>>({});
+  const [loadingDates, setLoadingDates] = useState(false);
+  // domainId -> array of comparison dates (up to 3)
+  const [domainCompareDates, setDomainCompareDates] = useState<Record<string, string[]>>({});
+  // keyed by "domainId|date"; undefined = not fetched, null = failed, report = success
+  const [compCache, setCompCache] = useState<Record<string, AthleteTrackingReport | null | undefined>>({});
+  const [compLoadingKeys, setCompLoadingKeys] = useState<string[]>([]);
+  // per domain: "compare" (radar) | "timeline"
+  const [domainViewMode, setDomainViewMode] = useState<Record<string, "compare" | "timeline">>({});
+
+  // --- Cross-athlete comparison (secondary) ---
+  const [compareMode, setCompareMode] = useState<"date" | "athlete">("date");
+  const [compareUuid, setCompareUuid] = useState<string | null>(null);
+  const [compareReport, setCompareReport] = useState<AthleteTrackingReport | null>(null);
+  const [loadingCompare, setLoadingCompare] = useState(false);
 
   const loadAthletes = useCallback(async () => {
     setLoadingAthletes(true);
@@ -698,7 +682,17 @@ function AthleteTrackingContentInner() {
   }, []);
 
   useEffect(() => {
-    if (currentUuid) fetchReport(currentUuid);
+    if (currentUuid) {
+      fetchReport(currentUuid);
+      // Reset per-athlete state
+      setDomainCompareDates({});
+      setCompCache({});
+      setCompLoadingKeys([]);
+      setDomainViewMode({});
+      setAvailableDates({});
+      setCompareReport(null);
+      setCompareUuid(null);
+    }
   }, [currentUuid, fetchReport]);
 
   useEffect(() => {
@@ -708,8 +702,29 @@ function AthleteTrackingContentInner() {
     }
   }, [report, pageIndex]);
 
+  // Fetch available session dates when athlete changes
   useEffect(() => {
-    if (!compareUuid || compareUuid === currentUuid) {
+    if (!currentUuid) {
+      setAvailableDates({});
+      return;
+    }
+    setLoadingDates(true);
+    fetch(`/api/dashboard/athlete-tracking/sessions?athleteUuid=${encodeURIComponent(currentUuid)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        const map: Record<string, string[]> = {};
+        for (const { domainId, dates } of data.domains ?? []) {
+          map[domainId] = dates;
+        }
+        setAvailableDates(map);
+      })
+      .catch(() => setAvailableDates({}))
+      .finally(() => setLoadingDates(false));
+  }, [currentUuid]);
+
+  // Cross-athlete compare fetch
+  useEffect(() => {
+    if (compareMode !== "athlete" || !compareUuid || compareUuid === currentUuid) {
       setCompareReport(null);
       return;
     }
@@ -723,7 +738,39 @@ function AthleteTrackingContentInner() {
       .then((data) => setCompareReport(data))
       .catch(() => setCompareReport(null))
       .finally(() => setLoadingCompare(false));
-  }, [compareUuid, currentUuid]);
+  }, [compareMode, compareUuid, currentUuid]);
+
+  // Fetch comparison reports for date-based comparisons
+  useEffect(() => {
+    if (!currentUuid || compareMode !== "date") return;
+    const toFetch: Array<{ domainId: string; date: string; key: string }> = [];
+    for (const [domainId, dates] of Object.entries(domainCompareDates)) {
+      for (const date of dates) {
+        const key = `${domainId}|${date}`;
+        if (compCache[key] === undefined && !compLoadingKeys.includes(key)) {
+          toFetch.push({ domainId, date, key });
+        }
+      }
+    }
+    if (toFetch.length === 0) return;
+
+    setCompLoadingKeys((prev) => [...prev, ...toFetch.map((f) => f.key)]);
+
+    for (const { domainId, date, key } of toFetch) {
+      const url = `/api/dashboard/athlete-tracking/report?athleteUuid=${encodeURIComponent(currentUuid)}&${encodeURIComponent(domainId + "Date")}=${encodeURIComponent(date)}`;
+      fetch(url)
+        .then(async (res) => {
+          const data = await res.json();
+          setCompCache((prev) => ({ ...prev, [key]: res.ok ? data : null }));
+        })
+        .catch(() => {
+          setCompCache((prev) => ({ ...prev, [key]: null }));
+        })
+        .finally(() => {
+          setCompLoadingKeys((prev) => prev.filter((k) => k !== key));
+        });
+    }
+  }, [domainCompareDates, currentUuid, compareMode, compCache, compLoadingKeys]);
 
   const addTracked = (uuid: string) => {
     if (trackedUuids.includes(uuid)) return;
@@ -739,6 +786,21 @@ function AthleteTrackingContentInner() {
     }
   };
 
+  const addCompareDate = (domainId: string, date: string) => {
+    setDomainCompareDates((prev) => {
+      const existing = prev[domainId] ?? [];
+      if (existing.includes(date) || existing.length >= 3) return prev;
+      return { ...prev, [domainId]: [...existing, date] };
+    });
+  };
+
+  const removeCompareDate = (domainId: string, date: string) => {
+    setDomainCompareDates((prev) => {
+      const existing = prev[domainId] ?? [];
+      return { ...prev, [domainId]: existing.filter((d) => d !== date) };
+    });
+  };
+
   const { highlights, lowlights } =
     report && report.domains.length > 0
       ? getHighlightsAndLowlights(report.domains)
@@ -750,7 +812,7 @@ function AthleteTrackingContentInner() {
         Athlete Tracking
       </h1>
       <p className="text-muted" style={{ marginBottom: "1.5rem" }}>
-        Select athletes and view percentiles by domain (pitching, hitting, mobility, etc.).
+        Select an athlete to view percentiles by domain and compare sessions over time.
       </p>
 
       <div className="card" style={{ marginBottom: "1.5rem" }}>
@@ -865,35 +927,73 @@ function AthleteTrackingContentInner() {
                 <h2 style={{ margin: "0 0 0.75rem", fontSize: "1.1rem" }}>
                   {report.athlete.name}
                 </h2>
-                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.75rem", flexWrap: "wrap" }}>
-                  <label htmlFor="compare-athlete" style={{ fontSize: "0.9rem", color: "var(--text-secondary)" }}>
-                    Compare with:
-                  </label>
-                  <select
-                    id="compare-athlete"
-                    value={compareUuid ?? ""}
-                    onChange={(e) => setCompareUuid(e.target.value ? e.target.value : null)}
-                    disabled={loadingCompare}
+
+                {/* Compare mode toggle */}
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.75rem", flexWrap: "wrap" }}>
+                  <span style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>Compare by:</span>
+                  <button
+                    type="button"
+                    className="btn-ghost"
                     style={{
-                      padding: "6px 10px",
+                      fontSize: "13px",
+                      padding: "4px 10px",
                       borderRadius: 6,
-                      border: "1px solid var(--border)",
-                      background: "var(--bg-tertiary)",
-                      color: "var(--text-primary)",
-                      minWidth: 180,
+                      border: `1px solid ${compareMode === "date" ? "var(--accent)" : "var(--border)"}`,
+                      background: compareMode === "date" ? "var(--accent-muted)" : "var(--bg-tertiary)",
+                      color: compareMode === "date" ? "var(--accent)" : "var(--text-secondary)",
+                      fontWeight: compareMode === "date" ? 600 : 400,
                     }}
+                    onClick={() => setCompareMode("date")}
                   >
-                    <option value="">— None —</option>
-                    {athletes
-                      .filter((a) => a.athlete_uuid !== currentUuid)
-                      .map((a) => (
-                        <option key={a.athlete_uuid} value={a.athlete_uuid}>
-                          {a.name}
-                        </option>
-                      ))}
-                  </select>
-                  {loadingCompare && <span className="text-muted" style={{ fontSize: "0.85rem" }}>Loading…</span>}
+                    Session Date
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    style={{
+                      fontSize: "13px",
+                      padding: "4px 10px",
+                      borderRadius: 6,
+                      border: `1px solid ${compareMode === "athlete" ? "var(--accent)" : "var(--border)"}`,
+                      background: compareMode === "athlete" ? "var(--accent-muted)" : "var(--bg-tertiary)",
+                      color: compareMode === "athlete" ? "var(--accent)" : "var(--text-secondary)",
+                      fontWeight: compareMode === "athlete" ? 600 : 400,
+                    }}
+                    onClick={() => setCompareMode("athlete")}
+                  >
+                    Athlete
+                  </button>
+                  {compareMode === "athlete" && (
+                    <>
+                      <select
+                        value={compareUuid ?? ""}
+                        onChange={(e) => setCompareUuid(e.target.value ? e.target.value : null)}
+                        disabled={loadingCompare}
+                        style={{
+                          padding: "4px 10px",
+                          borderRadius: 6,
+                          border: "1px solid var(--border)",
+                          background: "var(--bg-tertiary)",
+                          color: "var(--text-primary)",
+                          minWidth: 180,
+                          fontSize: "13px",
+                        }}
+                      >
+                        <option value="">— None —</option>
+                        {athletes
+                          .filter((a) => a.athlete_uuid !== currentUuid)
+                          .map((a) => (
+                            <option key={a.athlete_uuid} value={a.athlete_uuid}>
+                              {a.name}
+                            </option>
+                          ))}
+                      </select>
+                      {loadingCompare && <span className="text-muted" style={{ fontSize: "0.85rem" }}>Loading…</span>}
+                    </>
+                  )}
                 </div>
+
+                {/* Domain tabs */}
                 <div
                   role="tablist"
                   aria-label="Test categories"
@@ -907,8 +1007,6 @@ function AthleteTrackingContentInner() {
                     type="button"
                     role="tab"
                     aria-selected={pageIndex === 0}
-                    aria-controls="tab-panel-0"
-                    id="tab-0"
                     onClick={() => setPageIndex(0)}
                     style={{
                       padding: "8px 14px",
@@ -928,8 +1026,6 @@ function AthleteTrackingContentInner() {
                       type="button"
                       role="tab"
                       aria-selected={pageIndex === idx + 1}
-                      aria-controls={`tab-panel-${idx + 1}`}
-                      id={`tab-${idx + 1}`}
                       onClick={() => setPageIndex(idx + 1)}
                       style={{
                         padding: "8px 14px",
@@ -962,7 +1058,7 @@ function AthleteTrackingContentInner() {
                           {highlights.map(({ domainLabel, domainId, metric }, i) => (
                             <li key={`high-${i}-${domainLabel}-${metric.name}`} style={{ marginBottom: "0.35rem" }}>
                               {formatMetricDisplayName(metric.name, metric.category, domainId)} <span className="text-muted">({domainLabel})</span>{" "}
-                          <span style={getPercentileStyle(metric.percentile)}>{Math.round(metric.percentile ?? 0)}th %ile</span>
+                              <span style={getPercentileStyle(metric.percentile)}>{Math.round(metric.percentile ?? 0)}th %ile</span>
                             </li>
                           ))}
                         </ul>
@@ -973,7 +1069,7 @@ function AthleteTrackingContentInner() {
                           {lowlights.map(({ domainLabel, domainId, metric }, i) => (
                             <li key={`low-${i}-${domainLabel}-${metric.name}`} style={{ marginBottom: "0.35rem" }}>
                               {formatMetricDisplayName(metric.name, metric.category, domainId)} <span className="text-muted">({domainLabel})</span>{" "}
-                          <span style={getPercentileStyle(metric.percentile)}>{Math.round(metric.percentile ?? 0)}th %ile</span>
+                              <span style={getPercentileStyle(metric.percentile)}>{Math.round(metric.percentile ?? 0)}th %ile</span>
                             </li>
                           ))}
                         </ul>
@@ -985,19 +1081,82 @@ function AthleteTrackingContentInner() {
 
               {pageIndex >= 1 && report.domains[pageIndex - 1] && (() => {
                 const domain = report.domains[pageIndex - 1]!;
-                const compareDomain = compareReport?.domains.find((d) => d.domainId === domain.domainId);
+                const compareDates = domainCompareDates[domain.domainId] ?? [];
+                const viewMode = domainViewMode[domain.domainId] ?? "compare";
+
+                // Build radar series (multi-date or cross-athlete)
+                const radarMetrics = getRadarMetricsForDomain(domain.metrics, domain.domainId);
+                const series: RadarDataSeries[] = [
+                  {
+                    name: domain.sessionDate ?? "Latest",
+                    data: metricsToRadarData(radarMetrics, domain.domainId),
+                    color: SERIES_COLORS[0]!,
+                  },
+                ];
+                if (compareMode === "date") {
+                  compareDates.forEach((date, i) => {
+                    const key = `${domain.domainId}|${date}`;
+                    const cached = compCache[key];
+                    if (cached) {
+                      const compDomain = cached.domains.find((d) => d.domainId === domain.domainId);
+                      if (compDomain) {
+                        const compRadar = getRadarMetricsForDomain(compDomain.metrics, domain.domainId);
+                        series.push({
+                          name: date,
+                          data: metricsToRadarData(compRadar, domain.domainId),
+                          color: SERIES_COLORS[i + 1] ?? SERIES_COLORS[SERIES_COLORS.length - 1]!,
+                        });
+                      }
+                    }
+                  });
+                } else if (compareMode === "athlete" && compareReport) {
+                  const compareDomain = compareReport.domains.find((d) => d.domainId === domain.domainId);
+                  if (compareDomain) {
+                    const compRadar = getRadarMetricsForDomain(compareDomain.metrics, domain.domainId);
+                    series.push({
+                      name: compareReport.athlete.name,
+                      data: metricsToRadarData(compRadar, domain.domainId),
+                      color: SERIES_COLORS[1]!,
+                    });
+                  }
+                }
+
+                // Session date comparison panel (shown for date mode)
+                const availForDomain = availableDates[domain.domainId] ?? [];
+                const primaryDate = domain.sessionDate;
+                const usedDates = new Set([primaryDate, ...compareDates].filter(Boolean));
+                const remainingDates = availForDomain.filter((d) => !usedDates.has(d));
+
+                // Timeline: build date-ordered rows of key metrics
+                const timelineKeys = getTimelineMetricKeys(domain.domainId);
+                const timelineDates: string[] = [];
+                if (primaryDate) timelineDates.push(primaryDate);
+                for (const d of compareDates) {
+                  if (!timelineDates.includes(d)) timelineDates.push(d);
+                }
+                // Sort by date descending
+                timelineDates.sort((a, b) => b.localeCompare(a));
+
+                const getMetricValueFromDomain = (d: DomainWithMetrics | undefined, key: string): string => {
+                  if (!d) return "—";
+                  const metric = getMetricByKey(d.metrics, key);
+                  if (!metric) return "—";
+                  const { valuePart, unitPart } = formatMetricValueParts(metric);
+                  return valuePart === "—" ? "—" : `${valuePart}${unitPart}`;
+                };
+
+                const getDomainForDate = (date: string): DomainWithMetrics | undefined => {
+                  if (date === primaryDate) return domain;
+                  const key = `${domain.domainId}|${date}`;
+                  const cached = compCache[key];
+                  if (!cached) return undefined;
+                  return cached.domains.find((d) => d.domainId === domain.domainId);
+                };
 
                 if (domain.domainId === "athleticScreen") {
                   const ATHLETIC_SCREEN_MOVEMENT_ORDER = ["DJ", "PPU", "CMJ", "SLV"] as const;
                   const ATHLETIC_SCREEN_VARIABLE_ORDER = [
-                    "JH",
-                    "PP",
-                    "Work (AUC)",
-                    "Kurtosis",
-                    "Max RPD",
-                    "Time to Max RPD",
-                    "RSI",
-                    "CT",
+                    "JH", "PP", "Work (AUC)", "Kurtosis", "Max RPD", "Time to Max RPD", "RSI", "CT",
                   ] as const;
                   const ATHLETIC_SCREEN_VARIABLE_DESCRIPTIONS: Record<string, string> = {
                     JH: "Jump height; higher generally indicates better explosive output.",
@@ -1010,18 +1169,10 @@ function AthleteTrackingContentInner() {
                     CT: "Contact time during the drop jump.",
                   };
                   const ATHLETIC_SCREEN_TABLE_CATEGORY_ORDER = [
-                    "DJ",
-                    "CMJ",
-                    "PPU",
-                    "SLV_Left",
-                    "SLV_Right",
+                    "DJ", "CMJ", "PPU", "SLV_Left", "SLV_Right",
                   ] as const;
                   const ATHLETIC_SCREEN_CATEGORY_LABELS: Record<string, string> = {
-                    CMJ: "CMJ",
-                    DJ: "DJ",
-                    PPU: "PPU",
-                    SLV_Left: "SLV Left",
-                    SLV_Right: "SLV Right",
+                    CMJ: "CMJ", DJ: "DJ", PPU: "PPU", SLV_Left: "SLV Left", SLV_Right: "SLV Right",
                   };
                   const movements = ATHLETIC_SCREEN_MOVEMENT_ORDER.filter((mov) =>
                     domain.metrics.some(
@@ -1064,9 +1215,7 @@ function AthleteTrackingContentInner() {
                           style={{ padding: "10px 12px", minWidth: 44, fontSize: "1.05rem", fontWeight: 700 }}
                           onClick={() =>
                             setAthleticScreenSubIndex((prev) =>
-                              movements.length === 0
-                                ? 0
-                                : (prev - 1 + movements.length) % movements.length
+                              movements.length === 0 ? 0 : (prev - 1 + movements.length) % movements.length
                             )
                           }
                           disabled={movements.length <= 1}
@@ -1078,16 +1227,8 @@ function AthleteTrackingContentInner() {
                           <MetricRadarChart
                             title={`SLV${domain.sessionDate ? ` (${domain.sessionDate})` : ""} – percentiles`}
                             dataSeries={[
-                              {
-                                name: "SLV Left",
-                                data: metricsToRadarData(slvLeft, domain.domainId),
-                                color: SERIES_COLORS[0]!,
-                              },
-                              {
-                                name: "SLV Right",
-                                data: metricsToRadarData(slvRight, domain.domainId),
-                                color: "#ef4444",
-                              },
+                              { name: "SLV Left", data: metricsToRadarData(slvLeft, domain.domainId), color: SERIES_COLORS[0]! },
+                              { name: "SLV Right", data: metricsToRadarData(slvRight, domain.domainId), color: "#ef4444" },
                             ]}
                           />
                         ) : (
@@ -1102,9 +1243,7 @@ function AthleteTrackingContentInner() {
                           style={{ padding: "10px 12px", minWidth: 44, fontSize: "1.05rem", fontWeight: 700 }}
                           onClick={() =>
                             setAthleticScreenSubIndex((prev) =>
-                              movements.length === 0
-                                ? 0
-                                : (prev + 1) % movements.length
+                              movements.length === 0 ? 0 : (prev + 1) % movements.length
                             )
                           }
                           disabled={movements.length <= 1}
@@ -1121,11 +1260,9 @@ function AthleteTrackingContentInner() {
                           <thead>
                             <tr>
                               <th>Variable</th>
-                              <th>CMJ</th>
-                              <th>DJ</th>
-                              <th>PPU</th>
-                              <th>SLV Left</th>
-                              <th>SLV Right</th>
+                              {ATHLETIC_SCREEN_TABLE_CATEGORY_ORDER.map((cat) => (
+                                <th key={cat}>{ATHLETIC_SCREEN_CATEGORY_LABELS[cat]}</th>
+                              ))}
                             </tr>
                           </thead>
                           <tbody>
@@ -1134,7 +1271,6 @@ function AthleteTrackingContentInner() {
                                 metricByCategoryAndName.has(`${category}|${variableName}`)
                               );
                               if (!hasAny) return null;
-
                               return (
                                 <Fragment key={`athletic-var-${variableName}`}>
                                   {variableIdx > 0 ? (
@@ -1201,16 +1337,14 @@ function AthleteTrackingContentInner() {
                         const movementMetrics = domain.metrics.filter((m) => m.category === movement);
                         const highMetrics = movementMetrics.filter((m) => PROTEUS_HIGH.includes(m.name));
                         const meanMetrics = movementMetrics.filter((m) => PROTEUS_MEAN.includes(m.name));
-                        const highData = metricsToRadarData(highMetrics, domain.domainId);
-                        const meanData = metricsToRadarData(meanMetrics, domain.domainId);
                         return (
                           <div key={movement} style={{ marginBottom: "2rem" }}>
                             <h3 style={{ margin: "0 0 1rem", fontSize: "1rem" }}>
                               {movement}{domain.sessionDate ? ` · ${domain.sessionDate}` : ""}
                             </h3>
                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
-                              <MetricRadarChart title="High" data={highData} />
-                              <MetricRadarChart title="Mean" data={meanData} />
+                              <MetricRadarChart title="High" data={metricsToRadarData(highMetrics, domain.domainId)} />
+                              <MetricRadarChart title="Mean" data={metricsToRadarData(meanMetrics, domain.domainId)} />
                             </div>
                             <div className="card">
                               <table>
@@ -1236,9 +1370,7 @@ function AthleteTrackingContentInner() {
                                           <span style={getPercentileStyle(m.percentile)}>
                                             {Math.round(m.percentile)}th %ile
                                           </span>
-                                        ) : (
-                                          "—"
-                                        )}
+                                        ) : "—"}
                                       </td>
                                     </tr>
                                   ))}
@@ -1252,384 +1384,528 @@ function AthleteTrackingContentInner() {
                   );
                 }
 
-                const radarMetrics = getRadarMetricsForDomain(domain.metrics, domain.domainId);
-                const compareRadarMetrics = compareDomain
-                  ? getRadarMetricsForDomain(compareDomain.metrics, domain.domainId)
-                  : undefined;
-                const series: RadarDataSeries[] = [
-                  { name: report.athlete.name, data: metricsToRadarData(radarMetrics, domain.domainId), color: SERIES_COLORS[0]! },
-                ];
-                if (compareDomain && compareReport) {
-                  series.push({
-                    name: compareReport.athlete.name,
-                    data: metricsToRadarData(compareRadarMetrics ?? [], domain.domainId),
-                    color: SERIES_COLORS[1]!,
-                  });
-                }
+                // Generic domain rendering (pitching, hitting, mobility, armAction)
                 return (
-                <>
-                  <div style={{ marginBottom: "1rem" }}>
-                    <MetricRadarChart
-                      title={
-                        domain.sessionDate
-                          ? `${domain.label} (${domain.sessionDate}) – percentiles`
-                          : `${domain.label} – percentiles`
-                      }
-                      data={series.length === 1 ? series[0]!.data : undefined}
-                      dataSeries={series.length > 1 ? series : undefined}
-                    />
-                  </div>
-                  {domain.domainId === "pitching" ? (
-                    <>
-                      {PITCHING_TABLE_SECTIONS.map((section) => {
-                        const cells = buildPitchingDisplayCells(domain.metrics, section.items);
-                        return (
-                          <div key={section.id} className="card" style={{ marginBottom: "1rem" }}>
-                            {section.title ? (
-                              <h3 style={{ margin: "0 0 0.35rem", fontSize: "1rem" }}>{section.title}</h3>
-                            ) : null}
-                            <p
-                              className="text-muted"
-                              style={{
-                                margin: section.title ? "0 0 0.75rem" : "0 0 0.75rem",
-                                fontSize: "0.82rem",
-                                lineHeight: 1.45,
-                              }}
-                            >
-                              {section.description}
-                            </p>
-                            <table>
-                              <thead>
-                                <tr>
-                                  {cells.map((cell) => (
-                                    <th key={`${section.id}-${cell.key}`}>{cell.label}</th>
-                                  ))}
-                                </tr>
-                              </thead>
-                              <tbody>
-                                <tr>
-                                  {cells.map((cell) => (
-                                    <td key={`${section.id}-${cell.key}-value`}>
-                                      {cell.valuePart === "—" ? "—" : (
-                                        <>
-                                          <strong
-                                            style={
-                                              cell.key.endsWith("|GAIN_OR_LOSS")
-                                                ? cell.valuePart === "GAIN"
-                                                  ? { color: "#16a34a" }
-                                                  : cell.valuePart === "LOSS"
-                                                    ? { color: "var(--accent-secondary)" }
-                                                    : undefined
-                                                : cell.key === "DERIVED|ARM_TIMING_FLAG"
-                                                  ? cell.valuePart === "ON_TIME"
-                                                    ? { color: "#16a34a" }
-                                                    : cell.valuePart === "EARLY" || cell.valuePart === "LATE"
-                                                      ? { color: "var(--accent-secondary)" }
-                                                      : undefined
-                                                  : undefined
-                                            }
-                                          >
-                                            {cell.valuePart}
-                                          </strong>
-                                          {cell.unitPart}
-                                        </>
-                                      )}
-                                      <div
-                                        className={cell.percentile == null ? "text-muted" : undefined}
-                                        style={{
-                                          marginTop: "0.2rem",
-                                          fontSize: "0.78rem",
-                                          ...(cell.percentile != null ? (getPercentileStyle(cell.percentile) ?? {}) : {}),
-                                        }}
-                                      >
-                                        {cell.percentile != null ? `${Math.round(cell.percentile)}th %ile` : "—"}
-                                      </div>
-                                    </td>
-                                  ))}
-                                </tr>
-                              </tbody>
-                            </table>
-                          </div>
-                        );
-                      })}
-                    </>
-                  ) : domain.domainId === "hitting" ? (
-                    <>
-                      {HITTING_TABLE_SECTIONS.map((section) => {
-                        const cells = buildHittingDisplayCells(domain.metrics, section.items);
-                        return (
-                          <div key={section.id} className="card" style={{ marginBottom: "1rem" }}>
-                            <h3 style={{ margin: "0 0 0.35rem", fontSize: "1rem" }}>{section.title}</h3>
-                            <p
-                              className="text-muted"
-                              style={{
-                                margin: "0 0 0.75rem",
-                                fontSize: "0.82rem",
-                                lineHeight: 1.45,
-                              }}
-                            >
-                              {section.description}
-                            </p>
-                            <table>
-                              <thead>
-                                <tr>
-                                  {cells.map((cell) => (
-                                    <th key={`${section.id}-${cell.key}`}>{cell.label}</th>
-                                  ))}
-                                </tr>
-                              </thead>
-                              <tbody>
-                                <tr>
-                                  {cells.map((cell) => (
-                                    <td key={`${section.id}-${cell.key}-value`}>
-                                      {cell.valuePart === "—" ? "—" : (
-                                        <>
-                                          <strong>{cell.valuePart}</strong>
-                                          {cell.unitPart}
-                                        </>
-                                      )}
-                                      <div
-                                        className={cell.percentile == null ? "text-muted" : undefined}
-                                        style={{
-                                          marginTop: "0.2rem",
-                                          fontSize: "0.78rem",
-                                          ...(cell.percentile != null ? (getPercentileStyle(cell.percentile) ?? {}) : {}),
-                                        }}
-                                      >
-                                        {cell.percentile != null ? `${Math.round(cell.percentile)}th %ile` : "—"}
-                                      </div>
-                                    </td>
-                                  ))}
-                                </tr>
-                              </tbody>
-                            </table>
-                          </div>
-                        );
-                      })}
-                    </>
-                  ) : domain.domainId === "mobility" ? (
-                    <div className="card">
-                      <table style={{ borderCollapse: "collapse" }}>
-                        <tbody>
-                          {domain.sessionDate ? (
-                            <tr>
-                              <td
-                                colSpan={3}
-                                className="text-muted"
-                                style={{ fontSize: "0.82rem", padding: "0.35rem 0 1.6rem", borderBottom: "none" }}
-                              >
-                                Session Date: {domain.sessionDate}
-                              </td>
-                            </tr>
-                          ) : null}
-                          {buildMobilityGroupSections(domain.metrics).map((section, idx) => {
-                            const derivedScoreValue =
-                              section.group.category === "Shoulder Mobility"
-                                ? section.components.reduce((sum, component) => {
-                                    const score = getMobilityComponentScoreValue(component);
-                                    return score == null ? sum : sum + score;
-                                  }, 0)
-                                : null;
-                            const scoreValue =
-                              derivedScoreValue != null
-                                ? derivedScoreValue
-                                : section.group.value != null && Number.isFinite(section.group.value)
-                                  ? Math.round(section.group.value)
-                                  : null;
-                            const scoreText =
-                              scoreValue != null
-                                ? section.group.max != null && section.group.max > 0
-                                  ? `${scoreValue}/${section.group.max}`
-                                  : `${scoreValue}`
-                                : "—";
-                            const percentText =
-                              scoreValue != null && section.group.max != null && section.group.max > 0
-                                ? `${Math.round((scoreValue / section.group.max) * 100)}%`
-                                : section.group.category === "Grip Strength" &&
-                                    section.group.percentile != null &&
-                                    Number.isFinite(section.group.percentile)
-                                  ? `${Math.round(section.group.percentile)}th %ile`
-                                  : "—";
-                            const isGripStrength = section.group.category === "Grip Strength";
-                            const isExpanded = Boolean(expandedMobilityGroups[section.group.category]);
+                  <>
+                    {/* Session comparison panel */}
+                    {compareMode === "date" && availForDomain.length > 1 && (
+                      <div className="card" style={{ marginBottom: "1rem" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+                          <span style={{ fontSize: "0.85rem", fontWeight: 600 }}>Sessions:</span>
+                          <span
+                            style={{
+                              fontSize: "13px",
+                              padding: "3px 10px",
+                              borderRadius: 6,
+                              border: "1px solid var(--accent)",
+                              background: "var(--accent-muted)",
+                              color: "var(--accent)",
+                            }}
+                          >
+                            {primaryDate ?? "Latest"} (primary)
+                          </span>
+                          {compareDates.map((date) => {
+                            const key = `${domain.domainId}|${date}`;
+                            const isLoading = compLoadingKeys.includes(key);
                             return (
-                              <Fragment key={`mobility-group-${section.group.category}`}>
-                                <tr>
-                                  <td colSpan={3} style={{ padding: idx === 0 ? "0 0 0.55rem" : "0.9rem 0 0.55rem", borderBottom: "none" }}>
-                                    <div style={{ borderTop: "1px solid var(--border)" }} />
-                                  </td>
-                                </tr>
-                                <tr>
-                                  <td
-                                    style={{
-                                      fontSize: "1.08rem",
-                                      fontWeight: 700,
-                                      padding: "0.55rem 2.5rem 0.4rem 2.5rem",
-                                      borderBottom: "none",
-                                    }}
-                                  >
-                                    <div style={{ display: "inline-flex", alignItems: "center", gap: "0.55rem" }}>
-                                      <span>{section.group.mobilityDisplayLabel ?? section.group.category}</span>
-                                      {section.components.length > 0 ? (
-                                        <button
-                                          type="button"
-                                          className="btn-ghost"
-                                          style={{ fontSize: "0.72rem", padding: "2px 8px", lineHeight: 1.2 }}
-                                          onClick={() =>
-                                            setExpandedMobilityGroups((prev) => ({
-                                              ...prev,
-                                              [section.group.category]: !prev[section.group.category],
-                                            }))
-                                          }
-                                        >
-                                          {isExpanded ? "Hide details" : "Show details"}
-                                        </button>
-                                      ) : null}
-                                    </div>
-                                  </td>
-                                  <td
-                                    style={{
-                                      textAlign: "center",
-                                      fontSize: "1.08rem",
-                                      fontWeight: 700,
-                                      whiteSpace: "nowrap",
-                                      padding: "0.55rem 2.5rem 0.4rem",
-                                      borderBottom: "none",
-                                    }}
-                                  >
-                                    {scoreText}
-                                  </td>
-                                  <td
-                                    style={{
-                                      textAlign: "right",
-                                      fontSize: "1.08rem",
-                                      fontWeight: 700,
-                                      whiteSpace: "nowrap",
-                                      padding: "0.55rem 2.5rem 0.4rem",
-                                      borderBottom: "none",
-                                    }}
-                                  >
-                                    {percentText}
-                                  </td>
-                                </tr>
-                                {section.components.length > 0 && isExpanded ? (
-                                  <tr>
-                                    <td colSpan={3} style={{ padding: "0.15rem 0 0.95rem", borderBottom: "none" }}>
-                                      <div
-                                        style={{
-                                          display: "grid",
-                                          gridTemplateColumns: "repeat(auto-fit, minmax(165px, 1fr))",
-                                          columnGap: "0.75rem",
-                                          rowGap: "0.55rem",
-                                          width: "100%",
-                                        }}
-                                      >
-                                        {section.components.map((component) => (
-                                          isShoulderRomMetric(component) ? (
-                                            <div
-                                              key={`mobility-comp-${section.group.category}-${component.name}`}
-                                              style={{
-                                                whiteSpace: "nowrap",
-                                                border: "1px solid var(--border)",
-                                                borderRadius: 999,
-                                                background: "var(--bg-tertiary)",
-                                                padding: "6px 10px",
-                                                display: "grid",
-                                                gridTemplateColumns: "1fr auto auto",
-                                                alignItems: "center",
-                                                gap: "0.6rem",
-                                              }}
-                                            >
-                                              <span style={{ marginRight: "0.3rem", color: "var(--text-secondary)", fontSize: "0.84rem" }}>
-                                                {formatMobilityComponentLabel(component, domain.domainId)}
-                                              </span>
-                                              <strong style={{ fontSize: "0.9rem", justifySelf: "center" }}>
-                                                {formatMobilityComponentValue(component)}
-                                              </strong>
-                                              <strong style={{ fontSize: "0.82rem" }}>
-                                                {scoreOutOfThreeFromPercentile(component.percentile)}
-                                              </strong>
-                                            </div>
-                                          ) : (
-                                            <div
-                                              key={`mobility-comp-${section.group.category}-${component.name}`}
-                                              style={{
-                                                whiteSpace: "nowrap",
-                                                border: "1px solid var(--border)",
-                                                borderRadius: 999,
-                                                background: "var(--bg-tertiary)",
-                                                padding: "6px 10px",
-                                                display: "flex",
-                                                alignItems: "center",
-                                                justifyContent: "space-between",
-                                                gap: "0.6rem",
-                                              }}
-                                            >
-                                              <span style={{ marginRight: "0.3rem", color: "var(--text-secondary)", fontSize: "0.84rem" }}>
-                                                {formatMobilityComponentLabel(component, domain.domainId)}
-                                              </span>
-                                              <strong style={{ fontSize: "0.9rem" }}>
-                                                {isGripStrength
-                                                  ? formatMobilityComponentValue({ ...component, mobilityOutOf: null })
-                                                  : formatMobilityComponentValue(component)}
-                                              </strong>
-                                            </div>
-                                          )
-                                        ))}
-                                      </div>
-                                    </td>
-                                  </tr>
-                                ) : null}
-                              </Fragment>
+                              <span
+                                key={date}
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "0.35rem",
+                                  fontSize: "13px",
+                                  padding: "3px 10px",
+                                  borderRadius: 6,
+                                  border: "1px solid var(--border)",
+                                  background: "var(--bg-tertiary)",
+                                }}
+                              >
+                                {isLoading ? `${date} (loading…)` : date}
+                                <button
+                                  type="button"
+                                  className="btn-ghost"
+                                  style={{ padding: "0 3px", fontSize: "12px" }}
+                                  onClick={() => removeCompareDate(domain.domainId, date)}
+                                  aria-label={`Remove ${date}`}
+                                >
+                                  ×
+                                </button>
+                              </span>
                             );
                           })}
-                          <tr>
-                            <td colSpan={3} style={{ padding: "0.35rem 0 0", borderBottom: "none" }}>
-                              <div style={{ borderTop: "1px solid var(--border)" }} />
-                            </td>
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <div className="card">
-                      <h3 style={{ margin: "0 0 0.75rem", fontSize: "1rem" }}>
-                        Metrics{domain.sessionDate ? ` · ${domain.sessionDate}` : ""}
-                      </h3>
-                      <table>
-                        <thead>
-                          <tr>
-                            <th>Metric</th>
-                            <th>Value</th>
-                            <th>Percentile</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {report.domains[pageIndex - 1]!.metrics.map((m, i) => (
-                            <tr key={`${report.domains[pageIndex - 1]!.domainId}-${i}-${m.category}-${m.name}`}>
-                              <td>{formatMetricDisplayName(m.name, m.category, domain.domainId)}</td>
-                              <td>
-                                {(() => {
-                                  const { valuePart, unitPart } = formatMetricValueParts(m);
-                                  return valuePart === "—" ? "—" : (<><strong>{valuePart}</strong>{unitPart}</>);
-                                })()}
-                              </td>
-                              <td>
-                                {m.percentile != null ? (
-                                  <span style={getPercentileStyle(m.percentile)}>
-                                    {Math.round(m.percentile)}th %ile
-                                  </span>
-                                ) : (
-                                  "—"
-                                )}
+                          {compareDates.length < 3 && remainingDates.length > 0 && (
+                            <select
+                              value=""
+                              onChange={(e) => {
+                                if (e.target.value) addCompareDate(domain.domainId, e.target.value);
+                              }}
+                              style={{
+                                padding: "3px 8px",
+                                borderRadius: 6,
+                                border: "1px solid var(--border)",
+                                background: "var(--bg-tertiary)",
+                                color: "var(--text-secondary)",
+                                fontSize: "13px",
+                              }}
+                            >
+                              <option value="">+ Add date…</option>
+                              {remainingDates.map((d) => (
+                                <option key={d} value={d}>{d}</option>
+                              ))}
+                            </select>
+                          )}
+                          {/* View mode toggle: Radar / Timeline */}
+                          {timelineKeys.length > 0 && (
+                            <div style={{ marginLeft: "auto", display: "flex", gap: "0.35rem" }}>
+                              <button
+                                type="button"
+                                className="btn-ghost"
+                                style={{
+                                  fontSize: "12px",
+                                  padding: "3px 10px",
+                                  borderRadius: 6,
+                                  border: `1px solid ${viewMode === "compare" ? "var(--accent)" : "var(--border)"}`,
+                                  background: viewMode === "compare" ? "var(--accent-muted)" : "var(--bg-tertiary)",
+                                  color: viewMode === "compare" ? "var(--accent)" : "var(--text-secondary)",
+                                }}
+                                onClick={() => setDomainViewMode((prev) => ({ ...prev, [domain.domainId]: "compare" }))}
+                              >
+                                Radar
+                              </button>
+                              <button
+                                type="button"
+                                className="btn-ghost"
+                                style={{
+                                  fontSize: "12px",
+                                  padding: "3px 10px",
+                                  borderRadius: 6,
+                                  border: `1px solid ${viewMode === "timeline" ? "var(--accent)" : "var(--border)"}`,
+                                  background: viewMode === "timeline" ? "var(--accent-muted)" : "var(--bg-tertiary)",
+                                  color: viewMode === "timeline" ? "var(--accent)" : "var(--text-secondary)",
+                                }}
+                                onClick={() => setDomainViewMode((prev) => ({ ...prev, [domain.domainId]: "timeline" }))}
+                              >
+                                Timeline
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                        {loadingDates && availForDomain.length === 0 && (
+                          <p className="text-muted" style={{ margin: "0.5rem 0 0", fontSize: "0.8rem" }}>Loading available dates…</p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Timeline view */}
+                    {viewMode === "timeline" && timelineKeys.length > 0 && timelineDates.length > 0 ? (
+                      <div className="card" style={{ marginBottom: "1rem" }}>
+                        <h3 style={{ margin: "0 0 0.75rem", fontSize: "1rem" }}>Timeline</h3>
+                        <div style={{ overflowX: "auto" }}>
+                          <table>
+                            <thead>
+                              <tr>
+                                <th>Metric</th>
+                                {timelineDates.map((d) => (
+                                  <th key={d}>{d}{d === primaryDate ? " ★" : ""}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {timelineKeys.map((key) => {
+                                const [cat, name] = key.split("|") as [string, string];
+                                const label = formatMetricDisplayName(name, cat, domain.domainId);
+                                return (
+                                  <tr key={key}>
+                                    <td style={{ whiteSpace: "nowrap" }}>{label}</td>
+                                    {timelineDates.map((date) => {
+                                      const d = getDomainForDate(date);
+                                      const val = getMetricValueFromDomain(d, key);
+                                      const metric = d ? getMetricByKey(d.metrics, key) : null;
+                                      return (
+                                        <td key={date} style={{ textAlign: "center" }}>
+                                          {val === "—" ? "—" : (
+                                            <>
+                                              <strong>{val}</strong>
+                                              {metric?.percentile != null && (
+                                                <div style={{ fontSize: "0.75rem", ...getPercentileStyle(metric.percentile) }}>
+                                                  {Math.round(metric.percentile)}th
+                                                </div>
+                                              )}
+                                            </>
+                                          )}
+                                        </td>
+                                      );
+                                    })}
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                        {timelineDates.some((d) => d !== primaryDate && !compCache[`${domain.domainId}|${d}`]) && (
+                          <p className="text-muted" style={{ margin: "0.5rem 0 0", fontSize: "0.8rem" }}>
+                            Add comparison dates above to populate timeline columns.
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      /* Radar / compare view */
+                      <div style={{ marginBottom: "1rem" }}>
+                        <MetricRadarChart
+                          title={
+                            domain.sessionDate
+                              ? `${domain.label} (${domain.sessionDate}) – percentiles`
+                              : `${domain.label} – percentiles`
+                          }
+                          data={series.length === 1 ? series[0]!.data : undefined}
+                          dataSeries={series.length > 1 ? series : undefined}
+                        />
+                      </div>
+                    )}
+
+                    {/* Domain-specific detail tables */}
+                    {domain.domainId === "pitching" ? (
+                      <>
+                        {PITCHING_TABLE_SECTIONS.map((section) => {
+                          const cells = buildPitchingDisplayCells(domain.metrics, section.items);
+                          return (
+                            <div key={section.id} className="card" style={{ marginBottom: "1rem" }}>
+                              {section.title ? (
+                                <h3 style={{ margin: "0 0 0.35rem", fontSize: "1rem" }}>{section.title}</h3>
+                              ) : null}
+                              <p
+                                className="text-muted"
+                                style={{ margin: "0 0 0.75rem", fontSize: "0.82rem", lineHeight: 1.45 }}
+                              >
+                                {section.description}
+                              </p>
+                              <table>
+                                <thead>
+                                  <tr>
+                                    {cells.map((cell) => (
+                                      <th key={`${section.id}-${cell.key}`}>{cell.label}</th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  <tr>
+                                    {cells.map((cell) => (
+                                      <td key={`${section.id}-${cell.key}-value`}>
+                                        {cell.valuePart === "—" ? "—" : (
+                                          <>
+                                            <strong
+                                              style={
+                                                cell.key.endsWith("|GAIN_OR_LOSS")
+                                                  ? cell.valuePart === "GAIN"
+                                                    ? { color: "#16a34a" }
+                                                    : cell.valuePart === "LOSS"
+                                                      ? { color: "var(--accent-secondary)" }
+                                                      : undefined
+                                                  : cell.key === "DERIVED|ARM_TIMING_FLAG"
+                                                    ? cell.valuePart === "ON_TIME"
+                                                      ? { color: "#16a34a" }
+                                                      : cell.valuePart === "EARLY" || cell.valuePart === "LATE"
+                                                        ? { color: "var(--accent-secondary)" }
+                                                        : undefined
+                                                    : undefined
+                                              }
+                                            >
+                                              {cell.valuePart}
+                                            </strong>
+                                            {cell.unitPart}
+                                          </>
+                                        )}
+                                        <div
+                                          className={cell.percentile == null ? "text-muted" : undefined}
+                                          style={{
+                                            marginTop: "0.2rem",
+                                            fontSize: "0.78rem",
+                                            ...(cell.percentile != null ? (getPercentileStyle(cell.percentile) ?? {}) : {}),
+                                          }}
+                                        >
+                                          {cell.percentile != null ? `${Math.round(cell.percentile)}th %ile` : "—"}
+                                        </div>
+                                      </td>
+                                    ))}
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </div>
+                          );
+                        })}
+                      </>
+                    ) : domain.domainId === "hitting" ? (
+                      <>
+                        {HITTING_TABLE_SECTIONS.map((section) => {
+                          const cells = buildHittingDisplayCells(domain.metrics, section.items);
+                          return (
+                            <div key={section.id} className="card" style={{ marginBottom: "1rem" }}>
+                              <h3 style={{ margin: "0 0 0.35rem", fontSize: "1rem" }}>{section.title}</h3>
+                              <p
+                                className="text-muted"
+                                style={{ margin: "0 0 0.75rem", fontSize: "0.82rem", lineHeight: 1.45 }}
+                              >
+                                {section.description}
+                              </p>
+                              <table>
+                                <thead>
+                                  <tr>
+                                    {cells.map((cell) => (
+                                      <th key={`${section.id}-${cell.key}`}>{cell.label}</th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  <tr>
+                                    {cells.map((cell) => (
+                                      <td key={`${section.id}-${cell.key}-value`}>
+                                        {cell.valuePart === "—" ? "—" : (
+                                          <>
+                                            <strong>{cell.valuePart}</strong>
+                                            {cell.unitPart}
+                                          </>
+                                        )}
+                                        <div
+                                          className={cell.percentile == null ? "text-muted" : undefined}
+                                          style={{
+                                            marginTop: "0.2rem",
+                                            fontSize: "0.78rem",
+                                            ...(cell.percentile != null ? (getPercentileStyle(cell.percentile) ?? {}) : {}),
+                                          }}
+                                        >
+                                          {cell.percentile != null ? `${Math.round(cell.percentile)}th %ile` : "—"}
+                                        </div>
+                                      </td>
+                                    ))}
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </div>
+                          );
+                        })}
+                      </>
+                    ) : domain.domainId === "mobility" ? (
+                      <div className="card">
+                        <table style={{ borderCollapse: "collapse" }}>
+                          <tbody>
+                            {domain.sessionDate ? (
+                              <tr>
+                                <td
+                                  colSpan={3}
+                                  className="text-muted"
+                                  style={{ fontSize: "0.82rem", padding: "0.35rem 0 1.6rem", borderBottom: "none" }}
+                                >
+                                  Session Date: {domain.sessionDate}
+                                </td>
+                              </tr>
+                            ) : null}
+                            {buildMobilityGroupSections(domain.metrics).map((section, idx) => {
+                              const derivedScoreValue =
+                                section.group.category === "Shoulder Mobility"
+                                  ? section.components.reduce((sum, component) => {
+                                      const score = getMobilityComponentScoreValue(component);
+                                      return score == null ? sum : sum + score;
+                                    }, 0)
+                                  : null;
+                              const scoreValue =
+                                derivedScoreValue != null
+                                  ? derivedScoreValue
+                                  : section.group.value != null && Number.isFinite(section.group.value)
+                                    ? Math.round(section.group.value)
+                                    : null;
+                              const scoreText =
+                                scoreValue != null
+                                  ? section.group.max != null && section.group.max > 0
+                                    ? `${scoreValue}/${section.group.max}`
+                                    : `${scoreValue}`
+                                  : "—";
+                              const percentText =
+                                scoreValue != null && section.group.max != null && section.group.max > 0
+                                  ? `${Math.round((scoreValue / section.group.max) * 100)}%`
+                                  : section.group.category === "Grip Strength" &&
+                                      section.group.percentile != null &&
+                                      Number.isFinite(section.group.percentile)
+                                    ? `${Math.round(section.group.percentile)}th %ile`
+                                    : "—";
+                              const isGripStrength = section.group.category === "Grip Strength";
+                              const isExpanded = Boolean(expandedMobilityGroups[section.group.category]);
+                              return (
+                                <Fragment key={`mobility-group-${section.group.category}`}>
+                                  <tr>
+                                    <td colSpan={3} style={{ padding: idx === 0 ? "0 0 0.55rem" : "0.9rem 0 0.55rem", borderBottom: "none" }}>
+                                      <div style={{ borderTop: "1px solid var(--border)" }} />
+                                    </td>
+                                  </tr>
+                                  <tr>
+                                    <td
+                                      style={{
+                                        fontSize: "1.08rem",
+                                        fontWeight: 700,
+                                        padding: "0.55rem 2.5rem 0.4rem 2.5rem",
+                                        borderBottom: "none",
+                                      }}
+                                    >
+                                      <div style={{ display: "inline-flex", alignItems: "center", gap: "0.55rem" }}>
+                                        <span>{section.group.mobilityDisplayLabel ?? section.group.category}</span>
+                                        {section.components.length > 0 ? (
+                                          <button
+                                            type="button"
+                                            className="btn-ghost"
+                                            style={{ fontSize: "0.72rem", padding: "2px 8px", lineHeight: 1.2 }}
+                                            onClick={() =>
+                                              setExpandedMobilityGroups((prev) => ({
+                                                ...prev,
+                                                [section.group.category]: !prev[section.group.category],
+                                              }))
+                                            }
+                                          >
+                                            {isExpanded ? "Hide details" : "Show details"}
+                                          </button>
+                                        ) : null}
+                                      </div>
+                                    </td>
+                                    <td
+                                      style={{
+                                        textAlign: "center",
+                                        fontSize: "1.08rem",
+                                        fontWeight: 700,
+                                        whiteSpace: "nowrap",
+                                        padding: "0.55rem 2.5rem 0.4rem",
+                                        borderBottom: "none",
+                                      }}
+                                    >
+                                      {scoreText}
+                                    </td>
+                                    <td
+                                      style={{
+                                        textAlign: "right",
+                                        fontSize: "1.08rem",
+                                        fontWeight: 700,
+                                        whiteSpace: "nowrap",
+                                        padding: "0.55rem 2.5rem 0.4rem",
+                                        borderBottom: "none",
+                                      }}
+                                    >
+                                      {percentText}
+                                    </td>
+                                  </tr>
+                                  {section.components.length > 0 && isExpanded ? (
+                                    <tr>
+                                      <td colSpan={3} style={{ padding: "0.15rem 0 0.95rem", borderBottom: "none" }}>
+                                        <div
+                                          style={{
+                                            display: "grid",
+                                            gridTemplateColumns: "repeat(auto-fit, minmax(165px, 1fr))",
+                                            columnGap: "0.75rem",
+                                            rowGap: "0.55rem",
+                                            width: "100%",
+                                          }}
+                                        >
+                                          {section.components.map((component) => (
+                                            isShoulderRomMetric(component) ? (
+                                              <div
+                                                key={`mobility-comp-${section.group.category}-${component.name}`}
+                                                style={{
+                                                  whiteSpace: "nowrap",
+                                                  border: "1px solid var(--border)",
+                                                  borderRadius: 999,
+                                                  background: "var(--bg-tertiary)",
+                                                  padding: "6px 10px",
+                                                  display: "grid",
+                                                  gridTemplateColumns: "1fr auto auto",
+                                                  alignItems: "center",
+                                                  gap: "0.6rem",
+                                                }}
+                                              >
+                                                <span style={{ marginRight: "0.3rem", color: "var(--text-secondary)", fontSize: "0.84rem" }}>
+                                                  {formatMobilityComponentLabel(component, domain.domainId)}
+                                                </span>
+                                                <strong style={{ fontSize: "0.9rem", justifySelf: "center" }}>
+                                                  {formatMobilityComponentValue(component)}
+                                                </strong>
+                                                <strong style={{ fontSize: "0.82rem" }}>
+                                                  {scoreOutOfThreeFromPercentile(component.percentile)}
+                                                </strong>
+                                              </div>
+                                            ) : (
+                                              <div
+                                                key={`mobility-comp-${section.group.category}-${component.name}`}
+                                                style={{
+                                                  whiteSpace: "nowrap",
+                                                  border: "1px solid var(--border)",
+                                                  borderRadius: 999,
+                                                  background: "var(--bg-tertiary)",
+                                                  padding: "6px 10px",
+                                                  display: "flex",
+                                                  alignItems: "center",
+                                                  justifyContent: "space-between",
+                                                  gap: "0.6rem",
+                                                }}
+                                              >
+                                                <span style={{ marginRight: "0.3rem", color: "var(--text-secondary)", fontSize: "0.84rem" }}>
+                                                  {formatMobilityComponentLabel(component, domain.domainId)}
+                                                </span>
+                                                <strong style={{ fontSize: "0.9rem" }}>
+                                                  {isGripStrength
+                                                    ? formatMobilityComponentValue({ ...component, mobilityOutOf: null })
+                                                    : formatMobilityComponentValue(component)}
+                                                </strong>
+                                              </div>
+                                            )
+                                          ))}
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  ) : null}
+                                </Fragment>
+                              );
+                            })}
+                            <tr>
+                              <td colSpan={3} style={{ padding: "0.35rem 0 0", borderBottom: "none" }}>
+                                <div style={{ borderTop: "1px solid var(--border)" }} />
                               </td>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </>
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="card">
+                        <h3 style={{ margin: "0 0 0.75rem", fontSize: "1rem" }}>
+                          Metrics{domain.sessionDate ? ` · ${domain.sessionDate}` : ""}
+                        </h3>
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Metric</th>
+                              <th>Value</th>
+                              <th>Percentile</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {domain.metrics.map((m, i) => (
+                              <tr key={`${domain.domainId}-${i}-${m.category}-${m.name}`}>
+                                <td>{formatMetricDisplayName(m.name, m.category, domain.domainId)}</td>
+                                <td>
+                                  {(() => {
+                                    const { valuePart, unitPart } = formatMetricValueParts(m);
+                                    return valuePart === "—" ? "—" : (<><strong>{valuePart}</strong>{unitPart}</>);
+                                  })()}
+                                </td>
+                                <td>
+                                  {m.percentile != null ? (
+                                    <span style={getPercentileStyle(m.percentile)}>
+                                      {Math.round(m.percentile)}th %ile
+                                    </span>
+                                  ) : "—"}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </>
                 );
               })()}
             </>

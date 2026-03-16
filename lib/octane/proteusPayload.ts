@@ -32,7 +32,8 @@ const PROTEUS_VARIABLES = [
 
 /** Pitchers: position = Pitcher, movements Shotput and D2 Extension */
 export async function buildProteusPitcherPayload(
-  athleteUuid: string
+  athleteUuid: string,
+  sessionDate?: string
 ): Promise<ProteusPayload> {
   const athlete = await prisma.d_athletes.findUnique({
     where: { athlete_uuid: athleteUuid },
@@ -47,6 +48,7 @@ export async function buildProteusPitcherPayload(
     where: {
       athlete_uuid: athleteUuid,
       position: "Pitcher",
+      ...(sessionDate ? { session_date: new Date(sessionDate) } : {}),
       OR: [
         { movement: { contains: "Shot Put", mode: "insensitive" } },
         { movement: { contains: "D2 Extension", mode: "insensitive" } },
@@ -91,19 +93,20 @@ export async function buildProteusPitcherPayload(
     }
   }
 
-  const sessionDate = rows[0].session_date.toISOString().split("T")[0];
+  const sessionDateStr = rows[0].session_date.toISOString().split("T")[0];
   return {
     athleteUuid: athlete.athlete_uuid,
     level: deriveLevelFromAthlete({ age_group: athlete.age_group ?? null }),
     score: null,
     metrics,
-    sessionDate,
+    sessionDate: sessionDateStr,
   };
 }
 
 /** Hitters: all positions that are not Pitcher; movements Shot Put (Countermovement) and Straight arm trunk rotation */
 export async function buildProteusHitterPayload(
-  athleteUuid: string
+  athleteUuid: string,
+  sessionDate?: string
 ): Promise<ProteusPayload> {
   const athlete = await prisma.d_athletes.findUnique({
     where: { athlete_uuid: athleteUuid },
@@ -117,6 +120,7 @@ export async function buildProteusHitterPayload(
   const rows = await prisma.f_proteus.findMany({
     where: {
       athlete_uuid: athleteUuid,
+      ...(sessionDate ? { session_date: new Date(sessionDate) } : {}),
       AND: [
         { OR: [{ position: null }, { position: { not: "Pitcher" } }] },
         {
@@ -166,12 +170,12 @@ export async function buildProteusHitterPayload(
     }
   }
 
-  const sessionDate = rows[0].session_date.toISOString().split("T")[0];
+  const sessionDateStr = rows[0].session_date.toISOString().split("T")[0];
   return {
     athleteUuid: athlete.athlete_uuid,
     level: deriveLevelFromAthlete({ age_group: athlete.age_group ?? null }),
     score: null,
     metrics,
-    sessionDate,
+    sessionDate: sessionDateStr,
   };
 }

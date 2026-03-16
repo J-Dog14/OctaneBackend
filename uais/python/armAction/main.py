@@ -26,7 +26,14 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Action Plus movement analysis (Youth Pitch Design)")
     parser.add_argument("--dry-run", action="store_true", help="Parse and print what would be ingested; no DB writes, no report")
+    parser.add_argument("--report-only", action="store_true", help="Skip data ingest; generate PDF report from existing DB data and configured data files")
     args = parser.parse_args()
+
+    if args.report_only:
+        print("Arm Action – report only")
+        generate_movement_report()
+        print("Report generation complete.")
+        sys.exit(0)
 
     print("Arm Action" + (" [DRY RUN]" if args.dry_run else ""))
 

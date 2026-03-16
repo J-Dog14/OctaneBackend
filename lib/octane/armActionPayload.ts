@@ -32,7 +32,10 @@ const ARM_ACTION_SPECS = [
   { name: "Torso Angle @ FP", valueUnit: "DEGREES", orientation: "HIGHER_IS_BETTER", key: "torso_angle_at_footplant" },
 ] as const;
 
-export async function buildArmActionPayload(athleteUuid: string): Promise<ArmActionPayload> {
+export async function buildArmActionPayload(
+  athleteUuid: string,
+  sessionDate?: string
+): Promise<ArmActionPayload> {
   const athlete = await prisma.d_athletes.findUnique({
     where: { athlete_uuid: athleteUuid },
     select: { athlete_uuid: true, age_group: true },
@@ -43,7 +46,10 @@ export async function buildArmActionPayload(athleteUuid: string): Promise<ArmAct
   }
 
   const row = await prisma.f_arm_action.findFirst({
-    where: { athlete_uuid: athleteUuid },
+    where: {
+      athlete_uuid: athleteUuid,
+      ...(sessionDate ? { session_date: new Date(sessionDate) } : {}),
+    },
     orderBy: { session_date: "desc" },
     select: {
       session_date: true,
@@ -70,12 +76,12 @@ export async function buildArmActionPayload(athleteUuid: string): Promise<ArmAct
     orientation: spec.orientation,
   }));
 
-  const sessionDate = row.session_date.toISOString().split("T")[0];
+  const sessionDateStr = row.session_date.toISOString().split("T")[0];
   return {
     athleteUuid: athlete.athlete_uuid,
     level: deriveLevelFromAthlete({ age_group: athlete.age_group ?? null }),
     score: decimalToNumber(row.score),
     metrics,
-    sessionDate,
+    sessionDate: sessionDateStr,
   };
 }

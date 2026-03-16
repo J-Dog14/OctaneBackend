@@ -23,13 +23,32 @@ const SETTING_GROUPS = [
     ],
   },
   {
+    title: "UAIS Warehouse Database",
+    description: "Connection string for the warehouse database used by the UAIS scripts. Passed as WAREHOUSE_DATABASE_URL to each runner at runtime.",
+    keys: [
+      { key: "uais_warehouse_db_url", label: "Warehouse Database URL", placeholder: "postgresql://user:password@host:5432/dbname?sslmode=require", type: "password" },
+    ],
+  },
+  {
+    title: "Runner Data Directories",
+    description: "Local paths where each runner looks for its raw input data. Set the folder for each assessment type you use.",
+    keys: [
+      { key: "uais_data_dir_athletic_screen", label: "Athletic Screen Data Directory", placeholder: "/path/to/athletic-screen/output", type: "text" },
+      { key: "uais_data_dir_readiness_screen", label: "Readiness Screen Data Directory", placeholder: "/path/to/readiness-screen/data", type: "text" },
+      { key: "uais_data_dir_pro_sup", label: "Pro Sup Data Directory", placeholder: "/path/to/pro-sup/data", type: "text" },
+      { key: "uais_data_dir_arm_action", label: "Arm Action Data Directory", placeholder: "/path/to/arm-action/exports", type: "text" },
+      { key: "uais_data_dir_pitching", label: "Pitching Data Directory", placeholder: "/path/to/pitching/data", type: "text" },
+      { key: "uais_data_dir_hitting", label: "Hitting Data Directory", placeholder: "/path/to/hitting/data", type: "text" },
+      { key: "uais_data_dir_curveball", label: "Curveball Data Directory", placeholder: "/path/to/curveball/data", type: "text" },
+      { key: "uais_data_dir_mobility", label: "Mobility Data Directory", placeholder: "/path/to/mobility/data", type: "text" },
+      { key: "uais_data_dir_proteus", label: "Proteus Data Directory", placeholder: "/path/to/proteus/data", type: "text" },
+    ],
+  },
+  {
     title: "Assessment Configuration",
-    description: "Optional overrides for data paths (used when running UAIS in local/hybrid mode).",
+    description: "Optional overrides for assessment behaviour.",
     keys: [
       { key: "capture_rate", label: "Capture Rate (Hz)", placeholder: "300", type: "number" },
-      { key: "pitching_data_dir", label: "Pitching Data Directory", placeholder: "/path/to/pitching/data", type: "text" },
-      { key: "hitting_data_dir", label: "Hitting Data Directory", placeholder: "/path/to/hitting/data", type: "text" },
-      { key: "athletic_screen_data_dir", label: "Athletic Screen Data Directory", placeholder: "/path/to/athletic-screen/output", type: "text" },
     ],
   },
   {

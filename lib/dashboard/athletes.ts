@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 
 const athleteListSelect = {
@@ -32,7 +33,23 @@ const athleteListSelect = {
   curveball_test_session_count: true,
 } as const;
 
-export async function getAthletesList(opts: {
+// Cursor token is base64-encoded JSON { name, athlete_uuid } so we can
+// skip the extra findUnique() lookup that the old bare-UUID cursor required.
+function encodeCursor(name: string, athlete_uuid: string): string {
+  return Buffer.from(JSON.stringify({ name, athlete_uuid })).toString("base64");
+}
+
+function decodeCursor(
+  token: string
+): { name: string; athlete_uuid: string } | undefined {
+  try {
+    return JSON.parse(Buffer.from(token, "base64").toString("utf-8"));
+  } catch {
+    return undefined;
+  }
+}
+
+async function _getAthletesList(opts: {
   q?: string;
   limit?: number;
   cursor?: string;
@@ -61,20 +78,8 @@ export async function getAthletesList(opts: {
       ? { AND: [nameWhere, nonAppWhere] }
       : nameWhere ?? nonAppWhere ?? undefined;
 
-  // Cursor for alphabetical (name) pagination: need name + athlete_uuid
-  let cursorPayload: { name: string; athlete_uuid: string } | undefined;
-  if (cursor) {
-    const cursorAthlete = await prisma.d_athletes.findUnique({
-      where: { athlete_uuid: cursor },
-      select: { name: true, athlete_uuid: true },
-    });
-    if (cursorAthlete) {
-      cursorPayload = {
-        name: cursorAthlete.name,
-        athlete_uuid: cursorAthlete.athlete_uuid,
-      };
-    }
-  }
+  // Decode the opaque cursor token — no extra DB query needed.
+  const cursorPayload = cursor ? decodeCursor(cursor) : undefined;
 
   const items = await prisma.d_athletes.findMany({
     where,
@@ -88,7 +93,45 @@ export async function getAthletesList(opts: {
   const hasNext = items.length > limit;
   const results = hasNext ? items.slice(0, limit) : items;
   const nextCursor =
-    hasNext && results.length > 0 ? results[results.length - 1].athlete_uuid : null;
+    hasNext && results.length > 0
+      ? encodeCursor(
+          results[results.length - 1].name,
+          results[results.length - 1].athlete_uuid
+        )
+      : null;
 
   return { items: results, nextCursor };
 }
+
+// Cache results for 30 seconds — fine for an internal dashboard.
+// Each unique combination of (q, limit, cursor, filterNonApp) is cached separately.
+export const getAthletesList = unstable_cache(
+  _getAthletesList,
+  ["athletes-list"],
+  { revalidate: 30 }
+);
+
+// A minimal select for the dashboard "recently modified" list.
+const recentAthleteSelect = {
+  athlete_uuid: true,
+  name: true,
+  gender: true,
+  age_group: true,
+  pitching_session_count: true,
+  athletic_screen_session_count: true,
+  updated_at: true,
+} as const;
+
+async function _getRecentAthletes(limit: number) {
+  return prisma.d_athletes.findMany({
+    orderBy: { updated_at: "desc" },
+    take: limit,
+    select: recentAthleteSelect,
+  });
+}
+
+export const getRecentAthletes = unstable_cache(
+  _getRecentAthletes,
+  ["recent-athletes"],
+  { revalidate: 30 }
+);

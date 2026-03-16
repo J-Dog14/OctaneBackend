@@ -1,7 +1,17 @@
 import { NextRequest } from "next/server";
 import { badRequest, internalError, success } from "@/lib/responses";
 import { buildAthleteTrackingReport } from "@/lib/athlete-tracking/report";
+import type { DomainId } from "@/lib/athlete-tracking/types";
 import { z } from "zod";
+
+const DOMAIN_IDS: DomainId[] = [
+  "pitching",
+  "hitting",
+  "mobility",
+  "athleticScreen",
+  "armAction",
+  "proteus",
+];
 
 const querySchema = z.object({
   athleteUuid: z.string().min(1, "athleteUuid is required"),
@@ -10,6 +20,7 @@ const querySchema = z.object({
 /**
  * Dashboard-only: athlete tracking report with percentiles per domain.
  * GET /api/dashboard/athlete-tracking/report?athleteUuid=...
+ *   Optional per-domain date overrides: &pitchingDate=YYYY-MM-DD &hittingDate=YYYY-MM-DD etc.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -21,7 +32,18 @@ export async function GET(request: NextRequest) {
         parsed.error.issues.map((e) => e.message).join(", ")
       );
     }
-    const report = await buildAthleteTrackingReport(parsed.data.athleteUuid);
+
+    // Collect per-domain date overrides from query params (e.g. pitchingDate=2024-01-15)
+    const sessionDates: Partial<Record<DomainId, string>> = {};
+    for (const domainId of DOMAIN_IDS) {
+      const val = searchParams.get(`${domainId}Date`);
+      if (val) sessionDates[domainId] = val;
+    }
+
+    const report = await buildAthleteTrackingReport(
+      parsed.data.athleteUuid,
+      Object.keys(sessionDates).length > 0 ? sessionDates : undefined
+    );
     return success(report);
   } catch (error) {
     if (error instanceof Response) return error;

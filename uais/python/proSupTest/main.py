@@ -674,30 +674,97 @@ def process_single_folder(folder_path: str, athlete_uuid: str = None, profile: d
         pg_conn.close()
 
 
+def report_only():
+    """
+    Generate a PDF report from existing PostgreSQL data without re-processing raw files.
+    Requires ATHLETE_UUID env var to be set.
+    """
+    import argparse
+    athlete_uuid = os.environ.get("ATHLETE_UUID", "").strip()
+    if not athlete_uuid:
+        print("Error: ATHLETE_UUID environment variable is required for --report-only mode.")
+        return
+
+    print(f"Pro-Sup Test – report only (athlete: {athlete_uuid})")
+
+    try:
+        pg_conn = get_warehouse_connection()
+    except Exception as e:
+        print(f"Failed to connect to database: {e}")
+        import traceback
+        traceback.print_exc()
+        return
+
+    try:
+        with pg_conn.cursor() as cur:
+            cur.execute("""
+                SELECT ps.session_date, a.name
+                FROM public.f_pro_sup ps
+                JOIN analytics.d_athletes a ON ps.athlete_uuid = a.athlete_uuid
+                WHERE ps.athlete_uuid = %s
+                ORDER BY ps.session_date DESC
+                LIMIT 1
+            """, (athlete_uuid,))
+            row = cur.fetchone()
+
+        if not row:
+            print(f"No Pro-Sup data found for athlete UUID: {athlete_uuid}")
+            return
+
+        test_date_raw, athlete_name = row
+        test_date = test_date_raw.strftime("%Y-%m-%d") if hasattr(test_date_raw, "strftime") else str(test_date_raw)
+
+        output_dir = os.getenv("PRO_SUP_REPORTS_DIR", "D:/Pro-Sup Test/Reports")
+        print(f"Generating report for {athlete_name} ({test_date})...")
+        generate_report_from_postgres(
+            athlete_uuid=athlete_uuid,
+            athlete_name=athlete_name,
+            test_date=test_date,
+            output_dir=output_dir,
+            conn=pg_conn,
+        )
+        print("Report generation complete.")
+    except Exception as e:
+        print(f"Error generating report: {e}")
+        import traceback
+        traceback.print_exc()
+    finally:
+        pg_conn.close()
+
+
 def main():
     """
     Main execution function.
     Prompts user to select a folder and processes it.
     """
+    import argparse
+    parser = argparse.ArgumentParser(description="Pro-Sup Test data processing to PostgreSQL")
+    parser.add_argument("--report-only", action="store_true", help="Skip data processing; generate PDF report from existing DB data (requires ATHLETE_UUID env var)")
+    args = parser.parse_args()
+
+    if args.report_only:
+        report_only()
+        return
+
     # Get default directory from config
     try:
         raw_paths = get_raw_paths()
         default_dir = raw_paths.get('pro_sup', os.getenv('PRO_SUP_DATA_DIR', 'D:/Pro-Sup Test/Data/'))
     except:
         default_dir = os.getenv('PRO_SUP_DATA_DIR', 'D:/Pro-Sup Test/Data/')
-    
+
     # Ensure folder path exists
     if 'path/to' in default_dir or not os.path.exists(default_dir):
         default_dir = os.getenv('PRO_SUP_DATA_DIR', 'D:/Pro-Sup Test/Data/')
-    
+
     # Prompt user to select folder
     print("Please select a folder containing Session.xml...")
     selected_folder = select_folder_dialog(initial_dir=default_dir)
-    
+
     if not selected_folder:
         print("No folder selected. Exiting.")
         return
-    
+
     # Process the selected folder
     try:
         athlete_uuid_env = os.environ.get("ATHLETE_UUID", "").strip() or None

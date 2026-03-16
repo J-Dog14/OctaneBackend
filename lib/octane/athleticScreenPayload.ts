@@ -22,7 +22,8 @@ export type AthleticScreenPayload = {
 };
 
 export async function buildAthleticScreenPayload(
-  athleteUuid: string
+  athleteUuid: string,
+  sessionDate?: string
 ): Promise<AthleticScreenPayload> {
   const athlete = await prisma.d_athletes.findUnique({
     where: { athlete_uuid: athleteUuid },
@@ -33,41 +34,49 @@ export async function buildAthleticScreenPayload(
     throw notFound("Athlete not found");
   }
 
-  const [latestCmj, latestDj, latestPpu, latestSlv] = await Promise.all([
-    prisma.f_athletic_screen_cmj.findFirst({
-      where: { athlete_uuid: athleteUuid },
-      orderBy: [{ session_date: "desc" }, { created_at: "desc" }],
-      select: { session_date: true },
-    }),
-    prisma.f_athletic_screen_dj.findFirst({
-      where: { athlete_uuid: athleteUuid },
-      orderBy: [{ session_date: "desc" }, { created_at: "desc" }],
-      select: { session_date: true },
-    }),
-    prisma.f_athletic_screen_ppu.findFirst({
-      where: { athlete_uuid: athleteUuid },
-      orderBy: [{ session_date: "desc" }, { created_at: "desc" }],
-      select: { session_date: true },
-    }),
-    prisma.f_athletic_screen_slv.findFirst({
-      where: { athlete_uuid: athleteUuid },
-      orderBy: [{ session_date: "desc" }, { created_at: "desc" }],
-      select: { session_date: true },
-    }),
-  ]);
+  let resolvedSessionDate: Date;
+  if (sessionDate) {
+    resolvedSessionDate = new Date(sessionDate);
+  } else {
+    const [latestCmj, latestDj, latestPpu, latestSlv] = await Promise.all([
+      prisma.f_athletic_screen_cmj.findFirst({
+        where: { athlete_uuid: athleteUuid },
+        orderBy: [{ session_date: "desc" }, { created_at: "desc" }],
+        select: { session_date: true },
+      }),
+      prisma.f_athletic_screen_dj.findFirst({
+        where: { athlete_uuid: athleteUuid },
+        orderBy: [{ session_date: "desc" }, { created_at: "desc" }],
+        select: { session_date: true },
+      }),
+      prisma.f_athletic_screen_ppu.findFirst({
+        where: { athlete_uuid: athleteUuid },
+        orderBy: [{ session_date: "desc" }, { created_at: "desc" }],
+        select: { session_date: true },
+      }),
+      prisma.f_athletic_screen_slv.findFirst({
+        where: { athlete_uuid: athleteUuid },
+        orderBy: [{ session_date: "desc" }, { created_at: "desc" }],
+        select: { session_date: true },
+      }),
+    ]);
 
-  const dates = [latestCmj?.session_date, latestDj?.session_date, latestPpu?.session_date, latestSlv?.session_date].filter(
-    (d): d is Date => d != null
-  );
-  const sessionDate = dates.length > 0 ? new Date(Math.max(...dates.map((d) => d.getTime()))) : null;
+    const dates = [
+      latestCmj?.session_date,
+      latestDj?.session_date,
+      latestPpu?.session_date,
+      latestSlv?.session_date,
+    ].filter((d): d is Date => d != null);
 
-  if (!sessionDate) {
-    throw notFound("No athletic screen data found for athlete");
+    if (dates.length === 0) {
+      throw notFound("No athletic screen data found for athlete");
+    }
+    resolvedSessionDate = new Date(Math.max(...dates.map((d) => d.getTime())));
   }
 
   const [cmjRow, djRow, ppuRow, slvRows] = await Promise.all([
     prisma.f_athletic_screen_cmj.findFirst({
-      where: { athlete_uuid: athleteUuid, session_date: sessionDate },
+      where: { athlete_uuid: athleteUuid, session_date: resolvedSessionDate },
       orderBy: { created_at: "desc" },
       select: {
         jh_in: true,
@@ -79,7 +88,7 @@ export async function buildAthleticScreenPayload(
       },
     }),
     prisma.f_athletic_screen_dj.findFirst({
-      where: { athlete_uuid: athleteUuid, session_date: sessionDate },
+      where: { athlete_uuid: athleteUuid, session_date: resolvedSessionDate },
       orderBy: { created_at: "desc" },
       select: {
         jh_in: true,
@@ -93,7 +102,7 @@ export async function buildAthleticScreenPayload(
       },
     }),
     prisma.f_athletic_screen_ppu.findFirst({
-      where: { athlete_uuid: athleteUuid, session_date: sessionDate },
+      where: { athlete_uuid: athleteUuid, session_date: resolvedSessionDate },
       orderBy: { created_at: "desc" },
       select: {
         jh_in: true,
@@ -105,7 +114,7 @@ export async function buildAthleticScreenPayload(
       },
     }),
     prisma.f_athletic_screen_slv.findMany({
-      where: { athlete_uuid: athleteUuid, session_date: sessionDate },
+      where: { athlete_uuid: athleteUuid, session_date: resolvedSessionDate },
       orderBy: { created_at: "desc" },
       select: {
         side: true,
@@ -211,7 +220,7 @@ export async function buildAthleticScreenPayload(
     }
   }
 
-  const sessionDateStr = sessionDate.toISOString().split("T")[0];
+  const sessionDateStr = resolvedSessionDate.toISOString().split("T")[0];
   return {
     athleteUuid: athlete.athlete_uuid,
     level: deriveLevelFromAthlete({ age_group: athlete.age_group ?? null }),

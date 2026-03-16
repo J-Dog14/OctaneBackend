@@ -58,18 +58,22 @@ function onExit(jobId: string) {
   if (!job) return;
   job.done = true;
   if (job.controller) {
+    // A stream client is already connected — close it and clean up now.
     try {
       job.controller.close();
     } catch {
       // ignore
     }
     job.controller = null;
+    jobs.delete(jobId);
   }
-  jobs.delete(jobId);
+  // If no client has connected yet, keep the job in the Map (with buffered
+  // chunks) so the stream route can still deliver the output when it arrives.
+  // attachStreamController will clean up after flushing.
 }
 
 /** Maps assessment runner IDs to their data-directory env var name. */
-const ASSESSMENT_DATA_DIR_ENV: Record<string, string> = {
+export const ASSESSMENT_DATA_DIR_ENV: Record<string, string> = {
   pitching: "PITCHING_DATA_DIR",
   hitting: "HITTING_DATA_DIR",
   "athletic-screen": "ATHLETIC_SCREEN_DATA_DIR",
@@ -89,11 +93,16 @@ export type CreateJobOptions = {
    * When provided, the appropriate DATA_DIR env var is set to that temp dir.
    */
   uploadedFileKeys?: string[];
+  /**
+   * Extra environment variables to inject into the spawned process.
+   * Merged on top of process.env before any other overrides (uploads take precedence).
+   */
+  extraEnv?: NodeJS.ProcessEnv;
 };
 
 export function createJob(runner: UaisRunner, options?: CreateJobOptions): string {
   const jobId = crypto.randomUUID();
-  const env: NodeJS.ProcessEnv = { ...process.env };
+  const env: NodeJS.ProcessEnv = { ...process.env, ...(options?.extraEnv ?? {}) };
   if (options?.athleteUuid?.trim()) {
     env.ATHLETE_UUID = options.athleteUuid.trim();
   }
@@ -195,6 +204,18 @@ export function attachStreamController(jobId: string, controller: ReadableStream
     }
   }
   job.chunks = []; // Free buffer; new output streams directly via pushChunk
+
+  // If the process already exited before the client connected, close the
+  // stream immediately and clean up the job now.
+  if (job.done) {
+    try {
+      controller.close();
+    } catch {
+      // ignore
+    }
+    job.controller = null;
+    jobs.delete(jobId);
+  }
 }
 
 export function writeInput(jobId: string, input: string): boolean {

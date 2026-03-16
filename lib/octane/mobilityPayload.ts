@@ -195,7 +195,10 @@ const MOBILITY_SELECT = {
   gs_l_at_90: true,
 } as const;
 
-export async function buildMobilityPayload(athleteUuid: string): Promise<MobilityPayload> {
+export async function buildMobilityPayload(
+  athleteUuid: string,
+  sessionDate?: string
+): Promise<MobilityPayload> {
   const athlete = await prisma.d_athletes.findUnique({
     where: { athlete_uuid: athleteUuid },
     select: { athlete_uuid: true, age_group: true },
@@ -206,7 +209,10 @@ export async function buildMobilityPayload(athleteUuid: string): Promise<Mobilit
   }
 
   const row = await prisma.f_mobility.findFirst({
-    where: { athlete_uuid: athleteUuid },
+    where: {
+      athlete_uuid: athleteUuid,
+      ...(sessionDate ? { session_date: new Date(sessionDate) } : {}),
+    },
     orderBy: { session_date: "desc" },
     select: { ...MOBILITY_SELECT, session_date: true },
   });
@@ -260,7 +266,7 @@ export async function buildMobilityPayload(athleteUuid: string): Promise<Mobilit
     }
   }
 
-  const sessionDate = row && "session_date" in row && row.session_date
+  const sessionDateStr = row && "session_date" in row && row.session_date
     ? new Date(row.session_date as Date).toISOString().split("T")[0]
     : null;
   return {
@@ -268,6 +274,6 @@ export async function buildMobilityPayload(athleteUuid: string): Promise<Mobilit
     level: deriveLevelFromAthlete({ age_group: athlete.age_group ?? null }),
     score: null,
     metrics,
-    sessionDate,
+    sessionDate: sessionDateStr,
   };
 }

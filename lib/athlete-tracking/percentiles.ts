@@ -111,10 +111,11 @@ export type DomainResult = {
 };
 
 export async function getPitchingWithPercentiles(
-  athleteUuid: string
+  athleteUuid: string,
+  sessionDate?: string
 ): Promise<DomainResult | null> {
   try {
-    const payload = await buildPitchingPayload(athleteUuid);
+    const payload = await buildPitchingPayload(athleteUuid, sessionDate);
     const uuids = await getAthleteUuidsWithPitching();
     const population = await getPopulationPayloads(uuids, async (uuid) => {
       const p = await buildPitchingPayload(uuid);
@@ -137,10 +138,11 @@ async function getAthleteUuidsWithHitting(): Promise<string[]> {
 }
 
 export async function getHittingWithPercentiles(
-  athleteUuid: string
+  athleteUuid: string,
+  sessionDate?: string
 ): Promise<DomainResult | null> {
   try {
-    const payload = await buildHittingPayload(athleteUuid);
+    const payload = await buildHittingPayload(athleteUuid, sessionDate);
     const uuids = await getAthleteUuidsWithHitting();
     const population = await getPopulationPayloads(uuids, async (uuid) => {
       const p = await buildHittingPayload(uuid);
@@ -163,10 +165,11 @@ async function getAthleteUuidsWithMobility(): Promise<string[]> {
 }
 
 export async function getMobilityWithPercentiles(
-  athleteUuid: string
+  athleteUuid: string,
+  sessionDate?: string
 ): Promise<DomainResult | null> {
   try {
-    const payload = await buildMobilityPayload(athleteUuid);
+    const payload = await buildMobilityPayload(athleteUuid, sessionDate);
     const uuids = await getAthleteUuidsWithMobility();
     const population = await getPopulationPayloads(uuids, async (uuid) => {
       const p = await buildMobilityPayload(uuid);
@@ -204,10 +207,11 @@ async function getAthleteUuidsWithAthleticScreen(): Promise<string[]> {
 }
 
 export async function getAthleticScreenWithPercentiles(
-  athleteUuid: string
+  athleteUuid: string,
+  sessionDate?: string
 ): Promise<DomainResult | null> {
   try {
-    const payload = await buildAthleticScreenPayload(athleteUuid);
+    const payload = await buildAthleticScreenPayload(athleteUuid, sessionDate);
     const uuids = await getAthleteUuidsWithAthleticScreen();
     const population = await getPopulationPayloads(uuids, async (uuid) => {
       const p = await buildAthleticScreenPayload(uuid);
@@ -230,10 +234,11 @@ async function getAthleteUuidsWithArmAction(): Promise<string[]> {
 }
 
 export async function getArmActionWithPercentiles(
-  athleteUuid: string
+  athleteUuid: string,
+  sessionDate?: string
 ): Promise<DomainResult | null> {
   try {
-    const payload = await buildArmActionPayload(athleteUuid);
+    const payload = await buildArmActionPayload(athleteUuid, sessionDate);
     const uuids = await getAthleteUuidsWithArmAction();
     const population = await getPopulationPayloads(uuids, async (uuid) => {
       const p = await buildArmActionPayload(uuid);
@@ -248,10 +253,11 @@ export async function getArmActionWithPercentiles(
 
 /** Proteus: try pitcher first, then hitter; use matching population. */
 export async function getProteusWithPercentiles(
-  athleteUuid: string
+  athleteUuid: string,
+  sessionDate?: string
 ): Promise<DomainResult | null> {
   try {
-    const payload = await buildProteusPitcherPayload(athleteUuid);
+    const payload = await buildProteusPitcherPayload(athleteUuid, sessionDate);
     const uuids = await prisma.f_proteus.findMany({
       where: {
         position: "Pitcher",
@@ -272,7 +278,7 @@ export async function getProteusWithPercentiles(
     return { metrics, sessionDate: payload.sessionDate ?? null };
   } catch {
     try {
-      const payload = await buildProteusHitterPayload(athleteUuid);
+      const payload = await buildProteusHitterPayload(athleteUuid, sessionDate);
       const uuids = await prisma.f_proteus.findMany({
         where: {
           AND: [
@@ -333,7 +339,8 @@ const DOMAIN_COUNT_KEYS: Record<DomainId, keyof ReportCounts> = {
 
 export async function buildDomainsWithPercentiles(
   athleteUuid: string,
-  counts: ReportCounts
+  counts: ReportCounts,
+  sessionDates?: Partial<Record<DomainId, string>>
 ): Promise<DomainWithMetrics[]> {
   const domainBuilders: Array<{
     domainId: DomainId;
@@ -341,27 +348,27 @@ export async function buildDomainsWithPercentiles(
   }> = [
     {
       domainId: "pitching",
-      build: () => getPitchingWithPercentiles(athleteUuid),
+      build: () => getPitchingWithPercentiles(athleteUuid, sessionDates?.pitching),
     },
     {
       domainId: "hitting",
-      build: () => getHittingWithPercentiles(athleteUuid),
+      build: () => getHittingWithPercentiles(athleteUuid, sessionDates?.hitting),
     },
     {
       domainId: "mobility",
-      build: () => getMobilityWithPercentiles(athleteUuid),
+      build: () => getMobilityWithPercentiles(athleteUuid, sessionDates?.mobility),
     },
     {
       domainId: "athleticScreen",
-      build: () => getAthleticScreenWithPercentiles(athleteUuid),
+      build: () => getAthleticScreenWithPercentiles(athleteUuid, sessionDates?.athleticScreen),
     },
     {
       domainId: "armAction",
-      build: () => getArmActionWithPercentiles(athleteUuid),
+      build: () => getArmActionWithPercentiles(athleteUuid, sessionDates?.armAction),
     },
     {
       domainId: "proteus",
-      build: () => getProteusWithPercentiles(athleteUuid),
+      build: () => getProteusWithPercentiles(athleteUuid, sessionDates?.proteus),
     },
   ];
 
