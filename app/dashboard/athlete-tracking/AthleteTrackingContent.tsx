@@ -4,6 +4,7 @@ import { Fragment, useCallback, useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { MetricRadarChart, type RadarMetric, type RadarDataSeries, SERIES_COLORS } from "./MetricRadarChart";
+import { MetricLineChart } from "./MetricLineChart";
 import { formatMetricDisplayName, formatValueWithUnit } from "@/lib/athlete-tracking/displayNames";
 
 type AthleteItem = {
@@ -89,9 +90,8 @@ function metricsToRadarData(metrics: MetricWithPercentile[], domainId?: string):
     if (seen.has(uniqueKey)) continue;
     seen.add(uniqueKey);
     const displayName = formatMetricDisplayName(m.name, m.category, domainId);
-    const shortLabel = displayName.length > 16 ? displayName.slice(0, 14) + "…" : displayName;
     out.push({
-      subject: shortLabel,
+      subject: displayName,
       value: chartValue,
       fullMark: 100,
       displayValue: `${displayName}: ${displaySuffix}`,
@@ -226,15 +226,6 @@ const PITCHING_TABLE_SECTIONS: PitchingSection[] = [
     items: [
       { kind: "metric", key: "TRACKMAN_METRICS|VELOCITY", label: "Velocity" },
       { kind: "metric", key: "SUBJECT_METRICS|SCORE", label: "Score" },
-    ],
-  },
-  {
-    id: "stride",
-    title: "Stride",
-    description:
-      "Stride length describes how far the lead foot lands from the rubber. A longer stride generally increases mechanical efficiency and velocity, though optimal length varies by height and mechanics.",
-    items: [
-      { kind: "metric", key: "STRIDE|STRIDE_LENGTH", label: "Stride Length" },
     ],
   },
   {
@@ -614,6 +605,7 @@ function AthleteTrackingContentInner() {
   const [compareUuid, setCompareUuid] = useState<string | null>(null);
   const [compareReport, setCompareReport] = useState<AthleteTrackingReport | null>(null);
   const [loadingCompare, setLoadingCompare] = useState(false);
+  const [expandedAthleticInfo, setExpandedAthleticInfo] = useState<string | null>(null);
 
   const loadAthletes = useCallback(async () => {
     setLoadingAthletes(true);
@@ -1153,6 +1145,19 @@ function AthleteTrackingContentInner() {
                   return cached.domains.find((d) => d.domainId === domain.domainId);
                 };
 
+                // Build comparison domains for table rows (date or athlete comparison)
+                const compDomains: Array<{ label: string; domain: DomainWithMetrics }> = [];
+                if (compareMode === "date") {
+                  for (const date of compareDates) {
+                    const cached = compCache[`${domain.domainId}|${date}`];
+                    const cd = cached?.domains.find((d) => d.domainId === domain.domainId);
+                    if (cd) compDomains.push({ label: date, domain: cd });
+                  }
+                } else if (compareMode === "athlete" && compareReport) {
+                  const cd = compareReport.domains.find((d) => d.domainId === domain.domainId);
+                  if (cd) compDomains.push({ label: compareReport.athlete.name, domain: cd });
+                }
+
                 if (domain.domainId === "athleticScreen") {
                   const ATHLETIC_SCREEN_MOVEMENT_ORDER = ["DJ", "PPU", "CMJ", "SLV"] as const;
                   const ATHLETIC_SCREEN_VARIABLE_ORDER = [
@@ -1161,12 +1166,51 @@ function AthleteTrackingContentInner() {
                   const ATHLETIC_SCREEN_VARIABLE_DESCRIPTIONS: Record<string, string> = {
                     JH: "Jump height; higher generally indicates better explosive output.",
                     PP: "Peak power; maximum power generated during the movement.",
-                    "Work (AUC)": "Total work over the force-time curve.",
-                    Kurtosis: "Shape descriptor of force-time distribution.",
-                    "Max RPD": "Maximum rate of power development.",
-                    "Time to Max RPD": "Time required to reach max RPD.",
-                    RSI: "Reactive Strength Index; jump outcome relative to contact efficiency.",
+                    "Work (AUC)": "Total mechanical energy produced during the movement.",
+                    Kurtosis: "Shape descriptor of the power-time curve.",
+                    "Max RPD": "Peak slope of the power-time curve from 10–90% of peak power.",
+                    "Time to Max RPD": "Time elapsed from movement start to peak rate of power development.",
+                    RSI: "Reactive Strength Index; jump outcome relative to contact time.",
                     CT: "Contact time during the drop jump.",
+                  };
+
+                  type AthleticVariableDetail = {
+                    formula: string;
+                    what: string;
+                    benchmarks: string;
+                    characterizes: string;
+                  };
+                  const ATHLETIC_SCREEN_VARIABLE_DETAIL: Partial<Record<string, AthleticVariableDetail>> = {
+                    "Work (AUC)": {
+                      formula: "Time integral of the power curve (Joules) — area under the power-time trace.",
+                      what: "Captures both how much power was produced and how long it was sustained. Two athletes can share the same peak power but differ wildly in AUC if one sustains output and the other spikes then drops. Higher AUC means more total mechanical energy delivered to the system.",
+                      benchmarks: "Values are movement-specific and not directly comparable across DJ, CMJ, PPU, and SLV. Rising AUC across sessions for the same movement indicates improved power endurance or better force application timing. In the DJ the contact phase is brief so AUC reflects explosive efficiency under constraint; in the CMJ the longer propulsion window typically yields higher AUC.",
+                      characterizes: "Total energy output quality — the interaction of amplitude and duration. Pair with Max RPD: high RPD + high AUC = explosive and sustained; high RPD + low AUC = explosive but brief. Low AUC relative to PP suggests the athlete peaks early and decays quickly.",
+                    },
+                    Kurtosis: {
+                      formula: "Fourth standardized moment of the power-time distribution. Measures the 'peakedness' vs flatness of the curve.",
+                      what: "High kurtosis → the power curve has a sharp, narrow spike; power is concentrated at one specific moment. Low kurtosis → power is spread more evenly across the movement. Neither is inherently better — it depends on the movement and what you are training.",
+                      benchmarks: "DJ and SLV tend to naturally produce higher kurtosis due to the short, reactive nature of the effort. CMJ typically has lower kurtosis as the longer amortization phase spreads power across more time. PPU kurtosis reflects upper-body explosive strategy. Sudden unexplained drops in kurtosis for a given movement may indicate fatigue-driven changes in motor strategy.",
+                      characterizes: "The shape and concentration of force application. When paired with Max RPD it reveals whether explosive capacity is channeled into a single high-intensity spike (DJ/sprint-like) or distributed across a broader propulsion window (CMJ/strength-dominant). Useful for profiling sport-specific force strategies and detecting session-to-session motor pattern shifts.",
+                    },
+                    "Max RPD": {
+                      formula: "Peak slope of the power-time curve, calculated between 10% and 90% of peak power (W/s).",
+                      what: "Measures how fast the athlete ramps up power — the steepness of the rising edge of the power curve. It is primarily a neural quality: motor unit recruitment speed, synchronization, and rate coding. High peak power with low RPD means the athlete gets there eventually but too slowly for reactive sport demands.",
+                      benchmarks: "RPD values differ substantially across movements — DJ and SLV produce the steepest ramps due to the reactive constraint; CMJ allows a slower build; PPU reflects upper-body neural drive. Always compare within the same movement across sessions. Consistent improvement in DJ Max RPD is one of the strongest indicators of plyometric development.",
+                      characterizes: "Neural drive and explosive onset. RPD ≈ 'How fast can you turn power on?' Directly relevant to DJ and SLV where the ground contact window leaves no time for a slow ramp. An athlete can have elite PP and AUC but underperform in reactive tasks if RPD is low.",
+                    },
+                    "Time to Max RPD": {
+                      formula: "Milliseconds from movement initiation to the instant of peak rate of power development.",
+                      what: "Shorter time means the explosive peak arrives sooner. This reflects how quickly the nervous system can coordinate peak motor unit recruitment. It is particularly meaningful in the DJ and SLV where the entire contact phase may last only 150–250 ms.",
+                      benchmarks: "In the DJ, Time to Max RPD must be very short to occur within the contact window — values that exceed contact time indicate the athlete is not producing their explosive peak on the ground at all. In CMJ and PPU, somewhat longer times are expected and appropriate. Shorter Time to Max RPD combined with high Max RPD = elite explosive profile.",
+                      characterizes: "The accessibility and immediacy of explosive output. Complements Max RPD: the RPD value is the ceiling, Time to Max RPD is how fast you reach it. An athlete with high RPD but long Time to Max RPD has the capacity but cannot access it reactively — a gap that shows up in DJ performance and sport-specific acceleration tasks.",
+                    },
+                    RSI: {
+                      formula: "RSI = Jump Height ÷ Contact Time. Reported on a 0–5 scale (values are multiplied by 2 to amplify resolution).",
+                      what: "Combines jump outcome with ground contact efficiency into a single ratio. Quantifies the stretch-shortening cycle (SSC) — the ability to store elastic energy on impact and release it as propulsive force. Higher RSI means more output achieved in less time on the ground. Because values are scaled ×2, the displayed number is twice the raw ratio.",
+                      benchmarks: "On this scaled 0–5 system: ~3.0 represents a solid competitive athlete baseline; values above 4.0 are typically elite-level reactive capacity; values below 2.0 may indicate SSC deficits or elevated fatigue. RSI applies primarily to DJ and SLV where a reactive constraint is present. CMJ and PPU RSI should be interpreted with caution as the movement is not reactive.",
+                      characterizes: "Tendon stiffness, elastic energy utilization, and reactive neuromuscular efficiency. RSI is distinct from peak power — an athlete can be very powerful (high PP, high AUC) but have poor RSI if they are slow off the ground. It is the most direct measure of plyometric and reactive capacity in this screen, and often the most sensitive to fatigue.",
+                    },
                   };
                   const ATHLETIC_SCREEN_TABLE_CATEGORY_ORDER = [
                     "DJ", "CMJ", "PPU", "SLV_Left", "SLV_Right",
@@ -1192,8 +1236,64 @@ function AthleteTrackingContentInner() {
                     metricByCategoryAndName.set(`${metric.category}|${metric.name}`, metric);
                   }
 
+                  // Build radar series (primary + comparison dates)
+                  const athleticRadarSeries: RadarDataSeries[] = [
+                    {
+                      name: domain.sessionDate ?? "Latest",
+                      data: metricsToRadarData(movementMetrics, domain.domainId),
+                      color: SERIES_COLORS[0]!,
+                    },
+                    ...compDomains.map(({ label, domain: cd }, i) => {
+                      const cdMovementMetrics = isSlv
+                        ? cd.metrics.filter((m) => m.category.startsWith("SLV_"))
+                        : cd.metrics.filter((m) => m.category === currentMovement);
+                      return {
+                        name: label,
+                        data: metricsToRadarData(cdMovementMetrics, domain.domainId),
+                        color: SERIES_COLORS[i + 1]!,
+                      };
+                    }),
+                  ];
+
+                  // Build comparison metric lookup maps for table
+                  const compMetricMaps = compDomains.map(({ label, domain: cd }) => {
+                    const map = new Map<string, MetricWithPercentile>();
+                    for (const m of cd.metrics) map.set(`${m.category}|${m.name}`, m);
+                    return { label, map };
+                  });
+
                   return (
                     <>
+                      {/* Session comparison panel */}
+                      {compareMode === "date" && availForDomain.length > 1 && (
+                        <div className="card" style={{ marginBottom: "1rem" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+                            <span style={{ fontSize: "0.85rem", fontWeight: 600 }}>Sessions:</span>
+                            <span style={{ fontSize: "13px", padding: "3px 10px", borderRadius: 6, border: "1px solid var(--accent)", background: "var(--accent-muted)", color: "var(--accent)" }}>
+                              {primaryDate ?? "Latest"} (primary)
+                            </span>
+                            {compareDates.map((date) => {
+                              const key = `${domain.domainId}|${date}`;
+                              const isLoading = compLoadingKeys.includes(key);
+                              return (
+                                <span key={date} style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem", fontSize: "13px", padding: "3px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg-tertiary)" }}>
+                                  {isLoading ? `${date} (loading…)` : date}
+                                  <button type="button" className="btn-ghost" style={{ padding: "0 3px", fontSize: "12px" }} onClick={() => removeCompareDate(domain.domainId, date)} aria-label={`Remove ${date}`}>×</button>
+                                </span>
+                              );
+                            })}
+                            {compareDates.length < 3 && remainingDates.length > 0 && (
+                              <select value="" onChange={(e) => { if (e.target.value) addCompareDate(domain.domainId, e.target.value); }} style={{ padding: "3px 8px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg-tertiary)", color: "var(--text-secondary)", fontSize: "13px" }}>
+                                <option value="">+ Add date…</option>
+                                {remainingDates.map((d) => <option key={d} value={d}>{d}</option>)}
+                              </select>
+                            )}
+                          </div>
+                          {loadingDates && availForDomain.length === 0 && (
+                            <p className="text-muted" style={{ margin: "0.5rem 0 0", fontSize: "0.8rem" }}>Loading available dates…</p>
+                          )}
+                        </div>
+                      )}
                       <div style={{ textAlign: "center", marginBottom: "0.4rem" }}>
                         <div style={{ fontSize: "0.98rem", fontWeight: 600 }}>{currentMovement}</div>
                         <div className="text-muted" style={{ fontSize: "0.78rem" }}>
@@ -1234,7 +1334,8 @@ function AthleteTrackingContentInner() {
                         ) : (
                           <MetricRadarChart
                             title={`${currentMovement}${domain.sessionDate ? ` (${domain.sessionDate})` : ""} – percentiles`}
-                            data={metricsToRadarData(movementMetrics, domain.domainId)}
+                            data={athleticRadarSeries.length === 1 ? athleticRadarSeries[0]!.data : undefined}
+                            dataSeries={athleticRadarSeries.length > 1 ? athleticRadarSeries : undefined}
                           />
                         )}
                         <button
@@ -1281,11 +1382,75 @@ function AthleteTrackingContentInner() {
                                     </tr>
                                   ) : null}
                                   <tr>
-                                    <td style={{ borderBottom: "none", padding: "0.2rem 0.35rem 0.55rem 0" }}>
-                                      <div style={{ fontWeight: 600, marginBottom: "0.2rem" }}>{variableName}</div>
+                                    <td style={{ borderBottom: "none", padding: "0.2rem 0.35rem 0.55rem 0", maxWidth: 220 }}>
+                                      <div style={{ fontWeight: 600, marginBottom: "0.2rem", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                                        {variableName}
+                                        {ATHLETIC_SCREEN_VARIABLE_DETAIL[variableName] && (
+                                          <button
+                                            type="button"
+                                            onClick={() => setExpandedAthleticInfo((prev) => prev === variableName ? null : variableName)}
+                                            style={{
+                                              display: "inline-flex",
+                                              alignItems: "center",
+                                              justifyContent: "center",
+                                              width: 16,
+                                              height: 16,
+                                              minWidth: 16,
+                                              borderRadius: "50%",
+                                              border: `1px solid ${expandedAthleticInfo === variableName ? "var(--accent)" : "rgba(255,255,255,0.3)"}`,
+                                              background: expandedAthleticInfo === variableName ? "var(--accent-muted)" : "transparent",
+                                              color: expandedAthleticInfo === variableName ? "var(--accent)" : "rgba(255,255,255,0.45)",
+                                              fontSize: "10px",
+                                              fontWeight: 700,
+                                              lineHeight: 1,
+                                              cursor: "pointer",
+                                              flexShrink: 0,
+                                              padding: 0,
+                                              boxSizing: "content-box",
+                                            }}
+                                            aria-label={`More info about ${variableName}`}
+                                          >
+                                            i
+                                          </button>
+                                        )}
+                                      </div>
                                       <div className="text-muted" style={{ fontSize: "0.8rem" }}>
                                         {ATHLETIC_SCREEN_VARIABLE_DESCRIPTIONS[variableName]}
                                       </div>
+                                      {expandedAthleticInfo === variableName && ATHLETIC_SCREEN_VARIABLE_DETAIL[variableName] && (() => {
+                                        const detail = ATHLETIC_SCREEN_VARIABLE_DETAIL[variableName]!;
+                                        return (
+                                          <div style={{
+                                            marginTop: "0.6rem",
+                                            padding: "0.6rem 0.75rem",
+                                            borderRadius: 6,
+                                            background: "rgba(255,255,255,0.04)",
+                                            border: "1px solid var(--border)",
+                                            fontSize: "0.76rem",
+                                            lineHeight: 1.5,
+                                            display: "flex",
+                                            flexDirection: "column",
+                                            gap: "0.5rem",
+                                          }}>
+                                            <div>
+                                              <div style={{ color: "rgba(255,255,255,0.38)", fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.2rem" }}>Formula</div>
+                                              <div style={{ color: "rgba(255,255,255,0.7)" }}>{detail.formula}</div>
+                                            </div>
+                                            <div>
+                                              <div style={{ color: "rgba(255,255,255,0.38)", fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.2rem" }}>What the number means</div>
+                                              <div style={{ color: "rgba(255,255,255,0.7)" }}>{detail.what}</div>
+                                            </div>
+                                            <div>
+                                              <div style={{ color: "rgba(255,255,255,0.38)", fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.2rem" }}>Benchmarks</div>
+                                              <div style={{ color: "rgba(255,255,255,0.7)" }}>{detail.benchmarks}</div>
+                                            </div>
+                                            <div>
+                                              <div style={{ color: "rgba(255,255,255,0.38)", fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.2rem" }}>Characterizes</div>
+                                              <div style={{ color: "rgba(255,255,255,0.7)" }}>{detail.characterizes}</div>
+                                            </div>
+                                          </div>
+                                        );
+                                      })()}
                                     </td>
                                     {ATHLETIC_SCREEN_TABLE_CATEGORY_ORDER.map((category) => {
                                       const metric = metricByCategoryAndName.get(`${category}|${variableName}`) ?? null;
@@ -1309,6 +1474,19 @@ function AthleteTrackingContentInner() {
                                               >
                                                 {metric.percentile != null ? `${Math.round(metric.percentile)}th %ile` : ""}
                                               </div>
+                                              {compMetricMaps.map(({ label, map }) => {
+                                                const cm = map.get(`${category}|${variableName}`);
+                                                if (!cm) return null;
+                                                const { valuePart, unitPart } = formatMetricValueParts(cm);
+                                                return (
+                                                  <div key={label} style={{ marginTop: "0.4rem", borderTop: "1px solid rgba(255,255,255,0.07)", paddingTop: "0.3rem" }}>
+                                                    <div style={{ fontSize: "0.68rem", color: "rgba(255,255,255,0.38)", marginBottom: "0.1rem" }}>{label}</div>
+                                                    <span style={{ fontSize: "0.88rem", color: "rgba(255,255,255,0.5)" }}>
+                                                      {valuePart !== "—" ? `${valuePart}${unitPart}` : "—"}
+                                                    </span>
+                                                  </div>
+                                                );
+                                              })}
                                             </>
                                           ) : (
                                             ""
@@ -1328,23 +1506,101 @@ function AthleteTrackingContentInner() {
                 }
 
                 if (domain.domainId === "proteus") {
-                  const PROTEUS_HIGH = ["Power_high", "Velocity_high", "Acceleration_high"];
-                  const PROTEUS_MEAN = ["Power_mean", "Velocity_mean", "Acceleration_mean"];
                   const movements = Array.from(new Set(domain.metrics.map((m) => m.category)));
+
+                  // Human-readable label per Proteus metric name
+                  const proteusMetricLabel = (name: string): string => {
+                    const MAP: Record<string, string> = {
+                      Power_high: "Peak Power",
+                      Velocity_high: "Peak Velocity",
+                      Acceleration_high: "Peak Acceleration",
+                      Power_mean: "Average Power",
+                      Velocity_mean: "Average Velocity",
+                      Acceleration_mean: "Average Acceleration",
+                    };
+                    return MAP[name] ?? name.replace(/_high$/i, " (Peak)").replace(/_mean$/i, " (Avg)");
+                  };
+
+                  // One 6-point series per date (all 6 metrics as individual radar axes)
+                  const buildProteusSeries = (metrics: MetricWithPercentile[], seriesName: string, color: string): RadarDataSeries => ({
+                    name: seriesName,
+                    data: metrics
+                      .filter((m) => m.percentile != null && Number.isFinite(m.percentile))
+                      .map((m) => {
+                        const subject = proteusMetricLabel(m.name);
+                        return {
+                          subject,
+                          value: m.percentile!,
+                          fullMark: 100,
+                          displayValue: `${subject}: ${Math.round(m.percentile!)}th %ile`,
+                        };
+                      }),
+                    color,
+                  });
+
                   return (
                     <>
+                      {/* Session comparison panel */}
+                      {compareMode === "date" && availForDomain.length > 1 && (
+                        <div className="card" style={{ marginBottom: "1rem" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+                            <span style={{ fontSize: "0.85rem", fontWeight: 600 }}>Sessions:</span>
+                            <span style={{ fontSize: "13px", padding: "3px 10px", borderRadius: 6, border: "1px solid var(--accent)", background: "var(--accent-muted)", color: "var(--accent)" }}>
+                              {primaryDate ?? "Latest"} (primary)
+                            </span>
+                            {compareDates.map((date) => {
+                              const key = `${domain.domainId}|${date}`;
+                              const isLoading = compLoadingKeys.includes(key);
+                              return (
+                                <span key={date} style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem", fontSize: "13px", padding: "3px 10px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg-tertiary)" }}>
+                                  {isLoading ? `${date} (loading…)` : date}
+                                  <button type="button" className="btn-ghost" style={{ padding: "0 3px", fontSize: "12px" }} onClick={() => removeCompareDate(domain.domainId, date)} aria-label={`Remove ${date}`}>×</button>
+                                </span>
+                              );
+                            })}
+                            {compareDates.length < 3 && remainingDates.length > 0 && (
+                              <select value="" onChange={(e) => { if (e.target.value) addCompareDate(domain.domainId, e.target.value); }} style={{ padding: "3px 8px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg-tertiary)", color: "var(--text-secondary)", fontSize: "13px" }}>
+                                <option value="">+ Add date…</option>
+                                {remainingDates.map((d) => <option key={d} value={d}>{d}</option>)}
+                              </select>
+                            )}
+                          </div>
+                          {loadingDates && availForDomain.length === 0 && (
+                            <p className="text-muted" style={{ margin: "0.5rem 0 0", fontSize: "0.8rem" }}>Loading available dates…</p>
+                          )}
+                        </div>
+                      )}
                       {movements.map((movement) => {
                         const movementMetrics = domain.metrics.filter((m) => m.category === movement);
-                        const highMetrics = movementMetrics.filter((m) => PROTEUS_HIGH.includes(m.name));
-                        const meanMetrics = movementMetrics.filter((m) => PROTEUS_MEAN.includes(m.name));
+
+                        // One series per date, each with 6 points (Peak + Average for Power/Velocity/Acceleration)
+                        const proteusSeries: RadarDataSeries[] = [
+                          buildProteusSeries(movementMetrics, domain.sessionDate ?? "Latest", SERIES_COLORS[0]!),
+                          ...compDomains.map(({ label, domain: cd }, i) =>
+                            buildProteusSeries(
+                              cd.metrics.filter((m) => m.category === movement),
+                              label,
+                              SERIES_COLORS[i + 1]!,
+                            )
+                          ),
+                        ];
+
+                        // Comparison table data
+                        const proteusCompRows = compDomains.map(({ label, domain: cd }) => ({
+                          label,
+                          metrics: cd.metrics.filter((m) => m.category === movement),
+                        }));
+
                         return (
                           <div key={movement} style={{ marginBottom: "2rem" }}>
                             <h3 style={{ margin: "0 0 1rem", fontSize: "1rem" }}>
                               {movement}{domain.sessionDate ? ` · ${domain.sessionDate}` : ""}
                             </h3>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
-                              <MetricRadarChart title="High" data={metricsToRadarData(highMetrics, domain.domainId)} />
-                              <MetricRadarChart title="Mean" data={metricsToRadarData(meanMetrics, domain.domainId)} />
+                            <div style={{ marginBottom: "1rem" }}>
+                              <MetricRadarChart
+                                title={`${movement} – percentiles`}
+                                dataSeries={proteusSeries}
+                              />
                             </div>
                             <div className="card">
                               <table>
@@ -1356,24 +1612,37 @@ function AthleteTrackingContentInner() {
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {movementMetrics.map((m, i) => (
-                                    <tr key={`${domain.domainId}-${movement}-${i}-${m.name}`}>
-                                      <td>{formatMetricDisplayName(m.name, m.category, domain.domainId)}</td>
-                                      <td>
-                                        {(() => {
-                                          const { valuePart, unitPart } = formatMetricValueParts(m);
-                                          return valuePart === "—" ? "—" : (<><strong>{valuePart}</strong>{unitPart}</>);
-                                        })()}
-                                      </td>
-                                      <td>
-                                        {m.percentile != null ? (
-                                          <span style={getPercentileStyle(m.percentile)}>
-                                            {Math.round(m.percentile)}th %ile
-                                          </span>
-                                        ) : "—"}
-                                      </td>
-                                    </tr>
-                                  ))}
+                                  {movementMetrics.map((m, i) => {
+                                    const { valuePart, unitPart } = formatMetricValueParts(m);
+                                    return (
+                                      <tr key={`${domain.domainId}-${movement}-${i}-${m.name}`}>
+                                        <td>{proteusMetricLabel(m.name)}</td>
+                                        <td>
+                                          {valuePart === "—" ? "—" : (<><strong>{valuePart}</strong>{unitPart}</>)}
+                                          {proteusCompRows.map(({ label, metrics: cms }) => {
+                                            const cm = cms.find((c) => c.name === m.name);
+                                            if (!cm) return null;
+                                            const { valuePart: cvp, unitPart: cup } = formatMetricValueParts(cm);
+                                            return (
+                                              <div key={label} style={{ marginTop: "0.4rem", borderTop: "1px solid rgba(255,255,255,0.07)", paddingTop: "0.3rem" }}>
+                                                <div style={{ fontSize: "0.68rem", color: "rgba(255,255,255,0.38)", marginBottom: "0.1rem" }}>{label}</div>
+                                                <span style={{ fontSize: "0.88rem", color: "rgba(255,255,255,0.5)" }}>
+                                                  {cvp !== "—" ? `${cvp}${cup}` : "—"}
+                                                </span>
+                                              </div>
+                                            );
+                                          })}
+                                        </td>
+                                        <td>
+                                          {m.percentile != null ? (
+                                            <span style={getPercentileStyle(m.percentile)}>
+                                              {Math.round(m.percentile)}th %ile
+                                            </span>
+                                          ) : "—"}
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
                                 </tbody>
                               </table>
                             </div>
@@ -1501,51 +1770,42 @@ function AthleteTrackingContentInner() {
                     {viewMode === "timeline" && timelineKeys.length > 0 && timelineDates.length > 0 ? (
                       <div className="card" style={{ marginBottom: "1rem" }}>
                         <h3 style={{ margin: "0 0 0.75rem", fontSize: "1rem" }}>Timeline</h3>
-                        <div style={{ overflowX: "auto" }}>
-                          <table>
-                            <thead>
-                              <tr>
-                                <th>Metric</th>
-                                {timelineDates.map((d) => (
-                                  <th key={d}>{d}{d === primaryDate ? " ★" : ""}</th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {timelineKeys.map((key) => {
-                                const [cat, name] = key.split("|") as [string, string];
-                                const label = formatMetricDisplayName(name, cat, domain.domainId);
-                                return (
-                                  <tr key={key}>
-                                    <td style={{ whiteSpace: "nowrap" }}>{label}</td>
-                                    {timelineDates.map((date) => {
-                                      const d = getDomainForDate(date);
-                                      const val = getMetricValueFromDomain(d, key);
-                                      const metric = d ? getMetricByKey(d.metrics, key) : null;
-                                      return (
-                                        <td key={date} style={{ textAlign: "center" }}>
-                                          {val === "—" ? "—" : (
-                                            <>
-                                              <strong>{val}</strong>
-                                              {metric?.percentile != null && (
-                                                <div style={{ fontSize: "0.75rem", ...getPercentileStyle(metric.percentile) }}>
-                                                  {Math.round(metric.percentile)}th
-                                                </div>
-                                              )}
-                                            </>
-                                          )}
-                                        </td>
-                                      );
-                                    })}
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
+                        <div
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+                            gap: "1.25rem",
+                          }}
+                        >
+                          {timelineKeys.map((key) => {
+                            const [cat, name] = key.split("|") as [string, string];
+                            const label = formatMetricDisplayName(name, cat, domain.domainId);
+                            // Build chart data sorted chronologically (oldest → newest)
+                            const chartDates = [...timelineDates].sort((a, b) => a.localeCompare(b));
+                            const chartData = chartDates.map((date) => {
+                              const d = getDomainForDate(date);
+                              const raw = getMetricValueFromDomain(d, key);
+                              const num = raw === "—" ? null : parseFloat(raw);
+                              return { date, value: Number.isFinite(num) ? num : null };
+                            });
+                            // Extract unit from primary domain metric
+                            const sampleMetric = getMetricByKey(domain.metrics, key);
+                            const unit = sampleMetric?.valueUnit && sampleMetric.valueUnit !== "NONE" && sampleMetric.valueUnit !== "UNITLESS"
+                              ? sampleMetric.valueUnit.toLowerCase().replace(/_/g, " ")
+                              : undefined;
+                            return (
+                              <MetricLineChart
+                                key={key}
+                                title={label}
+                                data={chartData}
+                                unit={unit}
+                              />
+                            );
+                          })}
                         </div>
                         {timelineDates.some((d) => d !== primaryDate && !compCache[`${domain.domainId}|${d}`]) && (
-                          <p className="text-muted" style={{ margin: "0.5rem 0 0", fontSize: "0.8rem" }}>
-                            Add comparison dates above to populate timeline columns.
+                          <p className="text-muted" style={{ margin: "0.75rem 0 0", fontSize: "0.8rem" }}>
+                            Add comparison dates above to populate the timeline.
                           </p>
                         )}
                       </div>
@@ -1569,6 +1829,10 @@ function AthleteTrackingContentInner() {
                       <>
                         {PITCHING_TABLE_SECTIONS.map((section) => {
                           const cells = buildPitchingDisplayCells(domain.metrics, section.items);
+                          const compCellSets = compDomains.map(({ label, domain: cd }) => ({
+                            label,
+                            cells: buildPitchingDisplayCells(cd.metrics, section.items),
+                          }));
                           return (
                             <div key={section.id} className="card" style={{ marginBottom: "1rem" }}>
                               {section.title ? (
@@ -1590,7 +1854,7 @@ function AthleteTrackingContentInner() {
                                 </thead>
                                 <tbody>
                                   <tr>
-                                    {cells.map((cell) => (
+                                    {cells.map((cell, cellIdx) => (
                                       <td key={`${section.id}-${cell.key}-value`}>
                                         {cell.valuePart === "—" ? "—" : (
                                           <>
@@ -1626,6 +1890,26 @@ function AthleteTrackingContentInner() {
                                         >
                                           {cell.percentile != null ? `${Math.round(cell.percentile)}th %ile` : "—"}
                                         </div>
+                                        {compCellSets.map(({ label, cells: ccs }) => {
+                                          const cc = ccs[cellIdx];
+                                          return (
+                                            <div
+                                              key={label}
+                                              style={{
+                                                marginTop: "0.4rem",
+                                                borderTop: "1px solid rgba(255,255,255,0.07)",
+                                                paddingTop: "0.3rem",
+                                              }}
+                                            >
+                                              <div style={{ fontSize: "0.68rem", color: "rgba(255,255,255,0.38)", marginBottom: "0.1rem" }}>
+                                                {label}
+                                              </div>
+                                              <span style={{ fontSize: "0.88rem", color: "rgba(255,255,255,0.5)" }}>
+                                                {cc && cc.valuePart !== "—" ? `${cc.valuePart}${cc.unitPart}` : "—"}
+                                              </span>
+                                            </div>
+                                          );
+                                        })}
                                       </td>
                                     ))}
                                   </tr>
@@ -1639,6 +1923,10 @@ function AthleteTrackingContentInner() {
                       <>
                         {HITTING_TABLE_SECTIONS.map((section) => {
                           const cells = buildHittingDisplayCells(domain.metrics, section.items);
+                          const compCellSets = compDomains.map(({ label, domain: cd }) => ({
+                            label,
+                            cells: buildHittingDisplayCells(cd.metrics, section.items),
+                          }));
                           return (
                             <div key={section.id} className="card" style={{ marginBottom: "1rem" }}>
                               <h3 style={{ margin: "0 0 0.35rem", fontSize: "1rem" }}>{section.title}</h3>
@@ -1658,7 +1946,7 @@ function AthleteTrackingContentInner() {
                                 </thead>
                                 <tbody>
                                   <tr>
-                                    {cells.map((cell) => (
+                                    {cells.map((cell, cellIdx) => (
                                       <td key={`${section.id}-${cell.key}-value`}>
                                         {cell.valuePart === "—" ? "—" : (
                                           <>
@@ -1676,6 +1964,26 @@ function AthleteTrackingContentInner() {
                                         >
                                           {cell.percentile != null ? `${Math.round(cell.percentile)}th %ile` : "—"}
                                         </div>
+                                        {compCellSets.map(({ label, cells: ccs }) => {
+                                          const cc = ccs[cellIdx];
+                                          return (
+                                            <div
+                                              key={label}
+                                              style={{
+                                                marginTop: "0.4rem",
+                                                borderTop: "1px solid rgba(255,255,255,0.07)",
+                                                paddingTop: "0.3rem",
+                                              }}
+                                            >
+                                              <div style={{ fontSize: "0.68rem", color: "rgba(255,255,255,0.38)", marginBottom: "0.1rem" }}>
+                                                {label}
+                                              </div>
+                                              <span style={{ fontSize: "0.88rem", color: "rgba(255,255,255,0.5)" }}>
+                                                {cc && cc.valuePart !== "—" ? `${cc.valuePart}${cc.unitPart}` : "—"}
+                                              </span>
+                                            </div>
+                                          );
+                                        })}
                                       </td>
                                     ))}
                                   </tr>

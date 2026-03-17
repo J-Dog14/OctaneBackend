@@ -309,7 +309,7 @@ const PITCHING_METRIC_SPECS: MetricSpec[] = [
     category: "PELVIC_OBLIQUITY",
     name: "TOTAL",
     valueUnit: "DEGREES",
-    orientation: "HIGHER_IS_BETTER",
+    orientation: "LOWER_IS_BETTER",
     computeFromMap(map) {
       const release = getFromMap(map, "PROCESSED.Pelvis_Angle@Release_Y");
       const footstrike = getFromMap(map, "PROCESSED.Pelvis_Angle@Footstrike_Y");

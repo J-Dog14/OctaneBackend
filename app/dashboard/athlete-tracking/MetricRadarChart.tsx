@@ -56,7 +56,7 @@ function mergeSeriesIntoChartData(series: RadarDataSeries[]): {
   const valueBySubject = new Map<string, Map<number, number>>();
   for (let i = 0; i < series.length; i++) {
     const bySubj = new Map<string, number>();
-    for (const point of series[i].data) bySubj.set(point.subject, point.value);
+    for (const point of series[i]!.data) bySubj.set(point.subject, point.value);
     for (const subj of subjects) {
       if (!valueBySubject.has(subj)) valueBySubject.set(subj, new Map());
       valueBySubject.get(subj)!.set(i, bySubj.get(subj) ?? 0);
@@ -72,6 +72,62 @@ function mergeSeriesIntoChartData(series: RadarDataSeries[]): {
     return row;
   });
   return { data, keys };
+}
+
+/** Break a label string into lines of at most maxChars characters, splitting on word boundaries. */
+function wrapLabel(text: string, maxChars = 14): string[] {
+  const words = text.split(" ");
+  const lines: string[] = [];
+  let current = "";
+  for (const word of words) {
+    if (current.length === 0) {
+      current = word;
+    } else if (current.length + 1 + word.length <= maxChars) {
+      current += " " + word;
+    } else {
+      lines.push(current);
+      current = word;
+    }
+  }
+  if (current) lines.push(current);
+  return lines;
+}
+
+/** Custom tick for PolarAngleAxis that renders wrapped multi-line labels. */
+function RadarTickLabel(props: {
+  x?: number | string;
+  y?: number | string;
+  textAnchor?: "start" | "middle" | "end" | "inherit";
+  payload?: { value: string };
+  [key: string]: unknown;
+}) {
+  const x = typeof props.x === "string" ? parseFloat(props.x) : (props.x ?? 0);
+  const y = typeof props.y === "string" ? parseFloat(props.y) : (props.y ?? 0);
+  const textAnchor = props.textAnchor ?? "middle";
+  const { payload } = props;
+  if (!payload?.value) return null;
+
+  const lines = wrapLabel(payload.value, 14);
+  const lineHeight = 13;
+  // Centre the block of lines vertically around y
+  const totalHeight = lines.length * lineHeight;
+  const startY = y - (totalHeight - lineHeight) / 2;
+
+  return (
+    <text
+      x={x}
+      y={startY}
+      textAnchor={textAnchor}
+      fill="var(--text-secondary)"
+      fontSize={11}
+    >
+      {lines.map((line, i) => (
+        <tspan key={i} x={x} dy={i === 0 ? 0 : lineHeight}>
+          {line}
+        </tspan>
+      ))}
+    </text>
+  );
 }
 
 export function MetricRadarChart({
@@ -90,7 +146,7 @@ export function MetricRadarChart({
 
   if (!hasSingle && !hasMulti) {
     return (
-      <div className="card" style={{ minHeight: 320 }}>
+      <div className="card" style={{ minHeight: 360 }}>
         {title && (
           <h3 style={{ margin: "0 0 1rem", fontSize: "1rem" }}>{title}</h3>
         )}
@@ -102,16 +158,19 @@ export function MetricRadarChart({
   const chartData = useMulti ? mergedData : singleData;
 
   return (
-    <div className="card" style={{ minHeight: 320 }}>
+    <div className="card" style={{ minHeight: 360 }}>
       {title && (
         <h3 style={{ margin: "0 0 1rem", fontSize: "1rem" }}>{title}</h3>
       )}
-      <ResponsiveContainer width="100%" height={320}>
-        <RechartsRadarChart data={chartData} margin={{ top: 20, right: 30, bottom: 20, left: 30 }}>
+      <ResponsiveContainer width="100%" height={360}>
+        <RechartsRadarChart
+          data={chartData}
+          margin={{ top: 30, right: 60, bottom: 30, left: 60 }}
+        >
           <PolarGrid stroke="var(--border)" />
           <PolarAngleAxis
             dataKey="subject"
-            tick={{ fill: "var(--text-secondary)", fontSize: 11 }}
+            tick={RadarTickLabel}
             tickLine={{ stroke: "var(--border)" }}
           />
           <PolarRadiusAxis
@@ -125,7 +184,7 @@ export function MetricRadarChart({
                 <Radar
                   key={s.name}
                   name={s.name}
-                  dataKey={keys[i]}
+                  dataKey={keys[i]!}
                   stroke={s.color}
                   fill={s.color}
                   fillOpacity={0.2}
