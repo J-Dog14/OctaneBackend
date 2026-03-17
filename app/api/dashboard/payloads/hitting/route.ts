@@ -2,11 +2,13 @@ import { NextRequest } from "next/server";
 import { badRequest, internalError, success } from "@/lib/responses";
 import { octaneSingleAthletePayloadQuerySchema } from "@/lib/validation/octane";
 import { buildHittingPayload } from "@/lib/octane/hittingPayload";
+import { requireAuth } from "@/lib/auth/requireAuth";
 
 /**
  * Dashboard-only: generate hitting payload for an athlete. No API key.
  */
 export async function GET(request: NextRequest) {
+  await requireAuth();
   try {
     const { searchParams } = new URL(request.url);
     const rawQuery = {

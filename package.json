@@ -14,6 +14,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1007.0",
     "@aws-sdk/s3-request-presigner": "^3.1007.0",
+    "@clerk/nextjs": "^7.0.5",
     "@mantine/core": "^7.17.8",
     "@mantine/hooks": "^7.17.8",
     "@prisma/client": "^6.15.0",

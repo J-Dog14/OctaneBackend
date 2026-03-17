@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { badRequest, notFound, success } from "@/lib/responses";
+import { requireAuth } from "@/lib/auth/requireAuth";
 import {
   getPitchingTrialValueMapAndAthlete,
   buildPitchingPayloadWithDebug,
@@ -11,6 +12,7 @@ import {
  * Also returns all keys present in the trials metrics JSON so you can verify naming.
  */
 export async function GET(request: NextRequest) {
+  await requireAuth();
   const athleteUuid = request.nextUrl.searchParams.get("athleteUuid");
   if (!athleteUuid?.trim()) {
     return badRequest("athleteUuid is required");

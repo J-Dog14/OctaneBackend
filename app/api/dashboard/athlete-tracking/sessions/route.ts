@@ -3,6 +3,7 @@ import { badRequest, internalError, success } from "@/lib/responses";
 import { prisma } from "@/lib/db/prisma";
 import { z } from "zod";
 import type { DomainId } from "@/lib/athlete-tracking/types";
+import { requireAuth } from "@/lib/auth/requireAuth";
 
 const querySchema = z.object({
   athleteUuid: z.string().min(1, "athleteUuid is required"),
@@ -14,6 +15,7 @@ const querySchema = z.object({
  * Response: { domains: Array<{ domainId: DomainId; dates: string[] }> }
  */
 export async function GET(request: NextRequest) {
+  await requireAuth();
   try {
     const { searchParams } = new URL(request.url);
     const raw = { athleteUuid: searchParams.get("athleteUuid") ?? undefined };

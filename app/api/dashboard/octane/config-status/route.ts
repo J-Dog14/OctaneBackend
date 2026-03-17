@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth/requireAuth";
 
 function isLocalhostUrl(url: string): boolean {
   try {
@@ -16,6 +17,7 @@ function isLocalhostUrl(url: string): boolean {
  * GET /api/dashboard/octane/config-status
  */
 export async function GET() {
+  await requireAuth();
   const url = process.env.OCTANE_APP_API_URL?.trim();
   const hasUrl = Boolean(url);
   const hasKey = Boolean(process.env.OCTANE_API_KEY?.trim());

@@ -1,17 +1,25 @@
 import "./globals.css";
 import { ColorSchemeScript } from "@mantine/core";
 import { MantineProviders } from "./MantineProviders";
+import { ClerkProvider } from "@clerk/nextjs";
 
 export const metadata = {
   title: "Octane Biomech",
   description: "Biomechanics data dashboard and payload management",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+const clerkAppearance = {
+  variables: {
+    colorPrimary: "#2c99d4",
+    colorBackground: "#111827",
+    colorInputBackground: "#1f2937",
+    colorText: "#f9fafb",
+    colorTextSecondary: "#9ca3af",
+    borderRadius: "6px",
+  },
+};
+
+function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -28,3 +36,18 @@ export default function RootLayout({
   );
 }
 
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  if (!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
+    return <Layout>{children}</Layout>;
+  }
+
+  return (
+    <ClerkProvider appearance={clerkAppearance}>
+      <Layout>{children}</Layout>
+    </ClerkProvider>
+  );
+}

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { badRequest, notFound, success, unauthorized } from "@/lib/responses";
 import { lookupOctaneUserByEmail } from "@/lib/octane/octaneUserLookup";
+import { requireAuth } from "@/lib/auth/requireAuth";
 
 /** Basic email format: non-empty, has @, and something before/after. */
 function isValidEmailFormat(value: string): boolean {
@@ -16,6 +17,7 @@ function isValidEmailFormat(value: string): boolean {
  * GET /api/dashboard/octane/users/by-email?email=...
  */
 export async function GET(request: NextRequest) {
+  await requireAuth();
   const emailParam = request.nextUrl.searchParams.get("email");
   if (emailParam === null || emailParam === "") {
     return badRequest("Email query parameter is required");

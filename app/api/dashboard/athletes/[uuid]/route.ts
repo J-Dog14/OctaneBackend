@@ -3,6 +3,7 @@ import { badRequest, internalError, notFound, success } from "@/lib/responses";
 import { buildAthleteReportPayload } from "@/lib/octane/reportPayload";
 import { prisma } from "@/lib/db/prisma";
 import { resolveAppUuidByEmail } from "@/lib/dashboard/appDbResolver";
+import { requireAuth } from "@/lib/auth/requireAuth";
 
 /**
  * Dashboard-only: single athlete with full report payload (counts).
@@ -12,6 +13,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ uuid: string }> }
 ) {
+  await requireAuth();
   try {
     const { uuid } = await params;
     if (!uuid) {
@@ -38,6 +40,7 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ uuid: string }> }
 ) {
+  await requireAuth();
   try {
     const { uuid } = await params;
     if (!uuid) return notFound("Athlete not found");

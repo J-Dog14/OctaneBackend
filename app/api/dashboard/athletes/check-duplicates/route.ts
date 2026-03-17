@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { badRequest, internalError, success } from "@/lib/responses";
 import { prisma } from "@/lib/db/prisma";
 import type { Prisma } from "@prisma/client";
+import { requireAuth } from "@/lib/auth/requireAuth";
 
 function normalizeEmail(raw: string): string {
   return raw.trim().toLowerCase();
@@ -13,6 +14,7 @@ function normalizeEmail(raw: string): string {
  * At least one of name or email must be provided.
  */
 export async function GET(request: NextRequest) {
+  await requireAuth();
   try {
     const { searchParams } = new URL(request.url);
     const name = searchParams.get("name")?.trim();

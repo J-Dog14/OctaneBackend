@@ -1,12 +1,11 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useState, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   TextInput,
   Badge,
-  SegmentedControl,
   Select,
   Tabs,
   TabsList,
@@ -73,7 +72,7 @@ const PITCHING_RADAR_ALLOWLIST = new Set([
   "KINEMATIC_SEQUENCE|PELVIS",
   "KINEMATIC_SEQUENCE|TORSO",
   "KINEMATIC_SEQUENCE|ARM",
-  "KINEMATIC_SEQUENCE|HAND",
+  "SHOULDER_EXTERNAL_ROTATION|MAX",
   "GRF|MID_POINT",
 ]);
 
@@ -333,7 +332,7 @@ const PITCHING_TABLE_SECTIONS: PitchingSection[] = [
       { kind: "metric", key: "KINEMATIC_SEQUENCE|PELVIS", label: "Pelvis Ang Velo" },
       { kind: "metric", key: "KINEMATIC_SEQUENCE|TORSO", label: "Torso Ang Velo" },
       { kind: "metric", key: "KINEMATIC_SEQUENCE|ARM", label: "Arm Ang Velo" },
-      { kind: "metric", key: "KINEMATIC_SEQUENCE|HAND", label: "Hand Ang Velo" },
+      { kind: "metric", key: "SHOULDER_EXTERNAL_ROTATION|MAX", label: "Max External Rotation" },
     ],
   },
 ];
@@ -589,7 +588,6 @@ function getTimelineMetricKeys(domainId: string): string[] {
 
 function AthleteTrackingContentInner() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const initialAthlete = searchParams.get("athlete") ?? "";
   const initialCurrent = searchParams.get("current") ?? "";
 
@@ -617,7 +615,7 @@ function AthleteTrackingContentInner() {
   const [domainViewMode, setDomainViewMode] = useState<Record<string, "compare" | "timeline">>({});
 
   // --- Cross-athlete comparison (secondary) ---
-  const [compareMode, setCompareMode] = useState<"date" | "athlete">("date");
+  const [domainCompareMode, setDomainCompareMode] = useState<Record<string, "none" | "date" | "athlete">>({});
   const [compareUuid, setCompareUuid] = useState<string | null>(null);
   const [compareReport, setCompareReport] = useState<AthleteTrackingReport | null>(null);
   const [loadingCompare, setLoadingCompare] = useState(false);
@@ -662,9 +660,9 @@ function AthleteTrackingContentInner() {
     const q = params.toString();
     const path = `/dashboard/athlete-tracking${q ? `?${q}` : ""}`;
     if (typeof window !== "undefined" && window.location.pathname + window.location.search !== path) {
-      router.replace(path, { scroll: false });
+      window.history.replaceState(null, "", path);
     }
-  }, [trackedUuids, currentUuid, router]);
+  }, [trackedUuids, currentUuid]);
 
   const fetchReport = useCallback(async (athleteUuid: string) => {
     setLoadingReport(true);
@@ -697,6 +695,7 @@ function AthleteTrackingContentInner() {
       setCompCache({});
       setCompLoadingKeys([]);
       setDomainViewMode({});
+      setDomainCompareMode({});
       setAvailableDates({});
       setCompareReport(null);
       setCompareUuid(null);
@@ -732,7 +731,8 @@ function AthleteTrackingContentInner() {
 
   // Cross-athlete compare fetch
   useEffect(() => {
-    if (compareMode !== "athlete" || !compareUuid || compareUuid === currentUuid) {
+    const anyAthleteMode = Object.values(domainCompareMode).some((m) => m === "athlete");
+    if (!anyAthleteMode || !compareUuid || compareUuid === currentUuid) {
       setCompareReport(null);
       return;
     }
@@ -746,11 +746,11 @@ function AthleteTrackingContentInner() {
       .then((data) => setCompareReport(data))
       .catch(() => setCompareReport(null))
       .finally(() => setLoadingCompare(false));
-  }, [compareMode, compareUuid, currentUuid]);
+  }, [domainCompareMode, compareUuid, currentUuid]);
 
   // Fetch comparison reports for date-based comparisons
   useEffect(() => {
-    if (!currentUuid || compareMode !== "date") return;
+    if (!currentUuid) return;
     const toFetch: Array<{ domainId: string; date: string; key: string }> = [];
     for (const [domainId, dates] of Object.entries(domainCompareDates)) {
       for (const date of dates) {
@@ -778,7 +778,13 @@ function AthleteTrackingContentInner() {
           setCompLoadingKeys((prev) => prev.filter((k) => k !== key));
         });
     }
-  }, [domainCompareDates, currentUuid, compareMode, compCache, compLoadingKeys]);
+  }, [domainCompareDates, currentUuid, compCache, compLoadingKeys]);
+
+  const selectAthlete = (uuid: string) => {
+    setTrackedUuids([uuid]);
+    setCurrentUuid(uuid);
+    setAddAthleteQuery("");
+  };
 
   const addTracked = (uuid: string) => {
     if (trackedUuids.includes(uuid)) return;
@@ -828,41 +834,40 @@ function AthleteTrackingContentInner() {
         {loadingAthletes ? (
           <Text c="dimmed" size="sm">Loading athletes…</Text>
         ) : (
-          <Group gap="xs" mb="sm" wrap="wrap">
+          <Group gap="xs" mb="sm" wrap="wrap" align="flex-start">
             <TextInput
               placeholder="Search by name…"
               value={addAthleteQuery}
               onChange={(e) => setAddAthleteQuery(e.target.value)}
-              w={200}
+              w={220}
               size="sm"
             />
-            <Group gap={4} wrap="wrap">
-              {athletes
-                .filter(
-                  (a) =>
-                    !trackedUuids.includes(a.athlete_uuid) &&
-                    (!addAthleteQuery.trim() ||
-                      a.name.toLowerCase().includes(addAthleteQuery.toLowerCase()))
-                )
-                .slice(0, 20)
-                .map((a) => (
-                  <button
-                    key={a.athlete_uuid}
-                    type="button"
-                    className="btn-ghost"
-                    style={{ fontSize: "13px" }}
-                    onClick={() => addTracked(a.athlete_uuid)}
-                  >
-                    + {a.name}
-                  </button>
-                ))}
-            </Group>
+            {addAthleteQuery.trim() && (
+              <Group gap={4} wrap="wrap">
+                {athletes
+                  .filter((a) =>
+                    a.name.toLowerCase().includes(addAthleteQuery.toLowerCase())
+                  )
+                  .slice(0, 20)
+                  .map((a) => (
+                    <button
+                      key={a.athlete_uuid}
+                      type="button"
+                      className="btn-ghost"
+                      style={{ fontSize: "13px" }}
+                      onClick={() => selectAthlete(a.athlete_uuid)}
+                    >
+                      {a.name}
+                    </button>
+                  ))}
+              </Group>
+            )}
           </Group>
         )}
 
-        <Text fw={600} size="sm" mb={6}>Tracked athletes</Text>
+        <Text fw={600} size="sm" mb={6}>Selected athlete</Text>
         {trackedUuids.length === 0 ? (
-          <Text c="dimmed" size="sm">Add an athlete above to get started.</Text>
+          <Text c="dimmed" size="sm">Search for an athlete above to get started.</Text>
         ) : (
           <Group gap={6} wrap="wrap">
             {trackedUuids.map((uuid) => {
@@ -919,39 +924,6 @@ function AthleteTrackingContentInner() {
                 <h2 style={{ margin: "0 0 0.75rem", fontSize: "1.1rem" }}>
                   {report.athlete.name}
                 </h2>
-
-                {/* Compare mode toggle */}
-                <Group gap="sm" mb="sm" wrap="wrap">
-                  <Text size="sm" c="dimmed">Compare by:</Text>
-                  <SegmentedControl
-                    value={compareMode}
-                    onChange={(v) => setCompareMode(v as "date" | "athlete")}
-                    size="xs"
-                    data={[
-                      { value: "date", label: "Session Date" },
-                      { value: "athlete", label: "Athlete" },
-                    ]}
-                  />
-                  {compareMode === "athlete" && (
-                    <>
-                      <Select
-                        value={compareUuid ?? ""}
-                        onChange={(value) => setCompareUuid(value || null)}
-                        disabled={loadingCompare}
-                        data={[
-                          { value: "", label: "— None —" },
-                          ...athletes
-                            .filter((a) => a.athlete_uuid !== currentUuid)
-                            .map((a) => ({ value: a.athlete_uuid, label: a.name })),
-                        ]}
-                        clearable
-                        w={200}
-                        size="xs"
-                      />
-                      {loadingCompare && <Text size="sm" c="dimmed">Loading…</Text>}
-                    </>
-                  )}
-                </Group>
 
                 {/* Domain tabs */}
                 {(() => {
@@ -1023,6 +995,13 @@ function AthleteTrackingContentInner() {
                 const domain = report.domains[pageIndex - 1]!;
                 const compareDates = domainCompareDates[domain.domainId] ?? [];
                 const viewMode = domainViewMode[domain.domainId] ?? "compare";
+                const domainMode = domainCompareMode[domain.domainId] ?? "none";
+                const toggleDomainMode = (mode: "date" | "athlete") => {
+                  setDomainCompareMode((prev) => ({
+                    ...prev,
+                    [domain.domainId]: prev[domain.domainId] === mode ? "none" : mode,
+                  }));
+                };
 
                 // Build radar series (multi-date or cross-athlete)
                 const radarMetrics = getRadarMetricsForDomain(domain.metrics, domain.domainId);
@@ -1033,7 +1012,7 @@ function AthleteTrackingContentInner() {
                     color: SERIES_COLORS[0]!,
                   },
                 ];
-                if (compareMode === "date") {
+                if (domainMode === "date") {
                   compareDates.forEach((date, i) => {
                     const key = `${domain.domainId}|${date}`;
                     const cached = compCache[key];
@@ -1049,7 +1028,7 @@ function AthleteTrackingContentInner() {
                       }
                     }
                   });
-                } else if (compareMode === "athlete" && compareReport) {
+                } else if (domainMode === "athlete" && compareReport) {
                   const compareDomain = compareReport.domains.find((d) => d.domainId === domain.domainId);
                   if (compareDomain) {
                     const compRadar = getRadarMetricsForDomain(compareDomain.metrics, domain.domainId);
@@ -1095,16 +1074,73 @@ function AthleteTrackingContentInner() {
 
                 // Build comparison domains for table rows (date or athlete comparison)
                 const compDomains: Array<{ label: string; domain: DomainWithMetrics }> = [];
-                if (compareMode === "date") {
+                if (domainMode === "date") {
                   for (const date of compareDates) {
                     const cached = compCache[`${domain.domainId}|${date}`];
                     const cd = cached?.domains.find((d) => d.domainId === domain.domainId);
                     if (cd) compDomains.push({ label: date, domain: cd });
                   }
-                } else if (compareMode === "athlete" && compareReport) {
+                } else if (domainMode === "athlete" && compareReport) {
                   const cd = compareReport.domains.find((d) => d.domainId === domain.domainId);
                   if (cd) compDomains.push({ label: compareReport.athlete.name, domain: cd });
                 }
+
+                // Compare mode buttons (rendered at the top of every domain page)
+                const compareModeButtons = (
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap", marginBottom: "1rem" }}>
+                    <button
+                      type="button"
+                      className="btn-ghost"
+                      style={{
+                        fontSize: "13px",
+                        padding: "7px 16px",
+                        borderRadius: 6,
+                        border: `1px solid ${domainMode === "date" ? "var(--accent)" : "var(--border)"}`,
+                        background: domainMode === "date" ? "var(--accent-muted)" : "transparent",
+                        color: domainMode === "date" ? "var(--accent)" : "var(--text-secondary)",
+                        fontWeight: 500,
+                      }}
+                      onClick={() => toggleDomainMode("date")}
+                    >
+                      Compare Sessions
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-ghost"
+                      style={{
+                        fontSize: "13px",
+                        padding: "7px 16px",
+                        borderRadius: 6,
+                        border: `1px solid ${domainMode === "athlete" ? "var(--accent)" : "var(--border)"}`,
+                        background: domainMode === "athlete" ? "var(--accent-muted)" : "transparent",
+                        color: domainMode === "athlete" ? "var(--accent)" : "var(--text-secondary)",
+                        fontWeight: 500,
+                      }}
+                      onClick={() => toggleDomainMode("athlete")}
+                    >
+                      Compare Other Athletes
+                    </button>
+                    {domainMode === "athlete" && (
+                      <>
+                        <Select
+                          value={compareUuid ?? ""}
+                          onChange={(value) => setCompareUuid(value || null)}
+                          disabled={loadingCompare}
+                          data={[
+                            { value: "", label: "— None —" },
+                            ...athletes
+                              .filter((a) => a.athlete_uuid !== currentUuid)
+                              .map((a) => ({ value: a.athlete_uuid, label: a.name })),
+                          ]}
+                          clearable
+                          w={200}
+                          size="xs"
+                        />
+                        {loadingCompare && <Text size="sm" c="dimmed">Loading…</Text>}
+                      </>
+                    )}
+                  </div>
+                );
 
                 if (domain.domainId === "athleticScreen") {
                   const ATHLETIC_SCREEN_MOVEMENT_ORDER = ["DJ", "PPU", "CMJ", "SLV"] as const;
@@ -1212,8 +1248,9 @@ function AthleteTrackingContentInner() {
 
                   return (
                     <>
+                      {compareModeButtons}
                       {/* Session comparison panel */}
-                      {compareMode === "date" && availForDomain.length > 1 && (
+                      {domainMode === "date" && availForDomain.length > 1 && (
                         <div className="card" style={{ marginBottom: "1rem" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
                             <span style={{ fontSize: "0.85rem", fontWeight: 600 }}>Sessions:</span>
@@ -1479,8 +1516,9 @@ function AthleteTrackingContentInner() {
 
                   return (
                     <>
+                      {compareModeButtons}
                       {/* Session comparison panel */}
-                      {compareMode === "date" && availForDomain.length > 1 && (
+                      {domainMode === "date" && availForDomain.length > 1 && (
                         <div className="card" style={{ marginBottom: "1rem" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
                             <span style={{ fontSize: "0.85rem", fontWeight: 600 }}>Sessions:</span>
@@ -1599,8 +1637,9 @@ function AthleteTrackingContentInner() {
                 // Generic domain rendering (pitching, hitting, mobility, armAction)
                 return (
                   <>
+                    {compareModeButtons}
                     {/* Session comparison panel */}
-                    {compareMode === "date" && availForDomain.length > 1 && (
+                    {domainMode === "date" && availForDomain.length > 1 && (
                       <div className="card" style={{ marginBottom: "1rem" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
                           <span style={{ fontSize: "0.85rem", fontWeight: 600 }}>Sessions:</span>

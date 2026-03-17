@@ -3,6 +3,7 @@ import { badRequest, internalError, success } from "@/lib/responses";
 import { buildAthleteTrackingReport } from "@/lib/athlete-tracking/report";
 import type { DomainId } from "@/lib/athlete-tracking/types";
 import { z } from "zod";
+import { requireAuth } from "@/lib/auth/requireAuth";
 
 const DOMAIN_IDS: DomainId[] = [
   "pitching",
@@ -23,6 +24,7 @@ const querySchema = z.object({
  *   Optional per-domain date overrides: &pitchingDate=YYYY-MM-DD &hittingDate=YYYY-MM-DD etc.
  */
 export async function GET(request: NextRequest) {
+  await requireAuth();
   try {
     const { searchParams } = new URL(request.url);
     const raw = { athleteUuid: searchParams.get("athleteUuid") ?? undefined };

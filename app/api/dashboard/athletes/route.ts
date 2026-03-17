@@ -2,12 +2,14 @@ import { NextRequest } from "next/server";
 import { badRequest, internalError, success } from "@/lib/responses";
 import { getAthletesList } from "@/lib/dashboard/athletes";
 import { uaisAthletesQuerySchema } from "@/lib/validation/uais";
+import { requireAuth } from "@/lib/auth/requireAuth";
 
 /**
  * Dashboard-only: list athletes (same shape as /api/uais/athletes).
  * Sorted alphabetically by name. No API key required.
  */
 export async function GET(request: NextRequest) {
+  await requireAuth();
   try {
     const { searchParams } = new URL(request.url);
     const rawQuery = {

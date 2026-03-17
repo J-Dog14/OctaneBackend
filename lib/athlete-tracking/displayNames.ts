@@ -76,7 +76,7 @@ const PITCHING_DISPLAY_OVERRIDES: Record<string, string> = {
   "KINEMATIC_SEQUENCE|ARM": "Pitching Humerus Ang Vel Max",
   "KINEMATIC_SEQUENCE|HAND": "Pitching Hand Ang Vel Max",
   "LATERAL_TILT|RELEASE": "Lateral Tilt @ Release",
-  "SHOULDER_EXTERNAL_ROTATION|MAX": "Shoulder External Rotation Max",
+  "SHOULDER_EXTERNAL_ROTATION|MAX": "Max External Rotation",
   "LINEAR_VELOCITY|MAX": "Max Pelvis Linear Vel",
   "GRF|MID_POINT": "Lead Leg GRF Mag Midpoint (FS–Release)",
   "GRF|GRF_MAG_MAX": "Lead Leg GRF Mag Max",

@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { internalError, success } from "@/lib/responses";
 import { prisma } from "@/lib/db/prisma";
+import { requireAuth } from "@/lib/auth/requireAuth";
 
 /**
  * GET /api/dashboard/athletes/latest?updated=1
@@ -8,6 +9,7 @@ import { prisma } from "@/lib/db/prisma";
  * Used after "Run selected" (New Athlete) to target the email popup.
  */
 export async function GET(request: NextRequest) {
+  await requireAuth();
   try {
     const { searchParams } = new URL(request.url);
     const orderByUpdated = searchParams.get("updated") === "1";

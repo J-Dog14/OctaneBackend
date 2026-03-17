@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Tabs, TabsList, TabsTab } from "@mantine/core";
+import { UserButton } from "@clerk/nextjs";
 
 const TABS = [
   { href: "/dashboard", label: "Dashboard" },
@@ -23,19 +24,22 @@ export function DashboardNav() {
     )?.href ?? "/dashboard";
 
   return (
-    <Tabs value={activeHref} variant="underline" keepMounted={false}>
-      <TabsList style={{ borderBottom: "none", gap: 0 }}>
-        {TABS.map((tab) => (
-          <TabsTab
-            key={tab.href}
-            value={tab.href}
-            renderRoot={(props) => <Link {...props} href={tab.href} />}
-            style={{ fontSize: "14px" }}
-          >
-            {tab.label}
-          </TabsTab>
-        ))}
-      </TabsList>
-    </Tabs>
+    <>
+      <Tabs value={activeHref} variant="underline" keepMounted={false} style={{ flex: 1 }}>
+        <TabsList style={{ borderBottom: "none", gap: 0 }}>
+          {TABS.map((tab) => (
+            <TabsTab
+              key={tab.href}
+              value={tab.href}
+              renderRoot={(props) => <Link {...props} href={tab.href} />}
+              style={{ fontSize: "14px" }}
+            >
+              {tab.label}
+            </TabsTab>
+          ))}
+        </TabsList>
+      </Tabs>
+      <UserButton afterSignOutUrl="/sign-in" />
+    </>
   );
 }
