@@ -53,8 +53,12 @@ const SETTING_GROUPS = [
   },
   {
     title: "Cloud Storage",
-    description: "Cloudflare R2 prefix for this org's uploaded assessment files. (Bucket credentials are set in Railway env vars.)",
+    description: "Cloudflare R2 credentials and prefix for this org's uploaded assessment files.",
     keys: [
+      { key: "r2_account_id", label: "R2 Account ID", placeholder: "Cloudflare account ID", type: "password" },
+      { key: "r2_access_key_id", label: "R2 Access Key ID", placeholder: "R2 API token access key", type: "password" },
+      { key: "r2_secret_access_key", label: "R2 Secret Access Key", placeholder: "R2 API token secret key", type: "password" },
+      { key: "r2_bucket_name", label: "R2 Bucket Name", placeholder: "octane-backend", type: "text" },
       { key: "r2_uploads_prefix", label: "R2 Uploads Prefix", placeholder: "org-name/uploads", type: "text" },
     ],
   },

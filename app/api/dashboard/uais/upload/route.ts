@@ -11,13 +11,6 @@ const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
  * Returns: { key, filename, size }
  */
 export async function POST(request: NextRequest) {
-  if (!process.env.R2_ACCOUNT_ID) {
-    return NextResponse.json(
-      { error: "Cloud storage not configured. Set R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and R2_BUCKET_NAME." },
-      { status: 503 }
-    );
-  }
-
   let formData: FormData;
   try {
     formData = await request.formData();

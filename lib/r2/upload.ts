@@ -13,8 +13,8 @@ export async function uploadToR2(
   assessmentType: string,
   contentType = "application/octet-stream"
 ): Promise<string> {
-  const client = getR2Client();
-  const bucket = getR2Bucket();
+  const client = await getR2Client();
+  const bucket = await getR2Bucket();
   const timestamp = Date.now();
   const uuid = crypto.randomUUID();
   const key = `uploads/${assessmentType}/${timestamp}-${uuid}/${filename}`;
@@ -34,15 +34,15 @@ export async function uploadToR2(
 
 /** Delete an object from R2 by key. */
 export async function deleteFromR2(key: string): Promise<void> {
-  const client = getR2Client();
-  const bucket = getR2Bucket();
+  const client = await getR2Client();
+  const bucket = await getR2Bucket();
   await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
 }
 
 /** Download R2 object to a local directory. Returns the local file path. */
 export async function downloadFromR2ToDir(key: string, destDir: string): Promise<string> {
-  const client = getR2Client();
-  const bucket = getR2Bucket();
+  const client = await getR2Client();
+  const bucket = await getR2Bucket();
 
   await mkdir(destDir, { recursive: true });
 
@@ -64,8 +64,8 @@ export async function downloadFromR2ToDir(key: string, destDir: string): Promise
 
 /** Generate a presigned GET URL for a file (for viewing/downloading results). */
 export async function getPresignedUrl(key: string, expiresInSeconds = 3600): Promise<string> {
-  const client = getR2Client();
-  const bucket = getR2Bucket();
+  const client = await getR2Client();
+  const bucket = await getR2Bucket();
   return getSignedUrl(
     client,
     new GetObjectCommand({ Bucket: bucket, Key: key }),
