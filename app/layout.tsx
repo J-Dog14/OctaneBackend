@@ -46,7 +46,7 @@ export default function RootLayout({
   }
 
   return (
-    <ClerkProvider appearance={clerkAppearance}>
+    <ClerkProvider appearance={clerkAppearance} afterSignOutUrl="/sign-in">
       <Layout>{children}</Layout>
     </ClerkProvider>
   );

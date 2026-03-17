@@ -39,7 +39,7 @@ export function DashboardNav() {
           ))}
         </TabsList>
       </Tabs>
-      <UserButton afterSignOutUrl="/sign-in" />
+      <UserButton />
     </>
   );
 }
