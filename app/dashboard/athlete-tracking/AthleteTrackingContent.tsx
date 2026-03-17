@@ -3,6 +3,22 @@
 import { Fragment, useCallback, useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import {
+  TextInput,
+  Badge,
+  SegmentedControl,
+  Select,
+  Tabs,
+  TabsList,
+  TabsTab,
+  Tooltip,
+  ActionIcon,
+  Title,
+  Text,
+  Card,
+  Group,
+  Stack,
+} from "@mantine/core";
 import { MetricRadarChart, type RadarMetric, type RadarDataSeries, SERIES_COLORS } from "./MetricRadarChart";
 import { MetricLineChart } from "./MetricLineChart";
 import { formatMetricDisplayName, formatValueWithUnit } from "@/lib/athlete-tracking/displayNames";
@@ -799,30 +815,28 @@ function AthleteTrackingContentInner() {
       : { highlights: [] as Array<{ domainLabel: string; domainId: string; metric: MetricWithPercentile }>, lowlights: [] as Array<{ domainLabel: string; domainId: string; metric: MetricWithPercentile }> };
 
   return (
-    <div>
-      <h1 style={{ marginBottom: "0.5rem", fontSize: "1.75rem" }}>
-        Athlete Tracking
-      </h1>
-      <p className="text-muted" style={{ marginBottom: "1.5rem" }}>
-        Select an athlete to view percentiles by domain and compare sessions over time.
-      </p>
+    <Stack gap="lg">
+      <div>
+        <Title order={1} mb={4}>Athlete Tracking</Title>
+        <Text c="dimmed">
+          Select an athlete to view percentiles by domain and compare sessions over time.
+        </Text>
+      </div>
 
-      <div className="card" style={{ marginBottom: "1.5rem" }}>
-        <h2 style={{ margin: "0 0 0.5rem", fontSize: "1rem" }}>
-          Select athlete
-        </h2>
+      <Card>
+        <Text fw={600} size="sm" mb="xs">Select athlete</Text>
         {loadingAthletes ? (
-          <p className="text-muted">Loading athletes…</p>
+          <Text c="dimmed" size="sm">Loading athletes…</Text>
         ) : (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginBottom: "0.75rem" }}>
-            <input
-              type="text"
+          <Group gap="xs" mb="sm" wrap="wrap">
+            <TextInput
               placeholder="Search by name…"
               value={addAthleteQuery}
               onChange={(e) => setAddAthleteQuery(e.target.value)}
-              style={{ width: 200 }}
+              w={200}
+              size="sm"
             />
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "0.35rem" }}>
+            <Group gap={4} wrap="wrap">
               {athletes
                 .filter(
                   (a) =>
@@ -842,58 +856,44 @@ function AthleteTrackingContentInner() {
                     + {a.name}
                   </button>
                 ))}
-            </div>
-          </div>
+            </Group>
+          </Group>
         )}
 
-        <h3 style={{ margin: "0 0 0.35rem", fontSize: "0.9rem" }}>
-          Tracked athletes
-        </h3>
+        <Text fw={600} size="sm" mb={6}>Tracked athletes</Text>
         {trackedUuids.length === 0 ? (
-          <p className="text-muted">Add an athlete above to get started.</p>
+          <Text c="dimmed" size="sm">Add an athlete above to get started.</Text>
         ) : (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", alignItems: "center" }}>
+          <Group gap={6} wrap="wrap">
             {trackedUuids.map((uuid) => {
               const name = athletes.find((a) => a.athlete_uuid === uuid)?.name ?? uuid.slice(0, 8);
               const isCurrent = currentUuid === uuid;
               return (
-                <span
+                <Badge
                   key={uuid}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "0.35rem",
-                    padding: "4px 10px",
-                    borderRadius: 8,
-                    background: isCurrent ? "var(--accent-muted)" : "var(--bg-tertiary)",
-                    border: `1px solid ${isCurrent ? "var(--accent)" : "var(--border)"}`,
-                  }}
+                  variant={isCurrent ? "light" : "outline"}
+                  color={isCurrent ? "octaneBlue" : "gray"}
+                  size="lg"
+                  style={{ cursor: "pointer" }}
+                  onClick={() => setCurrentUuid(uuid)}
+                  rightSection={
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); removeTracked(uuid); }}
+                      style={{ all: "unset", cursor: "pointer", lineHeight: 1, marginLeft: 2 }}
+                      aria-label={`Remove ${name}`}
+                    >
+                      ×
+                    </button>
+                  }
                 >
-                  <button
-                    type="button"
-                    className="btn-ghost"
-                    style={{ padding: "2px 6px", fontSize: "13px" }}
-                    onClick={() => setCurrentUuid(uuid)}
-                    title="View this athlete"
-                  >
-                    {name}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-ghost"
-                    style={{ padding: "2px 4px", fontSize: "12px" }}
-                    onClick={() => removeTracked(uuid)}
-                    title="Remove from tracked"
-                    aria-label={`Remove ${name}`}
-                  >
-                    ×
-                  </button>
-                </span>
+                  {name}
+                </Badge>
               );
             })}
-          </div>
+          </Group>
         )}
-      </div>
+      </Card>
 
       {!currentUuid && (
         <p className="text-muted">
@@ -921,118 +921,66 @@ function AthleteTrackingContentInner() {
                 </h2>
 
                 {/* Compare mode toggle */}
-                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.75rem", flexWrap: "wrap" }}>
-                  <span style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>Compare by:</span>
-                  <button
-                    type="button"
-                    className="btn-ghost"
-                    style={{
-                      fontSize: "13px",
-                      padding: "4px 10px",
-                      borderRadius: 6,
-                      border: `1px solid ${compareMode === "date" ? "var(--accent)" : "var(--border)"}`,
-                      background: compareMode === "date" ? "var(--accent-muted)" : "var(--bg-tertiary)",
-                      color: compareMode === "date" ? "var(--accent)" : "var(--text-secondary)",
-                      fontWeight: compareMode === "date" ? 600 : 400,
-                    }}
-                    onClick={() => setCompareMode("date")}
-                  >
-                    Session Date
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-ghost"
-                    style={{
-                      fontSize: "13px",
-                      padding: "4px 10px",
-                      borderRadius: 6,
-                      border: `1px solid ${compareMode === "athlete" ? "var(--accent)" : "var(--border)"}`,
-                      background: compareMode === "athlete" ? "var(--accent-muted)" : "var(--bg-tertiary)",
-                      color: compareMode === "athlete" ? "var(--accent)" : "var(--text-secondary)",
-                      fontWeight: compareMode === "athlete" ? 600 : 400,
-                    }}
-                    onClick={() => setCompareMode("athlete")}
-                  >
-                    Athlete
-                  </button>
+                <Group gap="sm" mb="sm" wrap="wrap">
+                  <Text size="sm" c="dimmed">Compare by:</Text>
+                  <SegmentedControl
+                    value={compareMode}
+                    onChange={(v) => setCompareMode(v as "date" | "athlete")}
+                    size="xs"
+                    data={[
+                      { value: "date", label: "Session Date" },
+                      { value: "athlete", label: "Athlete" },
+                    ]}
+                  />
                   {compareMode === "athlete" && (
                     <>
-                      <select
+                      <Select
                         value={compareUuid ?? ""}
-                        onChange={(e) => setCompareUuid(e.target.value ? e.target.value : null)}
+                        onChange={(value) => setCompareUuid(value || null)}
                         disabled={loadingCompare}
-                        style={{
-                          padding: "4px 10px",
-                          borderRadius: 6,
-                          border: "1px solid var(--border)",
-                          background: "var(--bg-tertiary)",
-                          color: "var(--text-primary)",
-                          minWidth: 180,
-                          fontSize: "13px",
-                        }}
-                      >
-                        <option value="">— None —</option>
-                        {athletes
-                          .filter((a) => a.athlete_uuid !== currentUuid)
-                          .map((a) => (
-                            <option key={a.athlete_uuid} value={a.athlete_uuid}>
-                              {a.name}
-                            </option>
-                          ))}
-                      </select>
-                      {loadingCompare && <span className="text-muted" style={{ fontSize: "0.85rem" }}>Loading…</span>}
+                        data={[
+                          { value: "", label: "— None —" },
+                          ...athletes
+                            .filter((a) => a.athlete_uuid !== currentUuid)
+                            .map((a) => ({ value: a.athlete_uuid, label: a.name })),
+                        ]}
+                        clearable
+                        w={200}
+                        size="xs"
+                      />
+                      {loadingCompare && <Text size="sm" c="dimmed">Loading…</Text>}
                     </>
                   )}
-                </div>
+                </Group>
 
                 {/* Domain tabs */}
-                <div
-                  role="tablist"
-                  aria-label="Test categories"
-                  style={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: "0.35rem",
-                  }}
-                >
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={pageIndex === 0}
-                    onClick={() => setPageIndex(0)}
-                    style={{
-                      padding: "8px 14px",
-                      borderRadius: 8,
-                      border: `1px solid ${pageIndex === 0 ? "var(--accent)" : "var(--border)"}`,
-                      background: pageIndex === 0 ? "var(--accent-muted)" : "var(--bg-tertiary)",
-                      color: pageIndex === 0 ? "var(--accent)" : "var(--text-secondary)",
-                      fontWeight: pageIndex === 0 ? 600 : 400,
-                      cursor: "pointer",
-                    }}
-                  >
-                    Highlights vs Lowlights
-                  </button>
-                  {report.domains.map((d, idx) => (
-                    <button
-                      key={d.domainId}
-                      type="button"
-                      role="tab"
-                      aria-selected={pageIndex === idx + 1}
-                      onClick={() => setPageIndex(idx + 1)}
-                      style={{
-                        padding: "8px 14px",
-                        borderRadius: 8,
-                        border: `1px solid ${pageIndex === idx + 1 ? "var(--accent)" : "var(--border)"}`,
-                        background: pageIndex === idx + 1 ? "var(--accent-muted)" : "var(--bg-tertiary)",
-                        color: pageIndex === idx + 1 ? "var(--accent)" : "var(--text-secondary)",
-                        fontWeight: pageIndex === idx + 1 ? 600 : 400,
-                        cursor: "pointer",
+                {(() => {
+                  const tabValue =
+                    pageIndex === 0
+                      ? "__highlights__"
+                      : (report.domains[pageIndex - 1]?.domainId ?? "__highlights__");
+                  return (
+                    <Tabs
+                      value={tabValue}
+                      onChange={(v) => {
+                        if (!v || v === "__highlights__") { setPageIndex(0); return; }
+                        const idx = report.domains.findIndex((d) => d.domainId === v);
+                        if (idx !== -1) setPageIndex(idx + 1);
                       }}
+                      variant="pills"
+                      keepMounted={false}
                     >
-                      {d.sessionDate ? `${d.label} (${d.sessionDate})` : d.label}
-                    </button>
-                  ))}
-                </div>
+                      <TabsList mb="md" style={{ flexWrap: "wrap", gap: 4 }}>
+                        <TabsTab value="__highlights__">Highlights vs Lowlights</TabsTab>
+                        {report.domains.map((d) => (
+                          <TabsTab key={d.domainId} value={d.domainId}>
+                            {d.sessionDate ? `${d.label} (${d.sessionDate})` : d.label}
+                          </TabsTab>
+                        ))}
+                      </TabsList>
+                    </Tabs>
+                  );
+                })()}
               </div>
 
               {pageIndex === 0 && (
@@ -1283,10 +1231,14 @@ function AthleteTrackingContentInner() {
                               );
                             })}
                             {compareDates.length < 3 && remainingDates.length > 0 && (
-                              <select value="" onChange={(e) => { if (e.target.value) addCompareDate(domain.domainId, e.target.value); }} style={{ padding: "3px 8px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg-tertiary)", color: "var(--text-secondary)", fontSize: "13px" }}>
-                                <option value="">+ Add date…</option>
-                                {remainingDates.map((d) => <option key={d} value={d}>{d}</option>)}
-                              </select>
+                              <Select
+                                value={null}
+                                placeholder="+ Add date…"
+                                data={remainingDates.map((d) => ({ value: d, label: d }))}
+                                onChange={(val) => { if (val) addCompareDate(domain.domainId, val); }}
+                                w={150}
+                                size="xs"
+                              />
                             )}
                           </div>
                           {loadingDates && availForDomain.length === 0 && (
@@ -1386,32 +1338,19 @@ function AthleteTrackingContentInner() {
                                       <div style={{ fontWeight: 600, marginBottom: "0.2rem", display: "flex", alignItems: "center", gap: "0.4rem" }}>
                                         {variableName}
                                         {ATHLETIC_SCREEN_VARIABLE_DETAIL[variableName] && (
-                                          <button
-                                            type="button"
-                                            onClick={() => setExpandedAthleticInfo((prev) => prev === variableName ? null : variableName)}
-                                            style={{
-                                              display: "inline-flex",
-                                              alignItems: "center",
-                                              justifyContent: "center",
-                                              width: 16,
-                                              height: 16,
-                                              minWidth: 16,
-                                              borderRadius: "50%",
-                                              border: `1px solid ${expandedAthleticInfo === variableName ? "var(--accent)" : "rgba(255,255,255,0.3)"}`,
-                                              background: expandedAthleticInfo === variableName ? "var(--accent-muted)" : "transparent",
-                                              color: expandedAthleticInfo === variableName ? "var(--accent)" : "rgba(255,255,255,0.45)",
-                                              fontSize: "10px",
-                                              fontWeight: 700,
-                                              lineHeight: 1,
-                                              cursor: "pointer",
-                                              flexShrink: 0,
-                                              padding: 0,
-                                              boxSizing: "content-box",
-                                            }}
-                                            aria-label={`More info about ${variableName}`}
-                                          >
-                                            i
-                                          </button>
+                                          <Tooltip label={`More info about ${variableName}`} withArrow position="top">
+                                            <ActionIcon
+                                              variant={expandedAthleticInfo === variableName ? "light" : "subtle"}
+                                              color={expandedAthleticInfo === variableName ? "octaneBlue" : "gray"}
+                                              radius="xl"
+                                              size={16}
+                                              onClick={() => setExpandedAthleticInfo((prev) => prev === variableName ? null : variableName)}
+                                              aria-label={`More info about ${variableName}`}
+                                              style={{ flexShrink: 0, fontSize: "10px" }}
+                                            >
+                                              i
+                                            </ActionIcon>
+                                          </Tooltip>
                                         )}
                                       </div>
                                       <div className="text-muted" style={{ fontSize: "0.8rem" }}>
@@ -1559,10 +1498,14 @@ function AthleteTrackingContentInner() {
                               );
                             })}
                             {compareDates.length < 3 && remainingDates.length > 0 && (
-                              <select value="" onChange={(e) => { if (e.target.value) addCompareDate(domain.domainId, e.target.value); }} style={{ padding: "3px 8px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg-tertiary)", color: "var(--text-secondary)", fontSize: "13px" }}>
-                                <option value="">+ Add date…</option>
-                                {remainingDates.map((d) => <option key={d} value={d}>{d}</option>)}
-                              </select>
+                              <Select
+                                value={null}
+                                placeholder="+ Add date…"
+                                data={remainingDates.map((d) => ({ value: d, label: d }))}
+                                onChange={(val) => { if (val) addCompareDate(domain.domainId, val); }}
+                                w={150}
+                                size="xs"
+                              />
                             )}
                           </div>
                           {loadingDates && availForDomain.length === 0 && (
@@ -2219,12 +2162,12 @@ function AthleteTrackingContentInner() {
             </>
           )}
 
-          <p className="text-muted" style={{ marginTop: "1.5rem", fontSize: "13px" }}>
+          <Text size="sm" c="dimmed" mt="md">
             <Link href="/dashboard">Back to dashboard</Link>
-          </p>
+          </Text>
         </>
       )}
-    </div>
+    </Stack>
   );
 }
 

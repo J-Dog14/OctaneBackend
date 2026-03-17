@@ -1,0 +1,104 @@
+/*
+ * Octane Biomech — AG Grid dark theme
+ * Class: .ag-theme-octane
+ * Import alongside "ag-grid-community/styles/ag-grid.css" (base structural CSS).
+ * All values reference CSS variables from globals.css — no hardcoded hex.
+ */
+.ag-theme-octane {
+  --ag-background-color: var(--bg-secondary);
+  --ag-odd-row-background-color: var(--bg-secondary);
+  --ag-even-row-background-color: var(--bg-secondary);
+  --ag-header-background-color: var(--bg-tertiary);
+  --ag-border-color: var(--border);
+  --ag-row-border-color: var(--border);
+  --ag-header-column-separator-color: var(--border);
+  --ag-foreground-color: var(--text-primary);
+  --ag-secondary-foreground-color: var(--text-secondary);
+  --ag-header-foreground-color: var(--text-secondary);
+  --ag-disabled-foreground-color: var(--text-muted);
+  --ag-row-hover-color: var(--bg-tertiary);
+  --ag-column-hover-color: transparent;
+  --ag-selected-row-background-color: var(--accent-muted);
+  --ag-range-selection-background-color: var(--accent-muted);
+  --ag-range-selection-border-color: var(--accent);
+  --ag-input-focus-border-color: var(--accent);
+  --ag-font-family: var(--font-sans);
+  --ag-font-size: 13px;
+  --ag-header-font-size: 11px;
+  --ag-header-font-weight: 600;
+  --ag-cell-horizontal-padding: 12px;
+  --ag-wrapper-border-radius: 10px;
+  --ag-borders: solid 1px;
+  --ag-border-radius: 0;
+  --ag-card-radius: 4px;
+  --ag-popup-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+/* Uppercase letter-spaced header to match existing table th style */
+.ag-theme-octane .ag-header-cell-text {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Remove bottom border on last row to avoid double border with card */
+.ag-theme-octane .ag-row-last {
+  border-bottom: none;
+}
+
+/* Link styling inside cells */
+.ag-theme-octane a {
+  color: var(--accent);
+  text-decoration: none;
+}
+.ag-theme-octane a:hover {
+  color: var(--accent-hover);
+  text-decoration: underline;
+}
+
+/* Pagination bar */
+.ag-theme-octane .ag-paging-panel {
+  border-top: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 13px;
+  height: 40px;
+}
+
+.ag-theme-octane .ag-paging-button {
+  color: var(--accent);
+}
+.ag-theme-octane .ag-paging-button:hover {
+  color: var(--accent-hover);
+}
+
+/* Loading overlay */
+.ag-theme-octane .ag-overlay-loading-center {
+  color: var(--text-muted);
+  background: transparent;
+}
+
+/* No-rows overlay */
+.ag-theme-octane .ag-overlay-no-rows-center {
+  color: var(--text-muted);
+}
+
+/* Filter input */
+.ag-theme-octane .ag-filter-toolpanel-header,
+.ag-theme-octane .ag-filter-body-wrapper {
+  background: var(--bg-elevated);
+}
+
+/* Scrollbar styling */
+.ag-theme-octane ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.ag-theme-octane ::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+.ag-theme-octane ::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+.ag-theme-octane ::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}

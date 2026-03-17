@@ -1,96 +1,75 @@
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
+import { Card, Text, Title, SimpleGrid, Group, Stack } from "@mantine/core";
 import { getRecentAthletes } from "@/lib/dashboard/athletes";
+import { RecentAthletesGrid } from "./RecentAthletesGrid";
 
 export default async function DashboardPage() {
   const recentAthletes = await getRecentAthletes(20);
 
   return (
-    <div>
-      <h1 style={{ marginBottom: "0.5rem", fontSize: "1.75rem" }}>
-        Dashboard
-      </h1>
-      <p className="text-muted" style={{ marginBottom: "2rem" }}>
-        Overview and quick actions for athletes and payloads.
-      </p>
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-          gap: "1rem",
-          marginBottom: "2rem",
-        }}
-      >
-        <Link
-          href="/dashboard/athletes"
-          style={{ textDecoration: "none", color: "inherit" }}
-        >
-          <div className="card" style={{ height: "100%" }}>
-            <div className="text-muted" style={{ fontSize: "12px", marginBottom: "4px" }}>
-              Athletes
-            </div>
-            <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--accent)" }}>
-              Browse all
-            </div>
-            <p className="text-muted" style={{ margin: "0.5rem 0 0", fontSize: "13px" }}>
-              Search and view athlete data and session counts.
-            </p>
-          </div>
-        </Link>
+    <Stack gap="xl">
+      <div>
+        <Title order={1} mb={4}>Dashboard</Title>
+        <Text c="dimmed">
+          Overview and quick actions for athletes and payloads.
+        </Text>
       </div>
 
-      <section className="card">
-        <h2 style={{ margin: "0 0 1rem", fontSize: "1.1rem" }}>
+      <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
+        <Link href="/dashboard/athletes" style={{ textDecoration: "none", color: "inherit" }}>
+          <Card style={{ height: "100%", cursor: "pointer" }}>
+            <Text size="xs" c="dimmed" mb={4} tt="uppercase" fw={600} style={{ letterSpacing: "0.04em" }}>
+              Athletes
+            </Text>
+            <Text size="xl" fw={700} c="var(--accent)">Browse all</Text>
+            <Text size="sm" c="dimmed" mt="xs">
+              Search and view athlete data and session counts.
+            </Text>
+          </Card>
+        </Link>
+
+        <Link href="/dashboard/athlete-tracking" style={{ textDecoration: "none", color: "inherit" }}>
+          <Card style={{ height: "100%", cursor: "pointer" }}>
+            <Text size="xs" c="dimmed" mb={4} tt="uppercase" fw={600} style={{ letterSpacing: "0.04em" }}>
+              Athlete Tracking
+            </Text>
+            <Text size="xl" fw={700} c="var(--accent)">Track & Compare</Text>
+            <Text size="sm" c="dimmed" mt="xs">
+              Deep-dive metrics, percentile radar charts, and session comparisons.
+            </Text>
+          </Card>
+        </Link>
+
+        <Link href="/dashboard/reports" style={{ textDecoration: "none", color: "inherit" }}>
+          <Card style={{ height: "100%", cursor: "pointer" }}>
+            <Text size="xs" c="dimmed" mb={4} tt="uppercase" fw={600} style={{ letterSpacing: "0.04em" }}>
+              Reports
+            </Text>
+            <Text size="xl" fw={700} c="var(--accent)">PDF Reports</Text>
+            <Text size="sm" c="dimmed" mt="xs">
+              Generate and download PDF reports for athletes.
+            </Text>
+          </Card>
+        </Link>
+      </SimpleGrid>
+
+      <Card>
+        <Title order={2} fz="lg" mb="md">
           Recently modified athletes
-        </h2>
+        </Title>
         {recentAthletes.length === 0 ? (
-          <p className="text-muted">No athletes in the database yet.</p>
+          <Text c="dimmed">No athletes in the database yet.</Text>
         ) : (
-          <div style={{ maxHeight: "320px", overflowY: "auto" }}>
-            <table>
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Gender</th>
-                  <th>Age group</th>
-                  <th>Pitching</th>
-                  <th>Athletic screen</th>
-                  <th>Last modified</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentAthletes.map((a) => (
-                  <tr key={a.athlete_uuid}>
-                    <td>{a.name}</td>
-                    <td>{a.gender ?? "—"}</td>
-                    <td>{a.age_group ?? "—"}</td>
-                    <td>{a.pitching_session_count}</td>
-                    <td>{a.athletic_screen_session_count}</td>
-                    <td className="text-muted" style={{ fontSize: "12px" }}>
-                      {a.updated_at
-                        ? new Date(a.updated_at).toLocaleDateString()
-                        : "—"}
-                    </td>
-                    <td>
-                      <Link href={`/dashboard/athletes/${a.athlete_uuid}`}>
-                        View
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <RecentAthletesGrid athletes={recentAthletes} />
         )}
-        <div style={{ marginTop: "1rem" }}>
+        <Group mt="md">
           <Link href="/dashboard/athletes" className="btn-primary" style={{ display: "inline-block" }}>
             View all athletes
           </Link>
-        </div>
-      </section>
-    </div>
+        </Group>
+      </Card>
+    </Stack>
   );
 }

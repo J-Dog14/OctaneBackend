@@ -3,6 +3,7 @@
  * Uses existing payload builders; computes percentile rank for each metric vs all other athletes.
  */
 
+import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import { buildPitchingPayload } from "@/lib/octane/pitchingPayload";
 import { buildHittingPayload } from "@/lib/octane/hittingPayload";
@@ -110,17 +111,131 @@ export type DomainResult = {
   sessionDate?: string | null;
 };
 
+// ---------------------------------------------------------------------------
+// Cached population builders (10-minute TTL).
+// The population map is expensive (150 × N DB queries) but rarely changes.
+// These are keyed by domain so each domain cache is independent.
+// ---------------------------------------------------------------------------
+
+const getCachedPitchingPopulation = unstable_cache(
+  async () => {
+    const uuids = await getAthleteUuidsWithPitching();
+    return getPopulationPayloads(uuids, async (uuid) => {
+      const p = await buildPitchingPayload(uuid);
+      return { athleteUuid: p.athleteUuid, metrics: p.metrics };
+    });
+  },
+  ["population-pitching"],
+  { revalidate: 600 }
+);
+
+const getCachedHittingPopulation = unstable_cache(
+  async () => {
+    const uuids = await getAthleteUuidsWithHitting();
+    return getPopulationPayloads(uuids, async (uuid) => {
+      const p = await buildHittingPayload(uuid);
+      return { athleteUuid: p.athleteUuid, metrics: p.metrics };
+    });
+  },
+  ["population-hitting"],
+  { revalidate: 600 }
+);
+
+const getCachedMobilityPopulation = unstable_cache(
+  async () => {
+    const uuids = await getAthleteUuidsWithMobility();
+    return getPopulationPayloads(uuids, async (uuid) => {
+      const p = await buildMobilityPayload(uuid);
+      return { athleteUuid: p.athleteUuid, metrics: p.metrics };
+    });
+  },
+  ["population-mobility"],
+  { revalidate: 600 }
+);
+
+const getCachedAthleticScreenPopulation = unstable_cache(
+  async () => {
+    const uuids = await getAthleteUuidsWithAthleticScreen();
+    return getPopulationPayloads(uuids, async (uuid) => {
+      const p = await buildAthleticScreenPayload(uuid);
+      return { athleteUuid: p.athleteUuid, metrics: p.metrics };
+    });
+  },
+  ["population-athletic-screen"],
+  { revalidate: 600 }
+);
+
+const getCachedArmActionPopulation = unstable_cache(
+  async () => {
+    const uuids = await getAthleteUuidsWithArmAction();
+    return getPopulationPayloads(uuids, async (uuid) => {
+      const p = await buildArmActionPayload(uuid);
+      return { athleteUuid: p.athleteUuid, metrics: p.metrics };
+    });
+  },
+  ["population-arm-action"],
+  { revalidate: 600 }
+);
+
+const getCachedProteusPitcherPopulation = unstable_cache(
+  async () => {
+    const uuids = await prisma.f_proteus.findMany({
+      where: {
+        position: "Pitcher",
+        OR: [
+          { movement: { contains: "Shot Put", mode: "insensitive" } },
+          { movement: { contains: "D2 Extension", mode: "insensitive" } },
+        ],
+      },
+      select: { athlete_uuid: true },
+      distinct: ["athlete_uuid"],
+      take: POPULATION_LIMIT,
+    }).then((r) => r.map((x) => x.athlete_uuid));
+    return getPopulationPayloads(uuids, async (uuid) => {
+      const p = await buildProteusPitcherPayload(uuid);
+      return { athleteUuid: p.athleteUuid, metrics: p.metrics };
+    });
+  },
+  ["population-proteus-pitcher"],
+  { revalidate: 600 }
+);
+
+const getCachedProteusHitterPopulation = unstable_cache(
+  async () => {
+    const uuids = await prisma.f_proteus.findMany({
+      where: {
+        AND: [
+          { OR: [{ position: null }, { position: { not: "Pitcher" } }] },
+          {
+            OR: [
+              { movement: { contains: "Shot Put", mode: "insensitive" } },
+              { movement: { equals: "Straight Arm Trunk Rotation", mode: "insensitive" } },
+            ],
+          },
+        ],
+      },
+      select: { athlete_uuid: true },
+      distinct: ["athlete_uuid"],
+      take: POPULATION_LIMIT,
+    }).then((r) => r.map((x) => x.athlete_uuid));
+    return getPopulationPayloads(uuids, async (uuid) => {
+      const p = await buildProteusHitterPayload(uuid);
+      return { athleteUuid: p.athleteUuid, metrics: p.metrics };
+    });
+  },
+  ["population-proteus-hitter"],
+  { revalidate: 600 }
+);
+
 export async function getPitchingWithPercentiles(
   athleteUuid: string,
   sessionDate?: string
 ): Promise<DomainResult | null> {
   try {
-    const payload = await buildPitchingPayload(athleteUuid, sessionDate);
-    const uuids = await getAthleteUuidsWithPitching();
-    const population = await getPopulationPayloads(uuids, async (uuid) => {
-      const p = await buildPitchingPayload(uuid);
-      return { athleteUuid: p.athleteUuid, metrics: p.metrics };
-    });
+    const [payload, population] = await Promise.all([
+      buildPitchingPayload(athleteUuid, sessionDate),
+      getCachedPitchingPopulation(),
+    ]);
     const metrics = attachPercentiles(payload.metrics, population, athleteUuid);
     return { metrics, sessionDate: payload.sessionDate ?? null };
   } catch {
@@ -142,12 +257,10 @@ export async function getHittingWithPercentiles(
   sessionDate?: string
 ): Promise<DomainResult | null> {
   try {
-    const payload = await buildHittingPayload(athleteUuid, sessionDate);
-    const uuids = await getAthleteUuidsWithHitting();
-    const population = await getPopulationPayloads(uuids, async (uuid) => {
-      const p = await buildHittingPayload(uuid);
-      return { athleteUuid: p.athleteUuid, metrics: p.metrics };
-    });
+    const [payload, population] = await Promise.all([
+      buildHittingPayload(athleteUuid, sessionDate),
+      getCachedHittingPopulation(),
+    ]);
     const metrics = attachPercentiles(payload.metrics, population, athleteUuid);
     return { metrics, sessionDate: payload.sessionDate ?? null };
   } catch {
@@ -169,12 +282,10 @@ export async function getMobilityWithPercentiles(
   sessionDate?: string
 ): Promise<DomainResult | null> {
   try {
-    const payload = await buildMobilityPayload(athleteUuid, sessionDate);
-    const uuids = await getAthleteUuidsWithMobility();
-    const population = await getPopulationPayloads(uuids, async (uuid) => {
-      const p = await buildMobilityPayload(uuid);
-      return { athleteUuid: p.athleteUuid, metrics: p.metrics };
-    });
+    const [payload, population] = await Promise.all([
+      buildMobilityPayload(athleteUuid, sessionDate),
+      getCachedMobilityPopulation(),
+    ]);
     const withPercentiles = attachPercentiles(payload.metrics, population, athleteUuid);
     const maxForCategory = (name: string) => {
       const max = MOBILITY_CATEGORY_MAX[name];
@@ -211,12 +322,10 @@ export async function getAthleticScreenWithPercentiles(
   sessionDate?: string
 ): Promise<DomainResult | null> {
   try {
-    const payload = await buildAthleticScreenPayload(athleteUuid, sessionDate);
-    const uuids = await getAthleteUuidsWithAthleticScreen();
-    const population = await getPopulationPayloads(uuids, async (uuid) => {
-      const p = await buildAthleticScreenPayload(uuid);
-      return { athleteUuid: p.athleteUuid, metrics: p.metrics };
-    });
+    const [payload, population] = await Promise.all([
+      buildAthleticScreenPayload(athleteUuid, sessionDate),
+      getCachedAthleticScreenPopulation(),
+    ]);
     const metrics = attachPercentiles(payload.metrics, population, athleteUuid);
     return { metrics, sessionDate: payload.sessionDate ?? null };
   } catch {
@@ -238,12 +347,10 @@ export async function getArmActionWithPercentiles(
   sessionDate?: string
 ): Promise<DomainResult | null> {
   try {
-    const payload = await buildArmActionPayload(athleteUuid, sessionDate);
-    const uuids = await getAthleteUuidsWithArmAction();
-    const population = await getPopulationPayloads(uuids, async (uuid) => {
-      const p = await buildArmActionPayload(uuid);
-      return { athleteUuid: p.athleteUuid, metrics: p.metrics };
-    });
+    const [payload, population] = await Promise.all([
+      buildArmActionPayload(athleteUuid, sessionDate),
+      getCachedArmActionPopulation(),
+    ]);
     const metrics = attachPercentiles(payload.metrics, population, athleteUuid);
     return { metrics, sessionDate: payload.sessionDate ?? null };
   } catch {
@@ -257,48 +364,18 @@ export async function getProteusWithPercentiles(
   sessionDate?: string
 ): Promise<DomainResult | null> {
   try {
-    const payload = await buildProteusPitcherPayload(athleteUuid, sessionDate);
-    const uuids = await prisma.f_proteus.findMany({
-      where: {
-        position: "Pitcher",
-        OR: [
-          { movement: { contains: "Shot Put", mode: "insensitive" } },
-          { movement: { contains: "D2 Extension", mode: "insensitive" } },
-        ],
-      },
-      select: { athlete_uuid: true },
-      distinct: ["athlete_uuid"],
-      take: POPULATION_LIMIT,
-    }).then((r) => r.map((x) => x.athlete_uuid));
-    const population = await getPopulationPayloads(uuids, async (uuid) => {
-      const p = await buildProteusPitcherPayload(uuid);
-      return { athleteUuid: p.athleteUuid, metrics: p.metrics };
-    });
+    const [payload, population] = await Promise.all([
+      buildProteusPitcherPayload(athleteUuid, sessionDate),
+      getCachedProteusPitcherPopulation(),
+    ]);
     const metrics = attachPercentiles(payload.metrics, population, athleteUuid);
     return { metrics, sessionDate: payload.sessionDate ?? null };
   } catch {
     try {
-      const payload = await buildProteusHitterPayload(athleteUuid, sessionDate);
-      const uuids = await prisma.f_proteus.findMany({
-        where: {
-          AND: [
-            { OR: [{ position: null }, { position: { not: "Pitcher" } }] },
-            {
-              OR: [
-                { movement: { contains: "Shot Put", mode: "insensitive" } },
-                { movement: { equals: "Straight Arm Trunk Rotation", mode: "insensitive" } },
-              ],
-            },
-          ],
-        },
-        select: { athlete_uuid: true },
-        distinct: ["athlete_uuid"],
-        take: POPULATION_LIMIT,
-      }).then((r) => r.map((x) => x.athlete_uuid));
-      const population = await getPopulationPayloads(uuids, async (uuid) => {
-        const p = await buildProteusHitterPayload(uuid);
-        return { athleteUuid: p.athleteUuid, metrics: p.metrics };
-      });
+      const [payload, population] = await Promise.all([
+        buildProteusHitterPayload(athleteUuid, sessionDate),
+        getCachedProteusHitterPopulation(),
+      ]);
       const metrics = attachPercentiles(payload.metrics, population, athleteUuid);
       return { metrics, sessionDate: payload.sessionDate ?? null };
     } catch {
@@ -372,11 +449,20 @@ export async function buildDomainsWithPercentiles(
     },
   ];
 
+  const eligible = domainBuilders.filter(
+    ({ domainId }) => counts[DOMAIN_COUNT_KEYS[domainId]] > 0
+  );
+
+  const settled = await Promise.allSettled(
+    eligible.map(({ build }) => build())
+  );
+
   const results: DomainWithMetrics[] = [];
-  for (const { domainId, build } of domainBuilders) {
-    const count = counts[DOMAIN_COUNT_KEYS[domainId]];
-    if (count === 0) continue;
-    const result = await build();
+  for (let i = 0; i < eligible.length; i++) {
+    const { domainId } = eligible[i]!;
+    const outcome = settled[i]!;
+    if (outcome.status !== "fulfilled") continue;
+    const result = outcome.value;
     if (result && result.metrics.length > 0) {
       results.push({
         domainId,

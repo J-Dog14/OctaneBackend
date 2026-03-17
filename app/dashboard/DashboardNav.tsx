@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Tabs, TabsList, TabsTab } from "@mantine/core";
 
 const TABS = [
   { href: "/dashboard", label: "Dashboard" },
@@ -16,27 +17,25 @@ const TABS = [
 export function DashboardNav() {
   const pathname = usePathname();
 
+  const activeHref =
+    TABS.find(
+      (t) => t.href !== "/dashboard" && pathname.startsWith(t.href)
+    )?.href ?? "/dashboard";
+
   return (
-    <nav style={{ display: "flex", gap: "0.25rem", alignItems: "center" }}>
-      {TABS.map((tab) => {
-        const isActive = pathname === tab.href || (tab.href !== "/dashboard" && pathname.startsWith(tab.href));
-        return (
-          <Link
+    <Tabs value={activeHref} variant="underline" keepMounted={false}>
+      <TabsList style={{ borderBottom: "none", gap: 0 }}>
+        {TABS.map((tab) => (
+          <TabsTab
             key={tab.href}
-            href={tab.href}
-            style={{
-              color: isActive ? "var(--accent)" : "var(--text-secondary)",
-              textDecoration: "none",
-              padding: "0.5rem 0.75rem",
-              borderRadius: "6px",
-              fontWeight: isActive ? 600 : 400,
-              borderBottom: isActive ? "2px solid var(--accent)" : "2px solid transparent",
-            }}
+            value={tab.href}
+            renderRoot={(props) => <Link {...props} href={tab.href} />}
+            style={{ fontSize: "14px" }}
           >
             {tab.label}
-          </Link>
-        );
-      })}
-    </nav>
+          </TabsTab>
+        ))}
+      </TabsList>
+    </Tabs>
   );
 }
