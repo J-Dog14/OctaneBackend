@@ -39,14 +39,16 @@ type PayloadMetric = {
   mobilityOutOf?: number | null;
 };
 
+type PopulationByKey = Record<string, Array<{ athleteUuid: string; value: number }>>;
+
 function attachPercentiles(
   metrics: PayloadMetric[],
-  populationByKey: Map<string, Array<{ athleteUuid: string; value: number }>>,
+  populationByKey: PopulationByKey,
   athleteUuid: string
 ): MetricWithPercentile[] {
   return metrics.map((m) => {
     const key = metricKey(m.category, m.name);
-    const pop = populationByKey.get(key);
+    const pop = populationByKey[key];
     let percentile: number | null = null;
     if (m.value !== null && Number.isFinite(m.value) && pop && pop.length > 0) {
       const values = pop.map((p) => p.value);
@@ -84,8 +86,8 @@ async function getAthleteUuidsWithPitching(): Promise<string[]> {
 async function getPopulationPayloads<T>(
   uuids: string[],
   builder: (uuid: string) => Promise<{ athleteUuid: string; metrics: PayloadMetric[] }>
-): Promise<Map<string, Array<{ athleteUuid: string; value: number }>>> {
-  const byKey = new Map<string, Array<{ athleteUuid: string; value: number }>>();
+): Promise<PopulationByKey> {
+  const byKey: PopulationByKey = {};
   const batchSize = 15;
   for (let i = 0; i < uuids.length; i += batchSize) {
     const batch = uuids.slice(i, i + batchSize);
@@ -98,8 +100,8 @@ async function getPopulationPayloads<T>(
       for (const m of metrics) {
         if (m.value === null || !Number.isFinite(m.value)) continue;
         const key = metricKey(m.category, m.name);
-        if (!byKey.has(key)) byKey.set(key, []);
-        byKey.get(key)!.push({ athleteUuid, value: m.value });
+        if (!byKey[key]) byKey[key] = [];
+        byKey[key]!.push({ athleteUuid, value: m.value });
       }
     }
   }
