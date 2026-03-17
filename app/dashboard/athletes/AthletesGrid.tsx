@@ -4,13 +4,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AgGridReact } from "ag-grid-react";
 import { ModuleRegistry, AllCommunityModule, type ColDef, type GridReadyEvent, type IRowNode } from "ag-grid-community";
 import Link from "next/link";
+import { TextInput, Checkbox, Group } from "@mantine/core";
+import { AthleteUpdateEmailButton } from "./AthleteUpdateEmailButton";
 import { octaneTheme } from "../ag-grid-theme";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
-import { TextInput, Checkbox, Group } from "@mantine/core";
-import { AthleteUpdateEmailButton } from "./AthleteUpdateEmailButton";
-import "ag-grid-community/styles/ag-grid.css";
-import "../ag-grid-octane.css";
 
 type AthleteRow = {
   athlete_uuid: string;
@@ -76,54 +74,14 @@ export function AthletesGrid() {
             <span style={{ color: "var(--text-muted)" }}>no email</span>
           ),
       },
-      {
-        headerName: "Pitching",
-        field: "pitching_session_count",
-        flex: 1,
-        minWidth: 90,
-      },
-      {
-        headerName: "Athletic Screen",
-        field: "athletic_screen_session_count",
-        flex: 1,
-        minWidth: 130,
-      },
-      {
-        headerName: "Proteus",
-        field: "proteus_session_count",
-        flex: 1,
-        minWidth: 90,
-      },
-      {
-        headerName: "Mobility",
-        field: "mobility_session_count",
-        flex: 1,
-        minWidth: 90,
-      },
-      {
-        headerName: "Readiness",
-        field: "readiness_screen_session_count",
-        flex: 1,
-        minWidth: 100,
-      },
-      {
-        headerName: "Arm Action",
-        field: "arm_action_session_count",
-        flex: 1,
-        minWidth: 110,
-      },
-      {
-        headerName: "Hitting",
-        field: "hitting_session_count",
-        flex: 1,
-        minWidth: 80,
-      },
-      {
-        headerName: "Curveball",
-        field: "curveball_test_session_count",
-        flex: 1,
-        minWidth: 100,
-      },
+      { headerName: "Pitching",        field: "pitching_session_count",          flex: 1, minWidth: 90  },
+      { headerName: "Athletic Screen", field: "athletic_screen_session_count",    flex: 1, minWidth: 130 },
+      { headerName: "Proteus",         field: "proteus_session_count",            flex: 1, minWidth: 90  },
+      { headerName: "Mobility",        field: "mobility_session_count",           flex: 1, minWidth: 90  },
+      { headerName: "Readiness",       field: "readiness_screen_session_count",   flex: 1, minWidth: 100 },
+      { headerName: "Arm Action",      field: "arm_action_session_count",         flex: 1, minWidth: 110 },
+      { headerName: "Hitting",         field: "hitting_session_count",            flex: 1, minWidth: 80  },
+      { headerName: "Curveball",       field: "curveball_test_session_count",     flex: 1, minWidth: 100 },
       {
         headerName: "",
         colId: "actions",
@@ -135,10 +93,7 @@ export function AthletesGrid() {
           <Group gap={6} h="100%" align="center" wrap="nowrap">
             <Link href={`/dashboard/athletes/${data.athlete_uuid}`}>View</Link>
             {(!data.email || data.email === "") && (
-              <AthleteUpdateEmailButton
-                athleteUuid={data.athlete_uuid}
-                name={data.name}
-              />
+              <AthleteUpdateEmailButton athleteUuid={data.athlete_uuid} name={data.name} />
             )}
           </Group>
         ),
@@ -147,10 +102,7 @@ export function AthletesGrid() {
     []
   );
 
-  const defaultColDef = useMemo<ColDef>(
-    () => ({ sortable: true, resizable: true }),
-    []
-  );
+  const defaultColDef = useMemo<ColDef>(() => ({ sortable: true, resizable: true }), []);
 
   const onGridReady = useCallback(async (_params: GridReadyEvent) => {
     setLoading(true);
@@ -163,10 +115,7 @@ export function AthletesGrid() {
     }
   }, []);
 
-  const isExternalFilterPresent = useCallback(
-    () => filterNonApp,
-    [filterNonApp]
-  );
+  const isExternalFilterPresent = useCallback(() => filterNonApp, [filterNonApp]);
 
   const doesExternalFilterPass = useCallback(
     ({ data }: IRowNode<AthleteRow>) => {
@@ -203,25 +152,23 @@ export function AthletesGrid() {
       {!mounted ? (
         <div style={{ height: "calc(100vh - 300px)", minHeight: 400 }} />
       ) : (
-      <div
-        style={{ height: "calc(100vh - 300px)", minHeight: 400 }}
-      >
-        <AgGridReact
-          theme={octaneTheme}
-          ref={gridRef}
-          rowData={rowData}
-          columnDefs={columnDefs}
-          defaultColDef={defaultColDef}
-          onGridReady={onGridReady}
-          isExternalFilterPresent={isExternalFilterPresent}
-          doesExternalFilterPass={doesExternalFilterPass}
-          pagination
-          paginationPageSize={50}
-          loading={loading}
-          suppressMovableColumns={false}
-          suppressCellFocus
-        />
-      </div>
+        <div style={{ height: "calc(100vh - 300px)", minHeight: 400 }}>
+          <AgGridReact
+            theme={octaneTheme}
+            ref={gridRef}
+            rowData={rowData}
+            columnDefs={columnDefs}
+            defaultColDef={defaultColDef}
+            onGridReady={onGridReady}
+            isExternalFilterPresent={isExternalFilterPresent}
+            doesExternalFilterPass={doesExternalFilterPass}
+            pagination
+            paginationPageSize={50}
+            loading={loading}
+            suppressMovableColumns={false}
+            suppressCellFocus
+          />
+        </div>
       )}
     </>
   );
