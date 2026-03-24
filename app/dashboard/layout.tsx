@@ -1,3 +1,6 @@
+// All dashboard pages are authenticated and use Clerk hooks — never statically generated.
+export const dynamic = "force-dynamic";
+
 import Link from "next/link";
 import { AppShell, AppShellHeader, AppShellMain, Group } from "@mantine/core";
 import { DashboardNav } from "./DashboardNav";
