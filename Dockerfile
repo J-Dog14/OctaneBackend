@@ -32,8 +32,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     r-cran-yaml \
     r-cran-fs \
     r-cran-uuid \
-    r-cran-rpostgres \
     && rm -rf /var/lib/apt/lists/*
+
+# ── R CRAN packages (own layer — cached until this line changes) ──────────────
+# HTTPUserAgent tells Posit Package Manager which R version we have so it
+# serves the correct pre-compiled Linux binary instead of falling back to
+# slow C++ source compilation.
+RUN Rscript -e "\
+  options(\
+    repos = c(CRAN = 'https://packagemanager.posit.co/cran/__linux__/bookworm/latest'),\
+    HTTPUserAgent = sprintf('R/%s R (%s)', getRversion(),\
+      paste(getRversion(), R.version[['platform']], R.version[['arch']], R.version[['os']]))\
+  );\
+  install.packages('RPostgres', dependencies = c('Depends', 'Imports', 'LinkingTo'))\
+"
 
 WORKDIR /app
 
