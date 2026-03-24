@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useState, Suspense } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -591,8 +591,12 @@ function AthleteTrackingContentInner() {
   const initialAthlete = searchParams.get("athlete") ?? "";
   const initialCurrent = searchParams.get("current") ?? "";
 
-  const [athletes, setAthletes] = useState<AthleteItem[]>([]);
-  const [loadingAthletes, setLoadingAthletes] = useState(true);
+  const [searchResults, setSearchResults] = useState<AthleteItem[]>([]);
+  const [loadingSearch, setLoadingSearch] = useState(false);
+  /** Names looked up so far; used for tracked-athlete badge labels. */
+  const [knownNames, setKnownNames] = useState<Record<string, string>>({});
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const urlPreloadDoneRef = useRef(false);
   const [trackedUuids, setTrackedUuids] = useState<string[]>([]);
   const [currentUuid, setCurrentUuid] = useState<string>("");
   const [report, setReport] = useState<AthleteTrackingReport | null>(null);
@@ -621,37 +625,55 @@ function AthleteTrackingContentInner() {
   const [loadingCompare, setLoadingCompare] = useState(false);
   const [expandedAthleticInfo, setExpandedAthleticInfo] = useState<string | null>(null);
 
-  const loadAthletes = useCallback(async () => {
-    setLoadingAthletes(true);
+  const searchAthletes = useCallback(async (q: string) => {
+    setLoadingSearch(true);
+    const params = new URLSearchParams({ limit: "40" });
+    if (q.trim()) params.set("q", q.trim());
     try {
-      const res = await fetch("/api/dashboard/athletes?limit=10000");
+      const res = await fetch(`/api/dashboard/athletes?${params}`);
       const data = await res.json();
-      if (data.items) setAthletes(data.items);
+      const items: AthleteItem[] = data.items ?? [];
+      setSearchResults(items);
+      setKnownNames((prev) => {
+        const next = { ...prev };
+        for (const a of items) next[a.athlete_uuid] = a.name;
+        return next;
+      });
     } finally {
-      setLoadingAthletes(false);
+      setLoadingSearch(false);
     }
   }, []);
 
+  // Initial load — fetch a small recent set so the search box has results immediately.
   useEffect(() => {
-    loadAthletes();
-  }, [loadAthletes]);
+    void searchAthletes("");
+  }, [searchAthletes]);
 
+  // Debounce search-box input.
   useEffect(() => {
-    if (initialAthlete && athletes.length > 0) {
-      const uuids = initialAthlete.split(",").map((s) => s.trim()).filter(Boolean);
-      if (uuids.length > 0) {
-        setTrackedUuids((prev) => {
-          const combined = new Set([...prev, ...uuids]);
-          return Array.from(combined);
-        });
-        if (initialCurrent && uuids.includes(initialCurrent)) {
-          setCurrentUuid(initialCurrent);
-        } else if (!currentUuid) {
-          setCurrentUuid(uuids[0]!);
-        }
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    searchDebounceRef.current = setTimeout(() => {
+      void searchAthletes(addAthleteQuery);
+    }, 200);
+    return () => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    };
+  }, [addAthleteQuery, searchAthletes]);
+
+  // Handle URL-preloaded athletes — runs once, no longer gated on a full athlete list.
+  useEffect(() => {
+    if (urlPreloadDoneRef.current || !initialAthlete) return;
+    urlPreloadDoneRef.current = true;
+    const uuids = initialAthlete.split(",").map((s) => s.trim()).filter(Boolean);
+    if (uuids.length > 0) {
+      setTrackedUuids((prev) => Array.from(new Set([...prev, ...uuids])));
+      if (initialCurrent && uuids.includes(initialCurrent)) {
+        setCurrentUuid(initialCurrent);
+      } else if (!currentUuid) {
+        setCurrentUuid(uuids[0]!);
       }
     }
-  }, [initialAthlete, initialCurrent, athletes.length]);
+  }, [initialAthlete, initialCurrent]);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -701,6 +723,16 @@ function AthleteTrackingContentInner() {
       setCompareUuid(null);
     }
   }, [currentUuid, fetchReport]);
+
+  // Cache athlete name once a report loads (used for tracked-athlete badge labels).
+  useEffect(() => {
+    if (report?.athlete) {
+      setKnownNames((prev) => ({
+        ...prev,
+        [report.athlete.athleteUuid]: report.athlete.name,
+      }));
+    }
+  }, [report]);
 
   useEffect(() => {
     const domain = report?.domains[pageIndex - 1];
@@ -780,13 +812,15 @@ function AthleteTrackingContentInner() {
     }
   }, [domainCompareDates, currentUuid, compCache, compLoadingKeys]);
 
-  const selectAthlete = (uuid: string) => {
+  const selectAthlete = (uuid: string, name?: string) => {
+    if (name) setKnownNames((prev) => ({ ...prev, [uuid]: name }));
     setTrackedUuids([uuid]);
     setCurrentUuid(uuid);
     setAddAthleteQuery("");
   };
 
-  const addTracked = (uuid: string) => {
+  const addTracked = (uuid: string, name?: string) => {
+    if (name) setKnownNames((prev) => ({ ...prev, [uuid]: name }));
     if (trackedUuids.includes(uuid)) return;
     setTrackedUuids((prev) => [...prev, uuid]);
     if (!currentUuid) setCurrentUuid(uuid);
@@ -831,39 +865,33 @@ function AthleteTrackingContentInner() {
 
       <Card>
         <Text fw={600} size="sm" mb="xs">Select athlete</Text>
-        {loadingAthletes ? (
-          <Text c="dimmed" size="sm">Loading athletes…</Text>
-        ) : (
-          <Group gap="xs" mb="sm" wrap="wrap" align="flex-start">
-            <TextInput
-              placeholder="Search by name…"
-              value={addAthleteQuery}
-              onChange={(e) => setAddAthleteQuery(e.target.value)}
-              w={220}
-              size="sm"
-            />
-            {addAthleteQuery.trim() && (
-              <Group gap={4} wrap="wrap">
-                {athletes
-                  .filter((a) =>
-                    a.name.toLowerCase().includes(addAthleteQuery.toLowerCase())
-                  )
-                  .slice(0, 20)
-                  .map((a) => (
-                    <button
-                      key={a.athlete_uuid}
-                      type="button"
-                      className="btn-ghost"
-                      style={{ fontSize: "13px" }}
-                      onClick={() => selectAthlete(a.athlete_uuid)}
-                    >
-                      {a.name}
-                    </button>
-                  ))}
-              </Group>
-            )}
-          </Group>
-        )}
+        <Group gap="xs" mb="sm" wrap="wrap" align="flex-start">
+          <TextInput
+            placeholder="Search by name…"
+            value={addAthleteQuery}
+            onChange={(e) => setAddAthleteQuery(e.target.value)}
+            w={220}
+            size="sm"
+          />
+          {loadingSearch && (
+            <Text c="dimmed" size="sm" style={{ alignSelf: "center" }}>Searching…</Text>
+          )}
+          {!loadingSearch && searchResults.length > 0 && (
+            <Group gap={4} wrap="wrap">
+              {searchResults.slice(0, 20).map((a) => (
+                <button
+                  key={a.athlete_uuid}
+                  type="button"
+                  className="btn-ghost"
+                  style={{ fontSize: "13px" }}
+                  onClick={() => selectAthlete(a.athlete_uuid, a.name)}
+                >
+                  {a.name}
+                </button>
+              ))}
+            </Group>
+          )}
+        </Group>
 
         <Text fw={600} size="sm" mb={6}>Selected athlete</Text>
         {trackedUuids.length === 0 ? (
@@ -871,7 +899,7 @@ function AthleteTrackingContentInner() {
         ) : (
           <Group gap={6} wrap="wrap">
             {trackedUuids.map((uuid) => {
-              const name = athletes.find((a) => a.athlete_uuid === uuid)?.name ?? uuid.slice(0, 8);
+              const name = knownNames[uuid] ?? uuid.slice(0, 8);
               const isCurrent = currentUuid === uuid;
               return (
                 <Badge
@@ -1128,7 +1156,7 @@ function AthleteTrackingContentInner() {
                           disabled={loadingCompare}
                           data={[
                             { value: "", label: "— None —" },
-                            ...athletes
+                            ...searchResults
                               .filter((a) => a.athlete_uuid !== currentUuid)
                               .map((a) => ({ value: a.athlete_uuid, label: a.name })),
                           ]}

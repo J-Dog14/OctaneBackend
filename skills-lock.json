@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "prisma-database-setup": {
+      "source": "prisma/skills",
+      "sourceType": "github",
+      "computedHash": "72e2360923e949261a15ca1dbcfac5662ec5e851f6045ffb13163a55a083bcea"
+    }
+  }
+}

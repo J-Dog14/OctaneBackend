@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { uploadToR2, deleteFromR2 } from "@/lib/r2/upload";
-import { requireAuth } from "@/lib/auth/requireAuth";
+import { requireRole } from "@/lib/auth/requireAuth";
 
 const MAX_FILE_SIZE_MB = 100;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
@@ -12,7 +12,7 @@ const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
  * Returns: { key, filename, size }
  */
 export async function POST(request: NextRequest) {
-  await requireAuth();
+  await requireRole("admin");
   let formData: FormData;
   try {
     formData = await request.formData();
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
  * Removes a previously uploaded file from R2.
  */
 export async function DELETE(request: NextRequest) {
-  await requireAuth();
+  await requireRole("admin");
   const key = new URL(request.url).searchParams.get("key");
   if (!key) {
     return NextResponse.json({ error: "Missing 'key' query param" }, { status: 400 });

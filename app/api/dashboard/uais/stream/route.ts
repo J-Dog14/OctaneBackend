@@ -1,14 +1,14 @@
 import { NextRequest } from "next/server";
 import { notFound } from "@/lib/responses";
 import { getJob, attachStreamController } from "@/lib/uais/runJob";
-import { requireAuth } from "@/lib/auth/requireAuth";
+import { requireRole } from "@/lib/auth/requireAuth";
 
 /**
  * GET /api/dashboard/uais/stream?jobId=...
  * Streams stdout/stderr from the UAIS process. Call after POST /api/dashboard/uais/run.
  */
 export async function GET(request: NextRequest) {
-  await requireAuth();
+  await requireRole("admin");
   const { searchParams } = new URL(request.url);
   const jobId = searchParams.get("jobId");
   if (!jobId) {

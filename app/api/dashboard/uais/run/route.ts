@@ -3,7 +3,7 @@ import { badRequest, internalError, success } from "@/lib/responses";
 import { getUaisRunner } from "@/lib/uais/runners";
 import { createJob, ASSESSMENT_DATA_DIR_ENV } from "@/lib/uais/runJob";
 import { prisma } from "@/lib/db/prisma";
-import { requireAuth } from "@/lib/auth/requireAuth";
+import { requireRole } from "@/lib/auth/requireAuth";
 
 /**
  * POST /api/dashboard/uais/run
@@ -14,7 +14,7 @@ import { requireAuth } from "@/lib/auth/requireAuth";
  * Returns jobId; client should then fetch GET /api/dashboard/uais/stream?jobId=...
  */
 export async function POST(request: NextRequest) {
-  await requireAuth();
+  await requireRole("admin");
   try {
     let body: { runnerId?: string; athleteUuid?: string | null; uploadedFileKeys?: string[]; reportOnly?: boolean };
     try {

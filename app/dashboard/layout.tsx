@@ -9,7 +9,7 @@ export default function DashboardLayout({
 }) {
   return (
     <AppShell header={{ height: 56 }} padding="lg">
-      <AppShellHeader>
+      <AppShellHeader style={{ borderBottom: "1px solid var(--border)" }}>
         <Group h="100%" px="md" gap="xl" wrap="nowrap" justify="space-between">
           <Link
             href="/dashboard"

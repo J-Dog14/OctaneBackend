@@ -133,9 +133,8 @@ export function getUaisRunners(): UaisRunner[] {
     .filter((r): r is UaisRunner => r !== null);
 }
 
-/** Returns runners in canonical order (only those that are configured). */
-export function getUaisRunnersInCanonicalOrder(): UaisRunner[] {
-  const byId = new Map(getUaisRunners().map((r) => [r.id, r]));
+function sortCanonically(runners: UaisRunner[]): UaisRunner[] {
+  const byId = new Map(runners.map((r) => [r.id, r]));
   const ordered: UaisRunner[] = [];
   for (const id of UAIS_CANONICAL_RUN_ORDER) {
     const r = byId.get(id);
@@ -145,6 +144,35 @@ export function getUaisRunnersInCanonicalOrder(): UaisRunner[] {
     if (!UAIS_CANONICAL_RUN_ORDER.includes(r.id)) ordered.push(r);
   }
   return ordered;
+}
+
+/** Returns runners in canonical order (only those that are configured). */
+export function getUaisRunnersInCanonicalOrder(): UaisRunner[] {
+  return sortCanonically(getUaisRunners());
+}
+
+/**
+ * Priority 4 (cloud fallback): build runners from org Settings stored in the DB.
+ * A runner is enabled if its `uais_data_dir_<id>` key is set in Settings.
+ * The CWD is the bundled uais/ directory inside the running container/app.
+ * This means admins can enable runners entirely from the Settings page UI —
+ * no env vars or config files required.
+ */
+export function getRunnersFromSettings(settings: Record<string, string>): UaisRunner[] {
+  const uaisDir = path.join(process.cwd(), "uais");
+  const runners = RUNNER_DEFS
+    .map((d) => {
+      const settingsKey = `uais_data_dir_${d.id.replace(/-/g, "_")}`;
+      if (!settings[settingsKey]?.trim()) return null;
+      return {
+        id: d.id,
+        label: d.label,
+        cwd: path.join(uaisDir, d.subpath),
+        command: d.rootCmd,
+      };
+    })
+    .filter((r): r is UaisRunner => r !== null);
+  return sortCanonically(runners);
 }
 
 export function getUaisRunner(id: string): UaisRunner | null {

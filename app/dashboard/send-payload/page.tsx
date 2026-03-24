@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, Suspense } from "react";
+import { AdminGuard } from "@/app/dashboard/AdminGuard";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
@@ -412,8 +413,10 @@ function SendPayloadContent() {
 
 export default function SendPayloadPage() {
   return (
-    <Suspense fallback={<div className="text-muted">Loading…</div>}>
-      <SendPayloadContent />
-    </Suspense>
+    <AdminGuard>
+      <Suspense fallback={<div className="text-muted">Loading…</div>}>
+        <SendPayloadContent />
+      </Suspense>
+    </AdminGuard>
   );
 }

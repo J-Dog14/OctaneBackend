@@ -53,3 +53,6 @@ next-env.d.ts
 # prisma
 /prisma/migrations
 
+# ai skills
+.claude
+.agents

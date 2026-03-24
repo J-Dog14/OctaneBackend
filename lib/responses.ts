@@ -8,6 +8,10 @@ export function badRequest(message: string): NextResponse {
   return NextResponse.json({ error: message }, { status: 400 });
 }
 
+export function forbidden(message: string = "Insufficient permissions"): NextResponse {
+  return NextResponse.json({ error: message }, { status: 403 });
+}
+
 export function notFound(message: string = "Resource not found"): NextResponse {
   return NextResponse.json({ error: message }, { status: 404 });
 }

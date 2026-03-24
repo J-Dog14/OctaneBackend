@@ -3,23 +3,29 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Tabs, TabsList, TabsTab } from "@mantine/core";
-import { UserButton } from "@clerk/nextjs";
+import { useUser, UserButton } from "@clerk/nextjs";
 
 const TABS = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/dashboard/athletes", label: "Athletes" },
-  { href: "/dashboard/athlete-tracking", label: "Athlete Tracking" },
-  { href: "/dashboard/send-payload", label: "Send Payload" },
-  { href: "/dashboard/uais-maintenance", label: "UAIS Maintenance" },
-  { href: "/dashboard/reports", label: "PDF Reports" },
-  { href: "/dashboard/settings", label: "Settings" },
+  { href: "/dashboard", label: "Dashboard", adminOnly: false },
+  { href: "/dashboard/athletes", label: "Athletes", adminOnly: false },
+  { href: "/dashboard/athlete-tracking", label: "Athlete Tracking", adminOnly: false },
+  { href: "/dashboard/send-payload", label: "Send Payload", adminOnly: true },
+  { href: "/dashboard/uais-maintenance", label: "UAIS Maintenance", adminOnly: true },
+  { href: "/dashboard/reports", label: "PDF Reports", adminOnly: true },
+  { href: "/dashboard/settings", label: "Settings", adminOnly: true },
 ] as const;
 
 export function DashboardNav() {
   const pathname = usePathname();
+  const { user, isLoaded } = useUser();
+
+  const clerkConfigured = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+  const isAdmin = !clerkConfigured || !isLoaded || user?.publicMetadata?.role === "admin";
+
+  const visibleTabs = TABS.filter((t) => !t.adminOnly || isAdmin);
 
   const activeHref =
-    TABS.find(
+    visibleTabs.find(
       (t) => t.href !== "/dashboard" && pathname.startsWith(t.href)
     )?.href ?? "/dashboard";
 
@@ -27,7 +33,7 @@ export function DashboardNav() {
     <>
       <Tabs value={activeHref} variant="underline" keepMounted={false} style={{ flex: 1 }}>
         <TabsList style={{ borderBottom: "none", gap: 0 }}>
-          {TABS.map((tab) => (
+          {visibleTabs.map((tab) => (
             <TabsTab
               key={tab.href}
               value={tab.href}
@@ -39,7 +45,7 @@ export function DashboardNav() {
           ))}
         </TabsList>
       </Tabs>
-      {process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && <UserButton />}
+      {clerkConfigured && <UserButton />}
     </>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AdminGuard } from "@/app/dashboard/AdminGuard";
 
 type AthleteOption = { athlete_uuid: string; name: string };
 
@@ -113,6 +114,7 @@ export default function ReportsPage() {
   };
 
   return (
+    <AdminGuard>
     <div>
       <h1 style={{ marginBottom: "0.5rem", fontSize: "1.75rem" }}>PDF Reports</h1>
       <p className="text-muted" style={{ marginBottom: "1.5rem" }}>
@@ -257,5 +259,6 @@ export default function ReportsPage() {
         </div>
       )}
     </div>
+    </AdminGuard>
   );
 }

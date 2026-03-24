@@ -2,13 +2,13 @@ import { NextRequest } from "next/server";
 import { badRequest, internalError, success } from "@/lib/responses";
 import { octaneSingleAthletePayloadQuerySchema } from "@/lib/validation/octane";
 import { buildProteusPitcherPayload } from "@/lib/octane/proteusPayload";
-import { requireAuth } from "@/lib/auth/requireAuth";
+import { requireRole } from "@/lib/auth/requireAuth";
 
 /**
  * Dashboard-only: generate Proteus (pitcher) payload for an athlete. No API key.
  */
 export async function GET(request: NextRequest) {
-  await requireAuth();
+  await requireRole("admin");
   try {
     const { searchParams } = new URL(request.url);
     const rawQuery = {

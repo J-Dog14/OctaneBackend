@@ -128,7 +128,7 @@ const getCachedPitchingPopulation = unstable_cache(
     });
   },
   ["population-pitching"],
-  { revalidate: 600 }
+  { revalidate: 3600 }
 );
 
 const getCachedHittingPopulation = unstable_cache(
@@ -140,7 +140,7 @@ const getCachedHittingPopulation = unstable_cache(
     });
   },
   ["population-hitting"],
-  { revalidate: 600 }
+  { revalidate: 3600 }
 );
 
 const getCachedMobilityPopulation = unstable_cache(
@@ -152,7 +152,7 @@ const getCachedMobilityPopulation = unstable_cache(
     });
   },
   ["population-mobility"],
-  { revalidate: 600 }
+  { revalidate: 3600 }
 );
 
 const getCachedAthleticScreenPopulation = unstable_cache(
@@ -164,7 +164,7 @@ const getCachedAthleticScreenPopulation = unstable_cache(
     });
   },
   ["population-athletic-screen"],
-  { revalidate: 600 }
+  { revalidate: 3600 }
 );
 
 const getCachedArmActionPopulation = unstable_cache(
@@ -176,7 +176,7 @@ const getCachedArmActionPopulation = unstable_cache(
     });
   },
   ["population-arm-action"],
-  { revalidate: 600 }
+  { revalidate: 3600 }
 );
 
 const getCachedProteusPitcherPopulation = unstable_cache(
@@ -199,7 +199,7 @@ const getCachedProteusPitcherPopulation = unstable_cache(
     });
   },
   ["population-proteus-pitcher"],
-  { revalidate: 600 }
+  { revalidate: 3600 }
 );
 
 const getCachedProteusHitterPopulation = unstable_cache(
@@ -226,7 +226,7 @@ const getCachedProteusHitterPopulation = unstable_cache(
     });
   },
   ["population-proteus-hitter"],
-  { revalidate: 600 }
+  { revalidate: 3600 }
 );
 
 export async function getPitchingWithPercentiles(
@@ -475,4 +475,20 @@ export async function buildDomainsWithPercentiles(
     }
   }
   return results;
+}
+
+/**
+ * Pre-warms all population caches. Call from instrumentation.ts at startup
+ * (non-blocking) so the first real request hits a warm cache.
+ */
+export async function warmPopulationCaches(): Promise<void> {
+  await Promise.allSettled([
+    getCachedPitchingPopulation(),
+    getCachedHittingPopulation(),
+    getCachedMobilityPopulation(),
+    getCachedAthleticScreenPopulation(),
+    getCachedArmActionPopulation(),
+    getCachedProteusPitcherPopulation(),
+    getCachedProteusHitterPopulation(),
+  ]);
 }

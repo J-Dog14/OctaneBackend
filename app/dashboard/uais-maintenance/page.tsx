@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { AdminGuard } from "@/app/dashboard/AdminGuard";
 
 type Runner = { id: string; label: string };
 type AthleteOption = { athlete_uuid: string; name: string; email?: string | null };
@@ -392,6 +393,7 @@ export default function UaisMaintenancePage() {
   const hasNoEmail = (a: AthleteOption) => a.email == null || a.email === "";
 
   return (
+    <AdminGuard>
     <div>
       <h1 style={{ marginBottom: "0.5rem", fontSize: "1.75rem" }}>
         UAIS Maintenance
@@ -773,5 +775,6 @@ export default function UaisMaintenancePage() {
         </div>
       )}
     </div>
+    </AdminGuard>
   );
 }

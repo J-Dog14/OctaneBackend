@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
-import { requireAuth } from "@/lib/auth/requireAuth";
+import { requireRole } from "@/lib/auth/requireAuth";
 
 /**
  * GET /api/dashboard/settings
  * Returns all org settings as a key/value object.
  */
 export async function GET() {
-  await requireAuth();
+  await requireRole("admin");
   const rows = await prisma.orgSetting.findMany();
   const settings: Record<string, string> = {};
   for (const row of rows) {
@@ -22,7 +22,7 @@ export async function GET() {
  * Pass an empty string to clear a setting (it will be deleted).
  */
 export async function PATCH(request: NextRequest) {
-  await requireAuth();
+  await requireRole("admin");
   const body = await request.json() as { settings?: Record<string, string> };
   const incoming = body?.settings;
   if (!incoming || typeof incoming !== "object" || Array.isArray(incoming)) {

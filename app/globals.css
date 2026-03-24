@@ -73,6 +73,7 @@ textarea {
   border-radius: 6px;
   color: var(--text-primary);
   padding: 8px 12px;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 input:focus,
@@ -97,11 +98,18 @@ button {
   transition: background 0.15s, color 0.15s;
 }
 
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn,
 .btn-primary {
   background: var(--accent);
   color: #fff;
 }
 
+.btn:hover,
 .btn-primary:hover {
   background: var(--accent-hover);
 }

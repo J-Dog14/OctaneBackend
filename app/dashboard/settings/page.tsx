@@ -1,6 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { AdminGuard } from "@/app/dashboard/AdminGuard";
+import {
+  Stack, Group, Title, Text, TextInput, Button, Paper, Alert
+} from "@mantine/core";
 
 type Settings = Record<string, string>;
 
@@ -118,65 +122,58 @@ export default function SettingsPage() {
   const isDirty = JSON.stringify(draft) !== JSON.stringify(settings);
 
   return (
-    <div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.5rem" }}>
-        <h1 style={{ fontSize: "1.75rem", margin: 0 }}>Settings</h1>
-        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-          {savedAt && !isDirty && (
-            <span className="text-muted" style={{ fontSize: "13px" }}>
-              Saved {savedAt.toLocaleTimeString()}
-            </span>
-          )}
-          <button
-            className="btn-primary"
-            onClick={handleSave}
-            disabled={saving || !isDirty}
-          >
-            {saving ? "Saving…" : "Save changes"}
-          </button>
-        </div>
-      </div>
-      <p className="text-muted" style={{ marginBottom: "2rem" }}>
-        Configure org-specific settings. Changes take effect immediately without redeployment.
-      </p>
+    <AdminGuard>
+      <Stack gap="xl">
+        <Group justify="space-between" align="flex-end">
+          <div>
+            <Title order={1} mb={4}>Settings</Title>
+            <Text c="dimmed">
+              Configure org-specific settings. Changes take effect immediately without redeployment.
+            </Text>
+          </div>
+          <Group gap="sm">
+            {savedAt && !isDirty && (
+              <Text size="sm" c="dimmed">Saved {savedAt.toLocaleTimeString()}</Text>
+            )}
+            <Button onClick={handleSave} disabled={saving || !isDirty} loading={saving}>
+              Save changes
+            </Button>
+          </Group>
+        </Group>
 
-      {saveError && (
-        <div style={{ color: "var(--error, #e53e3e)", marginBottom: "1rem", padding: "0.75rem 1rem", background: "rgba(229,62,62,0.1)", borderRadius: "6px" }}>
-          {saveError}
-        </div>
-      )}
+        {saveError && (
+          <Alert color="red" variant="light">{saveError}</Alert>
+        )}
 
-      {loading ? (
-        <p className="text-muted">Loading settings…</p>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-          {SETTING_GROUPS.map((group) => (
-            <section key={group.title} className="card">
-              <h2 style={{ margin: "0 0 0.25rem", fontSize: "1.05rem" }}>{group.title}</h2>
-              <p className="text-muted" style={{ margin: "0 0 1.25rem", fontSize: "13px" }}>{group.description}</p>
-              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                {group.keys.map(({ key, label, placeholder, type }) => (
-                  <div key={key}>
-                    <label style={{ display: "block", fontSize: "13px", fontWeight: 600, marginBottom: "4px" }}>
-                      {label}
-                    </label>
-                    <input
-                      type={type === "password" ? "text" : type}
+        {loading ? (
+          <Text c="dimmed">Loading settings…</Text>
+        ) : (
+          <Stack gap="lg">
+            {SETTING_GROUPS.map((group) => (
+              <Paper key={group.title} withBorder p="lg" radius="md">
+                <Title order={3} fz="md" mb={4}>{group.title}</Title>
+                <Text size="sm" c="dimmed" mb="md">{group.description}</Text>
+                <Stack gap="md">
+                  {group.keys.map(({ key, label, placeholder, type }) => (
+                    <TextInput
+                      key={key}
+                      label={label}
+                      placeholder={placeholder}
                       value={draft[key] ?? ""}
                       onChange={(e) => handleChange(key, e.target.value)}
-                      placeholder={placeholder}
-                      style={{ width: "100%", maxWidth: "480px", fontFamily: type === "password" ? "monospace" : undefined }}
+                      type={type === "password" ? "text" : type}
+                      styles={{
+                        input: { fontFamily: type === "password" ? "var(--font-mono)" : undefined, maxWidth: 480 },
+                      }}
+                      description={<>key: <code>{key}</code></>}
                     />
-                    <div className="text-muted" style={{ fontSize: "11px", marginTop: "2px" }}>
-                      key: <code>{key}</code>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
-      )}
-    </div>
+                  ))}
+                </Stack>
+              </Paper>
+            ))}
+          </Stack>
+        )}
+      </Stack>
+    </AdminGuard>
   );
 }
