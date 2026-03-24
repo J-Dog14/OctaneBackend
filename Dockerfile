@@ -32,8 +32,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     r-cran-yaml \
     r-cran-fs \
     r-cran-uuid \
-    && rm -rf /var/lib/apt/lists/* \
-    && Rscript -e "options(repos=c(CRAN='https://packagemanager.posit.co/cran/__linux__/bookworm/latest')); install.packages('RPostgres')"
+    r-cran-rpostgres \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
