@@ -54,6 +54,8 @@ export default function UaisMaintenancePage() {
   // Sync agent state
   const [agentOnline, setAgentOnline] = useState(false);
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
+  // Per-runner data path overrides (pre-filled from Settings, editable before each run)
+  const [runnerDataPaths, setRunnerDataPaths] = useState<Record<string, string>>({});
 
   // Probe R2 availability by attempting a dry-run OPTIONS check
   useEffect(() => {
@@ -109,9 +111,11 @@ export default function UaisMaintenancePage() {
     setError(null);
     try {
       const res = await fetch("/api/dashboard/uais/runners");
-      const data = await res.json();
+      const data = await res.json() as { runners?: Runner[]; dataDirs?: Record<string, string>; error?: string };
       if (!res.ok) throw new Error(data.error ?? "Failed to load runners");
       setRunners(data.runners ?? []);
+      // Pre-fill per-runner data paths from Settings (user can override before each run)
+      if (data.dataDirs) setRunnerDataPaths(data.dataDirs);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load runners");
     } finally {
@@ -196,13 +200,13 @@ export default function UaisMaintenancePage() {
   }, []);
 
   /** When the sync agent is online, create a sync request and wait for it to upload files. */
-  const waitForAgentUpload = async (runnerId: string, athleteUuid?: string): Promise<string[] | null> => {
+  const waitForAgentUpload = async (runnerId: string, athleteUuid?: string, dataPath?: string): Promise<string[] | null> => {
     setSyncStatus("Fetching files from your machine…");
     try {
       const reqRes = await fetch("/api/sync/request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ runnerId, athleteUuid }),
+        body: JSON.stringify({ runnerId, athleteUuid, dataPath: dataPath?.trim() || undefined }),
       });
       if (!reqRes.ok) {
         const d = await reqRes.json() as { error?: string };
@@ -259,7 +263,7 @@ export default function UaisMaintenancePage() {
 
         if (!uploadedFileKeys && agentOnline) {
           try {
-            const agentKeys = await waitForAgentUpload(runner.id, athleteUuid);
+            const agentKeys = await waitForAgentUpload(runner.id, athleteUuid, runnerDataPaths[runner.id]);
             if (agentKeys && agentKeys.length > 0) uploadedFileKeys = agentKeys;
           } catch (agentErr) {
             setOutput((prev) => prev + `\n[Sync Agent Error] ${agentErr instanceof Error ? agentErr.message : String(agentErr)}\n`);
@@ -344,6 +348,15 @@ export default function UaisMaintenancePage() {
       else next.add(id);
       return next;
     });
+  };
+
+  const killActiveJob = async () => {
+    if (!activeJob?.jobId) return;
+    await fetch("/api/dashboard/uais/kill", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jobId: activeJob.jobId }),
+    }).catch(() => undefined);
   };
 
   const sendInput = async () => {
@@ -644,6 +657,29 @@ export default function UaisMaintenancePage() {
                 );
               })}
             </div>
+            {/* Per-runner data path inputs — shown when agent is online and at least one runner is selected */}
+            {agentOnline && selectedRunnerIds.size > 0 && (
+              <div style={{ margin: "0.75rem 0", padding: "0.75rem 1rem", border: "1px solid var(--border)", borderRadius: "8px" }}>
+                <p style={{ margin: "0 0 0.5rem", fontSize: "13px", fontWeight: 600 }}>Data folder paths</p>
+                <p className="text-muted" style={{ margin: "0 0 0.75rem", fontSize: "12px" }}>
+                  Pre-filled from Settings. Edit to point at a specific session folder before running.
+                </p>
+                {runners.filter((r) => selectedRunnerIds.has(r.id)).map((r) => (
+                  <div key={r.id} style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem", flexWrap: "wrap" }}>
+                    <label style={{ fontSize: "13px", minWidth: "120px", fontWeight: 500 }}>{r.label}</label>
+                    <input
+                      type="text"
+                      value={runnerDataPaths[r.id] ?? ""}
+                      onChange={(e) => setRunnerDataPaths((prev) => ({ ...prev, [r.id]: e.target.value }))}
+                      placeholder="e.g. D:/Data/Sessions/2024-03-25/"
+                      style={{ flex: 1, minWidth: "260px", padding: "0.3rem 0.5rem", fontSize: "13px" }}
+                      disabled={streaming}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Manual upload — shown when agent is offline and R2 is available */}
             {r2Available && !agentOnline && selectedRunnerIds.size > 0 && (
               <div style={{ margin: "1rem 0", padding: "0.75rem 1rem", border: "1px dashed var(--border)", borderRadius: "8px" }}>
@@ -740,7 +776,7 @@ export default function UaisMaintenancePage() {
             <span ref={outputEndRef} />
           </pre>
           {activeJob && (
-            <div style={{ marginTop: "0.75rem", display: "flex", gap: "0.5rem", alignItems: "center" }}>
+            <div style={{ marginTop: "0.75rem", display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
               <input
                 type="text"
                 value={inputValue}
@@ -750,6 +786,14 @@ export default function UaisMaintenancePage() {
                 style={{ flex: 1 }}
               />
               <button type="button" className="btn-primary" onClick={sendInput}>Send</button>
+              <button
+                type="button"
+                className="btn-ghost"
+                onClick={killActiveJob}
+                style={{ color: "var(--accent-secondary, #e53e3e)", borderColor: "currentColor" }}
+              >
+                Kill
+              </button>
             </div>
           )}
         </div>

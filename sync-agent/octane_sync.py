@@ -72,6 +72,18 @@ def fetch_remote_config(railway_url: str, agent_token: str) -> Optional[dict]:
         log.warning(f"Could not fetch remote config: {e}")
         return None
 
+# ── File type filtering ───────────────────────────────────────────────────────
+
+# Runners that produce XML output files (V3D exports)
+XML_RUNNERS = {"pitching", "hitting", "pro-sup"}
+
+def get_allowed_extensions(runner_id: str) -> set:
+    """Return the set of file extensions to upload for this runner."""
+    if runner_id in XML_RUNNERS:
+        return {".xml"}
+    # All other runners use ASCII/text exports
+    return {".txt", ".asc", ".csv"}
+
 # ── R2 upload ─────────────────────────────────────────────────────────────────
 
 def build_s3_client(r2_cfg: dict):
@@ -85,9 +97,9 @@ def build_s3_client(r2_cfg: dict):
     )
 
 
-def upload_folder_to_r2(folder_path: str, runner_id: str, r2_cfg: dict) -> list[str]:
+def upload_folder_to_r2(folder_path: str, runner_id: str, r2_cfg: dict) -> list:
     """
-    Upload all files in folder_path to R2.
+    Upload files in folder_path to R2, filtered by the runner's expected file types.
     Returns list of R2 object keys.
     Raises on any error.
     """
@@ -95,9 +107,16 @@ def upload_folder_to_r2(folder_path: str, runner_id: str, r2_cfg: dict) -> list[
     if not folder.exists():
         raise FileNotFoundError(f"Data folder not found: {folder_path}")
 
-    files = [f for f in folder.iterdir() if f.is_file()]
+    allowed_exts = get_allowed_extensions(runner_id)
+    all_files = [f for f in folder.iterdir() if f.is_file()]
+    files = [f for f in all_files if f.suffix.lower() in allowed_exts]
+
     if not files:
-        raise ValueError(f"No files found in: {folder_path}")
+        ext_list = ", ".join(sorted(allowed_exts))
+        raise ValueError(
+            f"No {ext_list} files found in: {folder_path}\n"
+            f"  ({len(all_files)} other file(s) present but not the expected type for '{runner_id}')"
+        )
 
     log.info(f"Uploading {len(files)} file(s) from {folder_path}")
 
@@ -163,9 +182,16 @@ def poll_loop(local_cfg: dict, remote_cfg: dict):
 
             request_id = pending["id"]
             runner_id = pending["runnerId"]
+            data_path_override = (pending.get("dataPath") or "").strip()
             log.info(f"Received upload request: runner={runner_id} requestId={request_id}")
 
-            folder_path = runner_paths.get(runner_id, "").strip()
+            # dataPath from the browser takes priority over the configured runner path
+            if data_path_override:
+                folder_path = data_path_override
+                log.info(f"Using per-run path override: {folder_path}")
+            else:
+                folder_path = runner_paths.get(runner_id, "").strip()
+
             if not folder_path:
                 msg = f"No data directory configured for runner '{runner_id}' in Settings."
                 log.error(msg)

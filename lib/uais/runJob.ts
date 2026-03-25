@@ -224,3 +224,15 @@ export function writeInput(jobId: string, input: string): boolean {
   job.process.stdin.write(input);
   return true;
 }
+
+/** Send SIGTERM to the running process. Returns false if job not found or already done. */
+export function killJob(jobId: string): boolean {
+  const job = jobs.get(jobId);
+  if (!job || job.done) return false;
+  try {
+    job.process.kill("SIGTERM");
+  } catch {
+    // Process may have already exited
+  }
+  return true;
+}

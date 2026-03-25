@@ -6,14 +6,14 @@ import { requireRole } from "@/lib/auth/requireAuth";
  * POST /api/sync/request
  * Called by the browser when the user clicks Run and the agent is online.
  * Creates a pending SyncRequest that the agent will pick up and fulfill.
- * Body: { runnerId: string, athleteUuid?: string, reportOnly?: boolean }
+ * Body: { runnerId: string, athleteUuid?: string, reportOnly?: boolean, dataPath?: string }
  * Returns: { requestId: string }
  */
 export async function POST(request: NextRequest) {
   await requireRole("admin");
 
-  const body = await request.json() as { runnerId?: string; athleteUuid?: string; reportOnly?: boolean };
-  const { runnerId, athleteUuid, reportOnly } = body;
+  const body = await request.json() as { runnerId?: string; athleteUuid?: string; reportOnly?: boolean; dataPath?: string };
+  const { runnerId, athleteUuid, reportOnly, dataPath } = body;
 
   if (!runnerId) return NextResponse.json({ error: "runnerId required" }, { status: 400 });
 
@@ -24,6 +24,7 @@ export async function POST(request: NextRequest) {
       runnerId,
       athleteUuid: athleteUuid ?? null,
       reportOnly: reportOnly ?? false,
+      dataPath: dataPath?.trim() || null,
       expiresAt,
     },
   });

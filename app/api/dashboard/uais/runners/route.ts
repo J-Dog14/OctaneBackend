@@ -18,7 +18,14 @@ export async function GET() {
     const settings = Object.fromEntries(rows.map((r) => [r.key, r.value]));
     const settingsRunners = getRunnersFromSettings(settings);
     if (settingsRunners.length > 0) {
-      return NextResponse.json({ runners: settingsRunners });
+      // Also return the configured data dirs so the frontend can pre-fill per-run path inputs
+      const dataDirs = Object.fromEntries(
+        settingsRunners.map((r) => {
+          const key = `uais_data_dir_${r.id.replace(/-/g, "_")}`;
+          return [r.id, settings[key]?.trim() ?? ""];
+        })
+      );
+      return NextResponse.json({ runners: settingsRunners, dataDirs });
     }
   } catch {
     // Non-fatal: fall through to env/config
@@ -26,5 +33,5 @@ export async function GET() {
 
   // Priority 2: config file / env vars (local dev or self-hosted without DB config)
   const runners = getUaisRunnersInCanonicalOrder();
-  return NextResponse.json({ runners });
+  return NextResponse.json({ runners, dataDirs: {} });
 }

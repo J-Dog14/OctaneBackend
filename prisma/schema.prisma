@@ -1109,6 +1109,7 @@ model SyncRequest {
   runnerId    String
   athleteUuid String?
   reportOnly  Boolean  @default(false)
+  dataPath    String?  // Per-run folder override sent from the browser; agent uses this instead of the configured path
   status      String   @default("pending") // pending | fulfilled | error
   fileKeys    String[] @default([])
   errorMsg    String?
