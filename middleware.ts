@@ -7,6 +7,7 @@ const isPublicRoute = createRouteMatcher([
   "/api/octane(.*)",
   "/api/biomech(.*)",
   "/api/external(.*)",
+  "/api/sync(.*)", // OctaneSync agent — uses its own token auth, not Clerk
 ]);
 
 export default clerkMiddleware(async (auth, request) => {
