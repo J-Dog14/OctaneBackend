@@ -47,6 +47,8 @@ model d_athletes {
   curveball_test_session_count   Int                       @default(0)
   has_pitching_trial_data        Boolean?                  @default(false)
   pitching_trial_count           Int?                      @default(0)
+  has_hitting_trial_data         Boolean?                  @default(false)
+  hitting_trial_count            Int?                      @default(0)
   source_athlete_map             source_athlete_map[]
   f_arm_action                   f_arm_action[]
   f_athletic_screen              f_athletic_screen[]
@@ -1043,6 +1045,7 @@ model f_hitting_trials {
   source_athlete_id     String?    @db.VarChar(100)
   owner_filename        String?
   trial_index           Int
+  name                  String?
   age_at_collection     Decimal?   @db.Decimal
   age_group             String?
   height                Decimal?   @db.Decimal
@@ -1067,6 +1070,8 @@ model f_pitching_trials {
   source_athlete_id     String?    @db.VarChar(100)
   owner_filename        String?
   trial_index           Int
+  name                  String?
+  handedness            String?
   velocity_mph          Decimal?   @db.Decimal
   score                 Decimal?   @db.Decimal
   metrics               Json
@@ -1093,6 +1098,24 @@ model OrgSetting {
   updatedAt DateTime @updatedAt
 
   @@map("org_settings")
+  @@schema("public")
+}
+
+/// Transient upload requests created by the browser and fulfilled by the OctaneSync agent.
+/// The agent polls for pending requests, uploads files from the configured local path to R2,
+/// then marks the request as fulfilled with the resulting R2 file keys.
+model SyncRequest {
+  id          String   @id @default(cuid())
+  runnerId    String
+  athleteUuid String?
+  reportOnly  Boolean  @default(false)
+  status      String   @default("pending") // pending | fulfilled | error
+  fileKeys    String[] @default([])
+  errorMsg    String?
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+
+  @@map("sync_requests")
   @@schema("public")
 }
 

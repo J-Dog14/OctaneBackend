@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { AdminGuard } from "@/app/dashboard/AdminGuard";
 import {
-  Stack, Group, Title, Text, TextInput, Button, Paper, Alert
+  Stack, Group, Title, Text, TextInput, Button, Paper, Alert, Badge, Code
 } from "@mantine/core";
 
 type Settings = Record<string, string>;
@@ -35,7 +35,7 @@ const SETTING_GROUPS = [
   },
   {
     title: "Runner Data Directories",
-    description: "Local paths where each runner looks for its raw input data. Set the folder for each assessment type you use.",
+    description: "The folder on the Windows machine running OctaneSync where each assessment type's V3D output files live. The sync agent reads these paths and uploads files to R2 when you trigger a run.",
     keys: [
       { key: "uais_data_dir_athletic_screen", label: "Athletic Screen Data Directory", placeholder: "/path/to/athletic-screen/output", type: "text" },
       { key: "uais_data_dir_readiness_screen", label: "Readiness Screen Data Directory", placeholder: "/path/to/readiness-screen/data", type: "text" },
@@ -76,17 +76,46 @@ export default function SettingsPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
 
+  // Sync Agent state
+  const [agentToken, setAgentToken] = useState<string | null>(null);
+  const [agentOnline, setAgentOnline] = useState(false);
+  const [generatingToken, setGeneratingToken] = useState(false);
+  const [tokenVisible, setTokenVisible] = useState(false);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/dashboard/settings");
-      const data = await res.json() as { settings: Settings };
+      const [settingsRes, agentStatusRes] = await Promise.all([
+        fetch("/api/dashboard/settings"),
+        fetch("/api/sync/agent-status"),
+      ]);
+      const data = await settingsRes.json() as { settings: Settings };
       setSettings(data.settings ?? {});
       setDraft(data.settings ?? {});
+      if (agentStatusRes.ok) {
+        const agentData = await agentStatusRes.json() as { online: boolean };
+        setAgentOnline(agentData.online);
+      }
+      // Show masked token if one exists
+      if (data.settings?.agent_token) {
+        setAgentToken(data.settings.agent_token);
+      }
     } finally {
       setLoading(false);
     }
   }, []);
+
+  const generateToken = async () => {
+    setGeneratingToken(true);
+    try {
+      const res = await fetch("/api/sync/generate-token", { method: "POST" });
+      const data = await res.json() as { token: string };
+      setAgentToken(data.token);
+      setTokenVisible(true);
+    } finally {
+      setGeneratingToken(false);
+    }
+  };
 
   useEffect(() => { void load(); }, [load]);
 
@@ -149,6 +178,59 @@ export default function SettingsPage() {
           <Text c="dimmed">Loading settings…</Text>
         ) : (
           <Stack gap="lg">
+            {/* Sync Agent card */}
+            <Paper withBorder p="lg" radius="md">
+              <Group justify="space-between" align="flex-start" mb={4}>
+                <Title order={3} fz="md">Sync Agent</Title>
+                <Badge color={agentOnline ? "green" : "gray"} variant="light">
+                  {agentOnline ? "Online" : "Offline"}
+                </Badge>
+              </Group>
+              <Text size="sm" c="dimmed" mb="md">
+                The OctaneSync agent runs on each Windows data collection machine. When you trigger
+                a run, it automatically uploads the right folder&apos;s files to R2 — no manual file
+                selection needed. Configure the token below, then set it in the agent&apos;s config.json.
+              </Text>
+              <Stack gap="sm">
+                {agentToken ? (
+                  <div>
+                    <Text size="sm" fw={500} mb={4}>Agent Token</Text>
+                    <Group gap="sm" align="center">
+                      <Code style={{ flex: 1, wordBreak: "break-all", maxWidth: 420 }}>
+                        {tokenVisible ? agentToken : "•".repeat(32)}
+                      </Code>
+                      <Button size="xs" variant="subtle" onClick={() => setTokenVisible((v) => !v)}>
+                        {tokenVisible ? "Hide" : "Show"}
+                      </Button>
+                      {tokenVisible && (
+                        <Button size="xs" variant="subtle" onClick={() => void navigator.clipboard.writeText(agentToken)}>
+                          Copy
+                        </Button>
+                      )}
+                    </Group>
+                    <Text size="xs" c="dimmed" mt={4}>Paste this into config.json on the Windows machine.</Text>
+                  </div>
+                ) : (
+                  <Text size="sm" c="dimmed">No token generated yet.</Text>
+                )}
+                <div>
+                  <Button
+                    size="sm"
+                    variant="default"
+                    onClick={generateToken}
+                    loading={generatingToken}
+                  >
+                    {agentToken ? "Regenerate Token" : "Generate Token"}
+                  </Button>
+                  {agentToken && (
+                    <Text size="xs" c="orange" mt={4}>
+                      Regenerating invalidates the current token — the agent will need to be reconfigured.
+                    </Text>
+                  )}
+                </div>
+              </Stack>
+            </Paper>
+
             {SETTING_GROUPS.map((group) => (
               <Paper key={group.title} withBorder p="lg" radius="md">
                 <Title order={3} fz="md" mb={4}>{group.title}</Title>

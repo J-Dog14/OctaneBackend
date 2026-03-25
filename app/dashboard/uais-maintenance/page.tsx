@@ -51,11 +51,28 @@ export default function UaisMaintenancePage() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [r2Available, setR2Available] = useState<boolean | null>(null);
 
+  // Sync agent state
+  const [agentOnline, setAgentOnline] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<string | null>(null);
+
   // Probe R2 availability by attempting a dry-run OPTIONS check
   useEffect(() => {
     fetch("/api/dashboard/uais/upload", { method: "HEAD" })
       .then((r) => setR2Available(r.status !== 503))
       .catch(() => setR2Available(false));
+  }, []);
+
+  // Poll agent status every 10 seconds
+  useEffect(() => {
+    const check = () => {
+      fetch("/api/sync/agent-status")
+        .then((r) => r.json())
+        .then((d: { online?: boolean }) => setAgentOnline(d.online ?? false))
+        .catch(() => setAgentOnline(false));
+    };
+    check();
+    const interval = setInterval(check, 10_000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleFileSelect = async (files: FileList | null) => {
@@ -178,6 +195,43 @@ export default function UaisMaintenancePage() {
     }
   }, []);
 
+  /** When the sync agent is online, create a sync request and wait for it to upload files. */
+  const waitForAgentUpload = async (runnerId: string, athleteUuid?: string): Promise<string[] | null> => {
+    setSyncStatus("Fetching files from your machine…");
+    try {
+      const reqRes = await fetch("/api/sync/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ runnerId, athleteUuid }),
+      });
+      if (!reqRes.ok) {
+        const d = await reqRes.json() as { error?: string };
+        throw new Error(d.error ?? "Failed to create sync request");
+      }
+      const { requestId } = await reqRes.json() as { requestId: string };
+
+      // Poll for completion (max 2 minutes)
+      const deadline = Date.now() + 120_000;
+      while (Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, 2000));
+        const statusRes = await fetch(`/api/sync/status/${requestId}`);
+        const status = await statusRes.json() as { status: string; fileKeys?: string[]; errorMsg?: string };
+        if (status.status === "fulfilled") {
+          setSyncStatus(null);
+          return status.fileKeys ?? [];
+        }
+        if (status.status === "error") {
+          throw new Error(status.errorMsg ?? "Agent upload failed");
+        }
+        setSyncStatus(`Uploading files… (${Math.round((deadline - Date.now()) / 1000)}s remaining)`);
+      }
+      throw new Error("Agent did not respond in time. Is OctaneSync running?");
+    } catch (e) {
+      setSyncStatus(null);
+      throw e;
+    }
+  };
+
   const runSelected = async () => {
     setRunSelectedError(null);
     if (runMode === "existing" && !athleteSelected?.athlete_uuid) {
@@ -198,7 +252,21 @@ export default function UaisMaintenancePage() {
       const runner = ordered[i];
       setRunSelectedProgress({ current: i + 1, total, label: runner.label });
       try {
-        const uploadedFileKeys = uploadedFiles.length > 0 ? uploadedFiles.map((f) => f.key) : undefined;
+        // Agent flow: auto-upload from the configured local folder
+        let uploadedFileKeys: string[] | undefined = uploadedFiles.length > 0
+          ? uploadedFiles.map((f) => f.key)
+          : undefined;
+
+        if (!uploadedFileKeys && agentOnline) {
+          try {
+            const agentKeys = await waitForAgentUpload(runner.id, athleteUuid);
+            if (agentKeys && agentKeys.length > 0) uploadedFileKeys = agentKeys;
+          } catch (agentErr) {
+            setOutput((prev) => prev + `\n[Sync Agent Error] ${agentErr instanceof Error ? agentErr.message : String(agentErr)}\n`);
+            continue;
+          }
+        }
+
         const res = await fetch("/api/dashboard/uais/run", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -526,6 +594,25 @@ export default function UaisMaintenancePage() {
         </div>
 
         <h2 style={{ margin: "0 0 0.5rem", fontSize: "1rem" }}>Which data to run</h2>
+        <div style={{ marginBottom: "0.75rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <span
+            style={{
+              display: "inline-block",
+              width: 8,
+              height: 8,
+              borderRadius: "50%",
+              background: agentOnline ? "#22c55e" : "#6b7280",
+            }}
+          />
+          <span className="text-muted" style={{ fontSize: "13px" }}>
+            {agentOnline
+              ? "OctaneSync agent online — files will be fetched automatically"
+              : "OctaneSync agent offline — upload files manually below, or install the sync agent"}
+          </span>
+          {syncStatus && (
+            <span style={{ fontSize: "13px", color: "var(--accent)" }}>{syncStatus}</span>
+          )}
+        </div>
         {loading ? (
           <p className="text-muted">Loading runners…</p>
         ) : runners.length === 0 ? (
@@ -557,8 +644,8 @@ export default function UaisMaintenancePage() {
                 );
               })}
             </div>
-            {/* File upload section — shown when R2 is available */}
-            {r2Available && selectedRunnerIds.size > 0 && (
+            {/* Manual upload — shown when agent is offline and R2 is available */}
+            {r2Available && !agentOnline && selectedRunnerIds.size > 0 && (
               <div style={{ margin: "1rem 0", padding: "0.75rem 1rem", border: "1px dashed var(--border)", borderRadius: "8px" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.5rem" }}>
                   <span style={{ fontSize: "14px", fontWeight: 600 }}>Upload data files</span>

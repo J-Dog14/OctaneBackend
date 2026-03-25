@@ -6,25 +6,25 @@ import { prisma } from "@/lib/db/prisma";
 /**
  * GET /api/dashboard/uais/runners
  * Returns list of UAIS runners in canonical order (Athletic Screen first, etc.).
- * Priority: config file → UAIS_ROOT env → individual CWD env vars → org Settings (DB).
- * The Settings fallback lets admins enable runners purely from the Settings UI,
- * with no env vars or config files required.
+ * Priority: org Settings (DB) → config file → UAIS_ROOT env → individual CWD env vars.
+ * Settings is priority 1 so admins can manage runners entirely from the UI.
  */
 export async function GET() {
   await requireRole("admin");
 
-  let runners = getUaisRunnersInCanonicalOrder();
-
-  // If no runners found via file/env, fall back to DB settings.
-  if (runners.length === 0) {
-    try {
-      const rows = await prisma.orgSetting.findMany();
-      const settings = Object.fromEntries(rows.map((r) => [r.key, r.value]));
-      runners = getRunnersFromSettings(settings);
-    } catch {
-      // Non-fatal: return empty list
+  // Priority 1: DB Settings — admins control everything from the Settings UI.
+  try {
+    const rows = await prisma.orgSetting.findMany();
+    const settings = Object.fromEntries(rows.map((r) => [r.key, r.value]));
+    const settingsRunners = getRunnersFromSettings(settings);
+    if (settingsRunners.length > 0) {
+      return NextResponse.json({ runners: settingsRunners });
     }
+  } catch {
+    // Non-fatal: fall through to env/config
   }
 
+  // Priority 2: config file / env vars (local dev or self-hosted without DB config)
+  const runners = getUaisRunnersInCanonicalOrder();
   return NextResponse.json({ runners });
 }
