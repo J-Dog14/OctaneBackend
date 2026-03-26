@@ -8,12 +8,16 @@ import { prisma } from "@/lib/db/prisma";
 import { requireRole } from "@/lib/auth/requireAuth";
 
 /**
- * Maps runner ID → the env var(s) each script reads to find its report output directory.
- * All listed vars are set to the same configured path so reports land in a predictable,
- * writable directory (temp by default on Railway; configurable via Settings).
+ * Maps runner ID → env var(s) each script reads for its report output directory.
+ * Single-element arrays: that one var is set to reportDir.
+ * For Athletic Screen the script writes to GOOGLE_DRIVE first then shutil.copy2 to DIR —
+ * they MUST be different paths or shutil raises SameFileError, so we use a subdirectory.
  */
 const REPORT_DIR_ENV: Record<string, string[]> = {
-  "athletic-screen":  ["ATHLETIC_SCREEN_REPORTS_GOOGLE_DRIVE", "ATHLETIC_SCREEN_REPORTS_DIR"],
+  // Athletic Screen writes primary report to GOOGLE_DRIVE, then copies to DIR.
+  // Keep them separate so shutil.copy2 doesn't raise SameFileError.
+  // emitReportLinks scans the primary dir (GOOGLE_DRIVE = reportDir).
+  "athletic-screen":  ["ATHLETIC_SCREEN_REPORTS_GOOGLE_DRIVE"],
   "readiness-screen": ["READINESS_SCREEN_REPORTS_DIR"],
   "pro-sup":          ["PRO_SUP_REPORTS_DIR"],
   "arm-action":       ["ARM_ACTION_REPORTS_DIR"],
@@ -82,6 +86,11 @@ export async function POST(request: NextRequest) {
       || path.join(os.tmpdir(), "uais-reports", runnerId);
     for (const envVar of REPORT_DIR_ENV[runnerId] ?? []) {
       extraEnv[envVar] = reportDir;
+    }
+    // Athletic Screen writes primary → GOOGLE_DRIVE, then copies to DIR.
+    // Set DIR to a sibling path so shutil.copy2 doesn't get SameFileError.
+    if (runnerId === "athletic-screen") {
+      extraEnv["ATHLETIC_SCREEN_REPORTS_DIR"] = path.join(os.tmpdir(), "uais-reports", "athletic-screen-local");
     }
 
     const jobId = createJob(runner, { athleteUuid: athleteUuid ?? undefined, uploadedFileKeys, extraEnv, reportDir });

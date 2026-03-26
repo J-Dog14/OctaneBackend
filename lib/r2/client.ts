@@ -31,6 +31,7 @@ export async function getR2Client(): Promise<S3Client> {
     region: "auto",
     endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
     credentials: { accessKeyId, secretAccessKey },
+    requestHandler: { requestTimeout: 15_000 }, // 15 s — prevents hanging uploads from stalling the stream
   });
 
   return _client;

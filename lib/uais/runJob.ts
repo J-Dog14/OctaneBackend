@@ -81,6 +81,12 @@ function onExit(jobId: string) {
  */
 async function emitReportLinks(jobId: string, runnerId: string, reportDir?: string): Promise<void> {
   if (!reportDir) return;
+  // Hard cap: never hold the stream open longer than 30 s waiting for R2
+  const timeout = new Promise<void>((resolve) => setTimeout(resolve, 30_000));
+  await Promise.race([doEmitReportLinks(jobId, runnerId, reportDir), timeout]);
+}
+
+async function doEmitReportLinks(jobId: string, runnerId: string, reportDir: string): Promise<void> {
   try {
     const entries = await readdir(reportDir).catch(() => [] as string[]);
     const pdfs = entries.filter((f) => f.toLowerCase().endsWith(".pdf"));
