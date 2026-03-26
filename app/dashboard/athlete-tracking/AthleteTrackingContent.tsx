@@ -21,6 +21,7 @@ import {
 import { MetricRadarChart, type RadarMetric, type RadarDataSeries, SERIES_COLORS } from "./MetricRadarChart";
 import { MetricLineChart } from "./MetricLineChart";
 import { formatMetricDisplayName, formatValueWithUnit } from "@/lib/athlete-tracking/displayNames";
+import { PitchingDiagram, hasPitchingDiagram } from "./PitchingDiagram";
 
 type AthleteItem = {
   athlete_uuid: string;
@@ -1694,6 +1695,7 @@ function AthleteTrackingContentInner() {
                               />
                             </div>
                             <div className="card">
+                              <div className="table-scroll-wrapper">
                               <table>
                                 <thead>
                                   <tr>
@@ -1736,6 +1738,7 @@ function AthleteTrackingContentInner() {
                                   })}
                                 </tbody>
                               </table>
+                              </div>{/* /table-scroll-wrapper */}
                             </div>
                           </div>
                         );
@@ -1961,17 +1964,41 @@ function AthleteTrackingContentInner() {
                             }
                           }
 
+                          {/* Use helper (not JSX truthiness) to decide layout */}
+                          const hasDiagram = hasPitchingDiagram(section.id);
+
                           return (
                             <div key={section.id} className="card" style={{ marginBottom: "1rem" }}>
-                              {section.title ? (
-                                <h3 style={{ margin: "0 0 0.35rem", fontSize: "1rem" }}>{section.title}</h3>
-                              ) : null}
-                              <p
-                                className="text-muted"
-                                style={{ margin: "0 0 0.75rem", fontSize: "0.82rem", lineHeight: 1.45 }}
-                              >
-                                {section.description}
-                              </p>
+                              {/* Section header: diagram (if present) + title/description */}
+                              {hasDiagram ? (
+                                <div className="diagram-header">
+                                  <PitchingDiagram sectionId={section.id} />
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    {section.title ? (
+                                      <h3 style={{ margin: "0 0 0.35rem", fontSize: "1rem" }}>{section.title}</h3>
+                                    ) : null}
+                                    <p
+                                      className="text-muted"
+                                      style={{ margin: 0, fontSize: "0.82rem", lineHeight: 1.45 }}
+                                    >
+                                      {section.description}
+                                    </p>
+                                  </div>
+                                </div>
+                              ) : (
+                                <>
+                                  {section.title ? (
+                                    <h3 style={{ margin: "0 0 0.35rem", fontSize: "1rem" }}>{section.title}</h3>
+                                  ) : null}
+                                  <p
+                                    className="text-muted"
+                                    style={{ margin: "0 0 0.75rem", fontSize: "0.82rem", lineHeight: 1.45 }}
+                                  >
+                                    {section.description}
+                                  </p>
+                                </>
+                              )}
+                              <div className="table-scroll-wrapper">
                               <table>
                                 <thead>
                                   <tr>
@@ -2059,6 +2086,7 @@ function AthleteTrackingContentInner() {
                                   )}
                                 </tbody>
                               </table>
+                              </div>{/* /table-scroll-wrapper */}
                               {/* Section insight panel */}
                               {insights.length > 0 && (
                                 <div
@@ -2102,6 +2130,7 @@ function AthleteTrackingContentInner() {
                               >
                                 {section.description}
                               </p>
+                              <div className="table-scroll-wrapper">
                               <table>
                                 <thead>
                                   <tr>
@@ -2155,6 +2184,7 @@ function AthleteTrackingContentInner() {
                                   </tr>
                                 </tbody>
                               </table>
+                              </div>{/* /table-scroll-wrapper */}
                             </div>
                           );
                         })}
@@ -2348,6 +2378,7 @@ function AthleteTrackingContentInner() {
                         <h3 style={{ margin: "0 0 0.75rem", fontSize: "1rem" }}>
                           Metrics{domain.sessionDate ? ` · ${domain.sessionDate}` : ""}
                         </h3>
+                        <div className="table-scroll-wrapper">
                         <table>
                           <thead>
                             <tr>
@@ -2377,6 +2408,7 @@ function AthleteTrackingContentInner() {
                             ))}
                           </tbody>
                         </table>
+                        </div>{/* /table-scroll-wrapper */}
                       </div>
                     )}
                   </>

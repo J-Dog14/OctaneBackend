@@ -2115,6 +2115,166 @@ process_all_files <- function(data_root = NULL) {
             ))
           }
           log_progress("  [SUCCESS] Wrote", nrow(trials_df), "rows to f_pitching_trials")
+
+          # -------------------------------------------------------------------
+          # Insert 3-D time-series JSON data into f_pitching_time_data
+          # Same demographic columns as f_pitching_trials; metrics = raw JSON blob.
+          # JSON file naming convention: "{owner_filename}-3d-data.json"
+          # located in the same directory as session.xml.
+          # -------------------------------------------------------------------
+          tryCatch({
+            # Auto-migrate old single-metrics-column schema if present
+            time_data_cols_check <- tryCatch(
+              DBI::dbGetQuery(con, "
+                SELECT column_name FROM information_schema.columns
+                WHERE table_schema = 'public' AND table_name = 'f_pitching_time_data'
+              ")$column_name,
+              error = function(e) character(0)
+            )
+            if (length(time_data_cols_check) > 0 && "metrics" %in% time_data_cols_check && !"frames" %in% time_data_cols_check) {
+              log_progress("  Migrating f_pitching_time_data from old single-metrics schema...")
+              DBI::dbExecute(con, "DROP TABLE IF EXISTS public.f_pitching_time_data CASCADE")
+              log_progress("  Dropped old f_pitching_time_data table")
+              time_data_cols_check <- character(0)
+            }
+            time_data_table_exists <- length(time_data_cols_check) > 0
+            if (!time_data_table_exists) {
+              log_progress("  Creating f_pitching_time_data table...")
+              DBI::dbExecute(con, "
+                CREATE TABLE IF NOT EXISTS public.f_pitching_time_data (
+                  id SERIAL PRIMARY KEY,
+                  athlete_uuid VARCHAR(36) NOT NULL,
+                  name VARCHAR(255),
+                  session_date DATE NOT NULL,
+                  source_system VARCHAR(50) NOT NULL DEFAULT 'pitching',
+                  source_athlete_id VARCHAR(100),
+                  owner_filename TEXT,
+                  handedness VARCHAR(20),
+                  trial_index INTEGER NOT NULL,
+                  velocity_mph NUMERIC,
+                  score NUMERIC,
+                  age_at_collection NUMERIC,
+                  age_group TEXT,
+                  height NUMERIC,
+                  weight NUMERIC,
+                  frame_rate NUMERIC,
+                  start_time NUMERIC,
+                  end_time NUMERIC,
+                  uncropped_length NUMERIC,
+                  labels JSONB,
+                  bones JSONB,
+                  segments JSONB,
+                  force JSONB,
+                  frames JSONB NOT NULL,
+                  session_xml_path TEXT,
+                  session_data_xml_path TEXT,
+                  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                  CONSTRAINT f_pitching_time_data_athlete_uuid_fkey
+                    FOREIGN KEY (athlete_uuid) REFERENCES analytics.d_athletes(athlete_uuid) ON DELETE CASCADE
+                )
+              ")
+              DBI::dbExecute(con, "
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_f_pitching_time_data_unique
+                  ON public.f_pitching_time_data(athlete_uuid, session_date, trial_index)
+              ")
+              DBI::dbExecute(con, "
+                CREATE INDEX IF NOT EXISTS idx_f_pitching_time_data_owner
+                  ON public.f_pitching_time_data(owner_filename)
+              ")
+              DBI::dbExecute(con, "
+                CREATE INDEX IF NOT EXISTS idx_f_pitching_time_data_date
+                  ON public.f_pitching_time_data(session_date)
+              ")
+              log_progress("  [SUCCESS] Created f_pitching_time_data table")
+            }
+            n_json_inserted <- 0L
+            n_json_missing  <- 0L
+            for (r in seq_len(nrow(trials_df))) {
+              row      <- trials_df[r, ]
+              xml_path <- if (!is.na(row$session_xml_path)) as.character(row$session_xml_path) else ""
+              if (!nzchar(xml_path)) { n_json_missing <- n_json_missing + 1L; next }
+              owner_stem <- tools::file_path_sans_ext(as.character(row$owner_filename))
+              json_file <- file.path(dirname(xml_path), paste0(owner_stem, "-3d-data.json"))
+              if (!file.exists(json_file)) { n_json_missing <- n_json_missing + 1L; next }
+              json_data <- tryCatch(jsonlite::parse_json(json_file), error = function(e) NULL)
+              if (is.null(json_data)) {
+                log_progress("  [WARNING] Could not parse JSON:", json_file)
+                n_json_missing <- n_json_missing + 1L
+                next
+              }
+              frame_rate_val       <- json_data$frameRate
+              start_time_val       <- json_data$startTime
+              end_time_val         <- json_data$endTime
+              uncropped_length_val <- json_data$uncroppedLength
+              labels_str    <- tryCatch(jsonlite::toJSON(json_data$labels   %||% list(), auto_unbox = FALSE), error = function(e) "[]")
+              bones_str     <- tryCatch(jsonlite::toJSON(json_data$bones    %||% list(), auto_unbox = FALSE), error = function(e) "[]")
+              segments_str  <- tryCatch(jsonlite::toJSON(json_data$segments %||% list(), auto_unbox = FALSE), error = function(e) "[]")
+              force_str     <- tryCatch(jsonlite::toJSON(json_data$force    %||% list(), auto_unbox = TRUE),  error = function(e) "{}")
+              frames_str    <- tryCatch(jsonlite::toJSON(json_data$frames   %||% list(), auto_unbox = FALSE), error = function(e) "[]")
+              DBI::dbExecute(con, "
+                INSERT INTO public.f_pitching_time_data
+                  (athlete_uuid, name, session_date, source_system, source_athlete_id,
+                   owner_filename, handedness, trial_index, velocity_mph, score,
+                   age_at_collection, age_group, height, weight,
+                   frame_rate, start_time, end_time, uncropped_length,
+                   labels, bones, segments, force, frames,
+                   session_xml_path, session_data_xml_path)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
+                        $15, $16, $17, $18,
+                        $19::jsonb, $20::jsonb, $21::jsonb, $22::jsonb, $23::jsonb,
+                        $24, $25)
+                ON CONFLICT (athlete_uuid, session_date, trial_index) DO UPDATE SET
+                  name = COALESCE(EXCLUDED.name, f_pitching_time_data.name),
+                  owner_filename = EXCLUDED.owner_filename,
+                  handedness = COALESCE(EXCLUDED.handedness, f_pitching_time_data.handedness),
+                  source_athlete_id = COALESCE(EXCLUDED.source_athlete_id, f_pitching_time_data.source_athlete_id),
+                  velocity_mph = EXCLUDED.velocity_mph,
+                  score = EXCLUDED.score,
+                  age_at_collection = EXCLUDED.age_at_collection,
+                  age_group = EXCLUDED.age_group,
+                  height = COALESCE(EXCLUDED.height, f_pitching_time_data.height),
+                  weight = COALESCE(EXCLUDED.weight, f_pitching_time_data.weight),
+                  frame_rate = EXCLUDED.frame_rate,
+                  start_time = EXCLUDED.start_time,
+                  end_time = EXCLUDED.end_time,
+                  uncropped_length = EXCLUDED.uncropped_length,
+                  labels = EXCLUDED.labels,
+                  bones = EXCLUDED.bones,
+                  segments = EXCLUDED.segments,
+                  force = EXCLUDED.force,
+                  frames = EXCLUDED.frames,
+                  session_xml_path = EXCLUDED.session_xml_path,
+                  session_data_xml_path = EXCLUDED.session_data_xml_path,
+                  created_at = NOW()
+              ", params = list(
+                row$athlete_uuid,
+                if (is.na(row$name) || row$name == "") NULL else as.character(row$name),
+                row$session_date,
+                "pitching",
+                row$source_athlete_id,
+                row$owner_filename,
+                if (is.na(row$handedness) || row$handedness == "") NULL else row$handedness,
+                row$trial_index,
+                row$velocity_mph, row$score,
+                row$age_at_collection, row$age_group, row$height, row$weight,
+                frame_rate_val, start_time_val, end_time_val, uncropped_length_val,
+                as.character(labels_str), as.character(bones_str),
+                as.character(segments_str), as.character(force_str),
+                as.character(frames_str),
+                row$session_xml_path, row$session_data_xml_path
+              ))
+              n_json_inserted <- n_json_inserted + 1L
+            }
+            log_progress("  [SUCCESS] Wrote", n_json_inserted, "rows to f_pitching_time_data;",
+                         n_json_missing, "JSON file(s) not found/skipped")
+            cat("  [SUCCESS] f_pitching_time_data:", n_json_inserted, "inserted,", n_json_missing, "JSON files not found\n")
+            flush.console()
+          }, error = function(e) {
+            log_progress("  [WARNING] f_pitching_time_data insert failed:", conditionMessage(e))
+            cat("  [WARNING] f_pitching_time_data insert failed:", conditionMessage(e), "\n")
+            flush.console()
+          })
+
           } else {
             log_progress("  [WARNING] No trial rows remaining after filtering for existing athletes; skipping f_pitching_trials insert.")
           }

@@ -208,3 +208,62 @@ tr:hover td {
   color: var(--accent) !important;
   text-decoration: none;
 }
+
+/* ── Table scroll wrapper ──────────────────────────────────────────────────── */
+/* Wraps data tables so they scroll horizontally on narrow screens
+   instead of overflowing or collapsing columns.                               */
+.table-scroll-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  /* Negative margin trick: let the table bleed to the card edge on mobile
+     so the scroll area feels natural, then re-pad on desktop.                */
+}
+
+.table-scroll-wrapper table {
+  /* Enforce a minimum width so columns stay readable before scrolling kicks in */
+  min-width: 420px;
+}
+
+/* ── Diagram + text header row ─────────────────────────────────────────────── */
+/* Side-by-side on desktop, stacked on mobile.                                 */
+.diagram-header {
+  display: flex;
+  gap: 1.25rem;
+  margin-bottom: 0.85rem;
+  align-items: flex-start;
+}
+
+/* ── Mobile breakpoint ─────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  /* Tighter card padding */
+  .card {
+    padding: 0.85rem 0.75rem;
+    border-radius: 8px;
+  }
+
+  /* Table header text smaller */
+  th {
+    font-size: 10px;
+    padding: 8px 8px;
+    letter-spacing: 0.02em;
+  }
+
+  td {
+    padding: 8px 8px;
+    font-size: 0.8rem;
+  }
+
+  /* Diagram header stacks vertically and centers the SVG */
+  .diagram-header {
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  /* Let SVG diagrams scale to fit the card width */
+  .diagram-header svg {
+    width: 100% !important;
+    height: auto !important;
+    max-width: 280px;
+  }
+}
