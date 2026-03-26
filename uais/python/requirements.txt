@@ -9,7 +9,9 @@ python-dotenv
 pyyaml
 dash
 plotly
+matplotlib
 reportlab
 boto3  # For AWS S3 uploads
 openpyxl  # For reading Excel files
 requests  # For HTTP requests (if needed)
+Pillow  # Image processing for report generation
