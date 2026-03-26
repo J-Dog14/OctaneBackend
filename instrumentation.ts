@@ -22,8 +22,8 @@ export async function register() {
 
 async function generateDbConnectionsYaml(prisma: import("@prisma/client").PrismaClient) {
   try {
-    const { writeFile, mkdir } = await import("node:fs/promises");
-    const path = await import("node:path");
+    const { writeFile, mkdir } = await import(/* webpackIgnore: true */ "node:fs/promises");
+    const path = await import(/* webpackIgnore: true */ "node:path");
 
     // Resolve warehouse DB URL: org settings first, then env var
     let warehouseUrl = process.env.WAREHOUSE_DATABASE_URL ?? "";

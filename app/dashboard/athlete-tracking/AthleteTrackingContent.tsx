@@ -115,16 +115,23 @@ function metricsToRadarData(metrics: MetricWithPercentile[], domainId?: string):
   return out;
 }
 
+const HIGHLIGHTS_EXCLUDE_KEYS = new Set([
+  "HIP_SHOULDER_PROGRESS|GAIN_OR_LOSS",
+  "ABDUCTION_PROGRESS|GAIN_OR_LOSS",
+]);
+
 /** Returns highlights (top 3) and lowlights (bottom 3) across all domains. */
 function getHighlightsAndLowlights(domains: DomainWithMetrics[]) {
   const all: Array<{ domainLabel: string; domainId: string; metric: MetricWithPercentile }> = [];
   for (const d of domains) {
     for (const m of d.metrics) {
+      const key = m.category ? `${m.category}|${m.name}` : m.name;
       if (
         m.percentile != null &&
         Number.isFinite(m.percentile) &&
         m.mobilityMetricKind !== "GROUP" &&
-        m.mobilityMetricKind !== "COMPONENT"
+        m.mobilityMetricKind !== "COMPONENT" &&
+        !HIGHLIGHTS_EXCLUDE_KEYS.has(key)
       ) {
         all.push({ domainLabel: d.label, domainId: d.domainId, metric: m });
       }
@@ -136,13 +143,88 @@ function getHighlightsAndLowlights(domains: DomainWithMetrics[]) {
 
 function getPercentileStyle(percentile: number | null): React.CSSProperties | undefined {
   if (percentile == null) return undefined;
-  if (percentile >= 75) return { color: "#16a34a" };
-  if (percentile <= 25) return { color: "var(--accent-secondary)" };
-  return { color: "var(--text-primary)" };
+  if (percentile > 85) return { color: "#16a34a" };
+  if (percentile > 60) return { color: "#4ade80" };
+  if (percentile > 40) return { color: "var(--text-primary)" };
+  if (percentile > 15) return { color: "#f59e0b" };
+  return { color: "var(--accent-secondary)" };
 }
 
 function formatMetricValueParts(metric: MetricWithPercentile): { valuePart: string; unitPart: string } {
   return formatValueWithUnit(metric.value, metric.valueUnit, metric.max);
+}
+
+/** Returns a threshold-based insight string for a given metric key + value. Returns null if no insight defined. */
+function getMetricInsight(key: string, value: number | null): string | null {
+  if (value == null || !Number.isFinite(value)) return null;
+  switch (key) {
+    case "GRF|MID_POINT":
+      if (value > 2.41) return "Elite: Exceptional lead leg force production. Peak GRF is a major velocity and injury resilience driver.";
+      if (value > 2.14) return "Above Average: Strong lead leg force — your front side is doing its job well.";
+      if (value > 2.02) return "Average: Adequate lead leg force. Small improvements here can meaningfully impact velocity.";
+      if (value > 1.69) return "Developing: Lead leg force production is below average. Focus on front leg strength and stability.";
+      return "Needs Improvement: Low lead leg GRF. Significant opportunity to build front side power and improve energy transfer.";
+    case "FRONT_LEG|EXTENSION":
+      if (value > 29.27) return "Elite: Outstanding lead leg block — your front side is stopping momentum and redirecting force efficiently.";
+      if (value > 19.00) return "Above Average: Good lead leg block. Front leg is providing solid resistance at release.";
+      if (value > 12.79) return "Average: Moderate lead leg block. Strengthening front leg stability can improve energy transfer.";
+      if (value > 4.05) return "Developing: Weak lead leg block. The front side is collapsing through release, limiting energy transfer.";
+      return "Needs Improvement: Very limited lead leg block. Priority area — front leg stability is critical for velocity and arm health.";
+    case "PELVIS_ROTATION|FOOT_PLANT":
+      if (value > 60.42) return "Elite: Pelvis is very open at foot contact — excellent lower half lead allowing great separation potential.";
+      if (value > 49.56) return "Above Average: Good pelvic rotation at foot contact. Lower half is driving well.";
+      if (value > 42.11) return "Average: Adequate pelvis position at foot contact. More hip lead could improve energy transfer.";
+      if (value > 31.10) return "Developing: Pelvis is relatively closed at foot contact. Working on hip clearance timing may improve velocity.";
+      return "Needs Improvement: Pelvis is significantly closed at foot contact. Lower half timing and hip mobility should be prioritized.";
+    case "KINEMATIC_SEQUENCE|TORSO":
+      if (value > 1207.66) return "Elite: Exceptional torso angular velocity — upper half is contributing maximally to arm speed.";
+      if (value > 1132.72) return "Above Average: Strong torso contribution. Upper half sequencing is efficient.";
+      if (value > 1070.21) return "Average: Adequate torso velocity. Improving torso contribution can meaningfully increase arm speed.";
+      if (value > 985.71) return "Developing: Below average torso velocity. Upper half may not be efficiently transferring lower half energy.";
+      return "Needs Improvement: Low torso angular velocity. Sequencing issues may be limiting arm speed and increasing stress.";
+    case "HIP_SHOULDER_SEPARATION|FOOT_PLANT":
+      if (value > 59.10) return "Elite: Outstanding hip-shoulder separation — maximum stretch-shortening potential at foot contact.";
+      if (value > 51.46) return "Above Average: Good separation. Your trunk muscles are loaded well at foot contact.";
+      if (value > 45.87) return "Average: Moderate separation. Increasing upper-lower dissociation can improve velocity.";
+      if (value > 38.78) return "Developing: Limited hip-shoulder separation. Working on keeping the torso closed while opening hips may help.";
+      return "Needs Improvement: Very limited separation at foot contact. This is a significant velocity and efficiency limiter.";
+    case "HIP_SHOULDER_PROGRESS|GAIN_OR_LOSS":
+      if (value >= 1) return "Gain: Hip-shoulder separation increases after foot contact — elastic energy is being added through the stride.";
+      return "Loss: Hip-shoulder separation decreases after foot contact — some stored elastic energy may be lost before it can be used.";
+    case "TRUNK_POSITION|FOOT_PLANT":
+      if (value > 108.89) return "Elite: Torso stays very closed at foot contact — excellent upper half timing relative to the lower half.";
+      if (value > 96.95) return "Above Average: Good torso position at foot contact. Upper half is well-timed.";
+      if (value > 90.91) return "Average: Adequate torso position. Small improvements in timing could increase separation.";
+      if (value > 82.66) return "Developing: Torso is opening early at foot contact. This reduces separation and may increase arm stress.";
+      return "Needs Improvement: Torso is significantly early — upper half is leading the lower half, which reduces energy transfer and increases injury risk.";
+    case "LATERAL_TILT|RELEASE":
+      if (value > 48.69) return "Elite: Excellent lateral trunk tilt at release — optimal arm path and shoulder layback position.";
+      if (value > 40.67) return "Above Average: Good lateral tilt. Arm position at release is well-supported.";
+      if (value > 34.37) return "Average: Moderate lateral tilt. Increasing trunk lean may improve arm path efficiency.";
+      if (value > 27.43) return "Developing: Limited lateral tilt at release. May be reducing arm extension and layback.";
+      return "Needs Improvement: Minimal lateral tilt at release. Trunk position is limiting arm path and likely increasing shoulder stress.";
+    case "ABDUCTION|FOOT_PLANT":
+      // Lower is better (more negative = more abduction)
+      if (value < -59.06) return "Elite: Maximum scap load at foot contact — arm is trailing perfectly behind the body.";
+      if (value < -48.48) return "Above Average: Good horizontal abduction at foot contact. Arm is well-loaded.";
+      if (value < -42.03) return "Average: Adequate scap load. Maintaining more abduction at foot contact may improve arm sync.";
+      if (value < -30.72) return "Developing: Limited scap load at foot contact. Arm may be getting ahead of the body too early.";
+      return "Needs Improvement: Very limited horizontal abduction — arm is not trailing the body effectively, reducing velocity potential and increasing stress.";
+    case "SHOULDER_EXTERNAL_ROTATION|MAX":
+      if (value > 226.17) return "Elite: Exceptional layback — maximum shoulder mobility and sequencing for velocity generation.";
+      if (value > 174.92) return "Above Average: Good layback. Arm is reaching sufficient external rotation to generate velocity efficiently.";
+      if (value > 152.54) return "Average: Moderate layback. Improving flexibility and timing could increase max ER and velocity.";
+      if (value > 66.47) return "Developing: Limited layback. Insufficient external rotation may be capping velocity and increasing arm stress.";
+      return "Needs Improvement: Very limited max external rotation. Mobility and sequencing work is needed to protect the arm and maximize velocity.";
+    case "SHOULDER_ER|FOOT_PLANT": {
+      // ER timing classification
+      if (value < 33) return "Late: Arm is behind at foot contact (< 33°). Late arm timing increases stress on the shoulder and elbow.";
+      if (value <= 77) return "On Time: Arm position at foot contact is in the ideal window (33–77°). Good timing allows the arm to sync with the body.";
+      return "Early: Arm is ahead at foot contact (> 77°). Early arm timing can increase stress and reduce sequencing efficiency.";
+    }
+    default:
+      return null;
+  }
 }
 
 /** Mobility helpers */
@@ -216,6 +298,7 @@ type PitchingSection = {
   title?: string;
   description: string;
   items: Array<PitchingSectionMetricItem | PitchingSectionDerivedItem>;
+  insightKeys?: string[];
 };
 type PitchingDisplayCell = {
   key: string;
@@ -244,24 +327,17 @@ const PITCHING_TABLE_SECTIONS: PitchingSection[] = [
     ],
   },
   {
-    id: "grf",
-    title: "Ground Reaction Force",
+    id: "lead-leg-grf",
+    title: "Lead Leg Block & Ground Reaction Force",
     description:
-      "Ground reaction force mid-point is the percentage of stride completed when peak vertical GRF occurs. Earlier midpoint values generally indicate better energy transfer.",
+      "An efficient lead leg block occurs when the front leg is positioned and strong enough to stop forward momentum and redirect force back up the body at ball release. A stronger, more stable block improves energy transfer. Ground reaction force mid-point reflects when peak vertical GRF occurs during the stride — earlier midpoint values generally indicate better energy transfer.",
     items: [
       { kind: "metric", key: "GRF|MID_POINT", label: "GRF Mid-Point" },
-    ],
-  },
-  {
-    id: "lead-leg",
-    title: "Lead Leg Block",
-    description:
-      "An efficient lead leg block occurs when the front leg is positioned and strong enough to stop forward momentum and redirect force back up the body at ball release. A stronger, more stable block improves energy transfer.",
-    items: [
       { kind: "metric", key: "FRONT_LEG|EXTENSION", label: "Lead Leg Block" },
       { kind: "metric", key: "FRONT_LEG|FOOT_PLANT", label: "Knee Flexion @ Footplant" },
       { kind: "metric", key: "FRONT_LEG|RELEASE", label: "Knee Flexion @ Release" },
     ],
+    insightKeys: ["GRF|MID_POINT", "FRONT_LEG|EXTENSION"],
   },
   {
     id: "pelvis",
@@ -272,6 +348,7 @@ const PITCHING_TABLE_SECTIONS: PitchingSection[] = [
       { kind: "metric", key: "PELVIS_ROTATION|FOOT_PLANT", label: "Pelvis @ Footplant" },
       { kind: "metric", key: "PELVIC_OBLIQUITY|TOTAL", label: "Pelvic Obliquity (FP to Release)" },
     ],
+    insightKeys: ["PELVIS_ROTATION|FOOT_PLANT"],
   },
   {
     id: "hip-shoulder-separation",
@@ -286,6 +363,7 @@ const PITCHING_TABLE_SECTIONS: PitchingSection[] = [
       { kind: "metric", key: "HIP_SHOULDER_PROGRESS|PEAK_AFTER_FOOTSTRIKE_MS", label: "Time to Peak" },
       { kind: "metric", key: "HIP_SHOULDER_PROGRESS|POST_PEAK_LOSS_RATE", label: "Rate of Loss" },
     ],
+    insightKeys: ["HIP_SHOULDER_SEPARATION|FOOT_PLANT", "HIP_SHOULDER_PROGRESS|GAIN_OR_LOSS"],
   },
   {
     id: "torso",
@@ -297,6 +375,7 @@ const PITCHING_TABLE_SECTIONS: PitchingSection[] = [
       { kind: "metric", key: "TOTAL_TRUNK_FLEXION|TOTAL", label: "Total Torso Flexion (FP to Release)" },
       { kind: "metric", key: "LATERAL_TILT|RELEASE", label: "Lateral Tilt @ Release" },
     ],
+    insightKeys: ["TRUNK_POSITION|FOOT_PLANT", "LATERAL_TILT|RELEASE"],
   },
   {
     id: "horizontal-abduction",
@@ -311,6 +390,7 @@ const PITCHING_TABLE_SECTIONS: PitchingSection[] = [
       { kind: "metric", key: "ABDUCTION_PROGRESS|PEAK_AFTER_FOOTSTRIKE_MS", label: "Time to Peak" },
       { kind: "metric", key: "ABDUCTION_PROGRESS|POST_PEAK_LOSS_RATE", label: "Rate of Loss" },
     ],
+    insightKeys: ["ABDUCTION|FOOT_PLANT"],
   },
   {
     id: "shoulder-external-rotation",
@@ -322,6 +402,7 @@ const PITCHING_TABLE_SECTIONS: PitchingSection[] = [
       { kind: "derived", derivedId: "ARM_TIMING_FLAG", label: "Arm Timing Flag" },
       { kind: "metric", key: "SHOULDER_EXTERNAL_ROTATION|MAX", label: "Max External Rotation (Layback)" },
     ],
+    insightKeys: ["SHOULDER_EXTERNAL_ROTATION|MAX", "SHOULDER_ER|FOOT_PLANT"],
   },
   {
     id: "kinematic-sequence",
@@ -332,8 +413,9 @@ const PITCHING_TABLE_SECTIONS: PitchingSection[] = [
       { kind: "metric", key: "KINEMATIC_SEQUENCE|PELVIS", label: "Pelvis Ang Velo" },
       { kind: "metric", key: "KINEMATIC_SEQUENCE|TORSO", label: "Torso Ang Velo" },
       { kind: "metric", key: "KINEMATIC_SEQUENCE|ARM", label: "Arm Ang Velo" },
-      { kind: "metric", key: "SHOULDER_EXTERNAL_ROTATION|MAX", label: "Max External Rotation" },
+      { kind: "metric", key: "KINEMATIC_SEQUENCE|HAND", label: "Hand Ang Velo" },
     ],
+    insightKeys: ["KINEMATIC_SEQUENCE|TORSO"],
   },
 ];
 
@@ -1843,6 +1925,42 @@ function AthleteTrackingContentInner() {
                             label,
                             cells: buildPitchingDisplayCells(cd.metrics, section.items),
                           }));
+
+                          // Kinematic sequence peak order: rank PELVIS, TORSO, ARM, HAND by their timing value
+                          const peakOrderRanks: Record<string, number> = {};
+                          if (section.id === "kinematic-sequence") {
+                            const timingKeys = [
+                              { key: "KINEMATIC_SEQUENCE|PELVIS", timeKey: "KINEMATIC_SEQUENCE|PELVIS_TIME" },
+                              { key: "KINEMATIC_SEQUENCE|TORSO", timeKey: "KINEMATIC_SEQUENCE|TORSO_TIME" },
+                              { key: "KINEMATIC_SEQUENCE|ARM", timeKey: "KINEMATIC_SEQUENCE|ARM_TIME" },
+                              { key: "KINEMATIC_SEQUENCE|HAND", timeKey: "KINEMATIC_SEQUENCE|HAND_TIME" },
+                            ];
+                            const times = timingKeys.map(({ key, timeKey }) => {
+                              const m = domain.metrics.find(
+                                (met) => met.category && `${met.category}|${met.name}` === timeKey
+                              );
+                              return { key, time: m?.value ?? null };
+                            });
+                            const withTime = times.filter((t) => t.time != null);
+                            withTime.sort((a, b) => (a.time as number) - (b.time as number));
+                            withTime.forEach((t, i) => { peakOrderRanks[t.key] = i + 1; });
+                          }
+
+                          // Build insight texts for this section
+                          const insights: Array<{ label: string; text: string }> = [];
+                          if (section.insightKeys) {
+                            for (const iKey of section.insightKeys) {
+                              const m = domain.metrics.find(
+                                (met) => met.category && `${met.category}|${met.name}` === iKey
+                              );
+                              const text = getMetricInsight(iKey, m?.value ?? null);
+                              if (text) {
+                                const cellForKey = cells.find((c) => c.key === iKey);
+                                insights.push({ label: cellForKey?.label ?? iKey, text });
+                              }
+                            }
+                          }
+
                           return (
                             <div key={section.id} className="card" style={{ marginBottom: "1rem" }}>
                               {section.title ? (
@@ -1882,7 +2000,9 @@ function AthleteTrackingContentInner() {
                                                       : cell.valuePart === "EARLY" || cell.valuePart === "LATE"
                                                         ? { color: "var(--accent-secondary)" }
                                                         : undefined
-                                                    : undefined
+                                                    : cell.percentile != null
+                                                      ? (getPercentileStyle(cell.percentile) ?? undefined)
+                                                      : undefined
                                               }
                                             >
                                               {cell.valuePart}
@@ -1923,8 +2043,44 @@ function AthleteTrackingContentInner() {
                                       </td>
                                     ))}
                                   </tr>
+                                  {/* Kinematic sequence peak order row */}
+                                  {section.id === "kinematic-sequence" && Object.keys(peakOrderRanks).length > 0 && (
+                                    <tr>
+                                      {cells.map((cell) => (
+                                        <td key={`${section.id}-${cell.key}-peak-order`} style={{ fontSize: "0.82rem" }}>
+                                          {peakOrderRanks[cell.key] != null ? (
+                                            <span style={{ color: "rgba(255,255,255,0.55)" }}>
+                                              Peak Order: <strong style={{ color: "var(--text-primary)" }}>#{peakOrderRanks[cell.key]}</strong>
+                                            </span>
+                                          ) : "—"}
+                                        </td>
+                                      ))}
+                                    </tr>
+                                  )}
                                 </tbody>
                               </table>
+                              {/* Section insight panel */}
+                              {insights.length > 0 && (
+                                <div
+                                  style={{
+                                    marginTop: "0.75rem",
+                                    padding: "0.6rem 0.75rem",
+                                    background: "rgba(255,255,255,0.04)",
+                                    borderRadius: "6px",
+                                    borderLeft: "3px solid rgba(255,255,255,0.15)",
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    gap: "0.4rem",
+                                  }}
+                                >
+                                  {insights.map(({ label, text }) => (
+                                    <div key={label} style={{ fontSize: "0.8rem", lineHeight: 1.5 }}>
+                                      <span style={{ fontWeight: 600, color: "rgba(255,255,255,0.65)", marginRight: "0.4rem" }}>{label}:</span>
+                                      <span className="text-muted">{text}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           );
                         })}
