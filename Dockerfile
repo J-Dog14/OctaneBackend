@@ -57,10 +57,13 @@ RUN npm ci
 COPY uais/python/requirements.txt ./uais-python-requirements.txt
 RUN pip3 install --break-system-packages --no-cache-dir -r uais-python-requirements.txt
 
-# Pre-generate matplotlib font cache so the first report request doesn't stall
-# for 30-60s while the cache is built at runtime (which can cause Railway to kill the container).
-RUN python3 -c "import matplotlib; matplotlib.font_manager._load_fontmanager(try_read_cache=False)" 2>/dev/null || \
-    python3 -c "import matplotlib.font_manager"
+# Force non-interactive matplotlib backend. Without this, matplotlib tries to open
+# a display (TkAgg/Qt5Agg) on every import — which hangs/crashes on headless Railway.
+ENV MPLBACKEND=Agg
+
+# Pre-generate matplotlib font cache at build time so the first report request
+# doesn't block for 30-60s generating it at runtime.
+RUN python3 -c "import matplotlib.pyplot"
 
 # ── Application code ───────────────────────────────────────────────────────────
 COPY . .
