@@ -1,9 +1,27 @@
 import { NextRequest } from "next/server";
+import path from "node:path";
+import os from "node:os";
 import { badRequest, internalError, success } from "@/lib/responses";
 import { getUaisRunner, getRunnersFromSettings } from "@/lib/uais/runners";
 import { createJob, ASSESSMENT_DATA_DIR_ENV } from "@/lib/uais/runJob";
 import { prisma } from "@/lib/db/prisma";
 import { requireRole } from "@/lib/auth/requireAuth";
+
+/**
+ * Maps runner ID → the env var(s) each script reads to find its report output directory.
+ * All listed vars are set to the same configured path so reports land in a predictable,
+ * writable directory (temp by default on Railway; configurable via Settings).
+ */
+const REPORT_DIR_ENV: Record<string, string[]> = {
+  "athletic-screen":  ["ATHLETIC_SCREEN_REPORTS_GOOGLE_DRIVE", "ATHLETIC_SCREEN_REPORTS_DIR"],
+  "readiness-screen": ["READINESS_SCREEN_REPORTS_DIR"],
+  "pro-sup":          ["PRO_SUP_REPORTS_DIR"],
+  "arm-action":       ["ARM_ACTION_REPORTS_DIR"],
+  "curveball":        ["CURVEBALL_REPORTS_DIR"],
+  "mobility":         ["MOBILITY_REPORTS_DIR"],
+  "pitching":         ["PITCHING_REPORTS_DIR"],
+  "hitting":          ["HITTING_REPORTS_DIR"],
+};
 
 /**
  * POST /api/dashboard/uais/run
@@ -58,7 +76,15 @@ export async function POST(request: NextRequest) {
     const athleteUuid = body.athleteUuid ?? null;
     const uploadedFileKeys = Array.isArray(body.uploadedFileKeys) ? body.uploadedFileKeys : undefined;
 
-    const jobId = createJob(runner, { athleteUuid: athleteUuid ?? undefined, uploadedFileKeys, extraEnv });
+    // Determine report output directory (Settings → temp default) and inject env vars
+    const reportDirKey = `uais_report_dir_${runnerId.replace(/-/g, "_")}`;
+    const reportDir = settingsMap[reportDirKey]?.trim()
+      || path.join(os.tmpdir(), "uais-reports", runnerId);
+    for (const envVar of REPORT_DIR_ENV[runnerId] ?? []) {
+      extraEnv[envVar] = reportDir;
+    }
+
+    const jobId = createJob(runner, { athleteUuid: athleteUuid ?? undefined, uploadedFileKeys, extraEnv, reportDir });
     return success({ jobId });
   } catch (error) {
     console.error("Error in POST /api/dashboard/uais/run:", error);

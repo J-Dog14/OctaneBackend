@@ -1,7 +1,8 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
-import { rm } from "node:fs/promises";
+import { rm, readdir } from "node:fs/promises";
 import path from "node:path";
+import os from "node:os";
 import type { UaisRunner } from "./runners";
 
 /** Prepend R's bin to PATH so spawned jobs can find Rscript when the Next.js process didn't inherit it (e.g. Cursor/VS Code). */
@@ -35,6 +36,7 @@ type Job = {
   chunks: Uint8Array[];
   controller: ReadableStreamDefaultController<Uint8Array> | null;
   done: boolean;
+  reportDir?: string;
 };
 
 const jobs = new Map<string, Job>();
@@ -72,6 +74,37 @@ function onExit(jobId: string) {
   // attachStreamController will clean up after flushing.
 }
 
+/**
+ * After a job exits, scan reportDir for PDF files, upload each to R2,
+ * and emit a presigned download URL line into the stream.
+ * Silently no-ops if reportDir is unset or R2 is unavailable.
+ */
+async function emitReportLinks(jobId: string, runnerId: string, reportDir?: string): Promise<void> {
+  if (!reportDir) return;
+  try {
+    const entries = await readdir(reportDir).catch(() => [] as string[]);
+    const pdfs = entries.filter((f) => f.toLowerCase().endsWith(".pdf"));
+    if (pdfs.length === 0) return;
+
+    const { uploadFileToR2, getPresignedUrl } = await import("../r2/upload");
+    const timestamp = Date.now();
+
+    for (const filename of pdfs) {
+      try {
+        const filePath = path.join(reportDir, filename);
+        const key = `reports/${runnerId}/${timestamp}/${filename}`;
+        await uploadFileToR2(filePath, key, "application/pdf");
+        const url = await getPresignedUrl(key, 86400); // 24-hour link
+        pushChunk(jobId, new TextEncoder().encode(`\n[REPORT] ${filename}::${url}\n`));
+      } catch {
+        // Non-fatal — report upload failures don't affect the run result
+      }
+    }
+  } catch {
+    // Non-fatal
+  }
+}
+
 /** Maps assessment runner IDs to their data-directory env var name. */
 export const ASSESSMENT_DATA_DIR_ENV: Record<string, string> = {
   pitching: "PITCHING_DATA_DIR",
@@ -91,6 +124,7 @@ export type CreateJobOptions = {
   /**
    * R2 object keys of uploaded files to download to a temp dir before running.
    * When provided, the appropriate DATA_DIR env var is set to that temp dir.
+   * Files are deleted from R2 immediately after download.
    */
   uploadedFileKeys?: string[];
   /**
@@ -98,6 +132,11 @@ export type CreateJobOptions = {
    * Merged on top of process.env before any other overrides (uploads take precedence).
    */
   extraEnv?: Record<string, string>;
+  /**
+   * Directory to scan for PDF reports after the process exits.
+   * Any PDFs found are uploaded to R2 and presigned download URLs are emitted to the stream.
+   */
+  reportDir?: string;
 };
 
 export function createJob(runner: UaisRunner, options?: CreateJobOptions): string {
@@ -115,14 +154,16 @@ export function createJob(runner: UaisRunner, options?: CreateJobOptions): strin
 
   if (fileKeys.length > 0) {
     // Download files, then spawn. Return jobId immediately so the stream can attach.
-    const job: Job = { runner, process: null as unknown as ChildProcess, chunks: [], controller: null, done: false };
+    const job: Job = { runner, process: null as unknown as ChildProcess, chunks: [], controller: null, done: false, reportDir: options?.reportDir };
     jobs.set(jobId, job);
 
     void (async () => {
       try {
-        const { downloadFromR2ToDir } = await import("../r2/upload");
+        const { downloadFromR2ToDir, deleteFromR2 } = await import("../r2/upload");
         for (const key of fileKeys) {
           await downloadFromR2ToDir(key, tempDir);
+          // Delete from R2 immediately after download — keeps the bucket clean for the next run
+          deleteFromR2(key).catch(() => undefined);
         }
         // Set the data dir env var for this runner
         const dataDirVar = ASSESSMENT_DATA_DIR_ENV[runner.id];
@@ -141,9 +182,10 @@ export function createJob(runner: UaisRunner, options?: CreateJobOptions): strin
             ? `\n[Process exited with code ${code}]\n`
             : `\n[Process exited with signal ${signal}]\n`;
           pushChunk(jobId, new TextEncoder().encode(msg));
-          onExit(jobId);
-          // Clean up temp dir
-          rm(tempDir, { recursive: true, force: true }).catch(() => undefined);
+          void emitReportLinks(jobId, runner.id, options?.reportDir).then(() => {
+            onExit(jobId);
+            rm(tempDir, { recursive: true, force: true }).catch(() => undefined);
+          });
         });
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -168,6 +210,7 @@ export function createJob(runner: UaisRunner, options?: CreateJobOptions): strin
     chunks: [],
     controller: null,
     done: false,
+    reportDir: options?.reportDir,
   };
   jobs.set(jobId, job);
 
@@ -181,7 +224,7 @@ export function createJob(runner: UaisRunner, options?: CreateJobOptions): strin
       ? `\n[Process exited with code ${code}]\n`
       : `\n[Process exited with signal ${signal}]\n`;
     pushChunk(jobId, new TextEncoder().encode(msg));
-    onExit(jobId);
+    void emitReportLinks(jobId, runner.id, options?.reportDir).then(() => onExit(jobId));
   });
 
   return jobId;

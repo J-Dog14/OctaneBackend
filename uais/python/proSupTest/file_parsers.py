@@ -194,10 +194,11 @@ def select_folder_dialog(initial_dir: Optional[str] = None) -> Optional[str]:
         from tkinter import filedialog
 
         root = tk.Tk()
-        root.withdraw()  # Hide the root window
-        root.lift()
-        root.attributes("-topmost", True)
-        selected_folder = filedialog.askdirectory(initialdir=initial_dir)
+        root.attributes("-topmost", True)  # Set topmost before withdraw so dialog inherits it
+        root.withdraw()
+        root.update()  # Process events so the window manager registers topmost
+        root.focus_force()
+        selected_folder = filedialog.askdirectory(initialdir=initial_dir, parent=root)
         root.attributes("-topmost", False)
         root.destroy()
         return selected_folder

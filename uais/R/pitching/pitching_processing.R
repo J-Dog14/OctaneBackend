@@ -2079,6 +2079,10 @@ process_all_files <- function(data_root = NULL) {
           if (!"name" %in% names(trials_df)) {
             trials_df$name <- NA_character_
           }
+          # Fallback: use athlete name from session info if d_athletes lookup returned NA
+          if (any(is.na(trials_df$name)) && nrow(athlete_info) > 0 && "name" %in% names(athlete_info) && !is.na(athlete_info$name[1])) {
+            trials_df$name <- ifelse(is.na(trials_df$name), athlete_info$name[1], trials_df$name)
+          }
           trials_df$source_system <- "pitching"
           for (r in seq_len(nrow(trials_df))) {
             row <- trials_df[r, ]

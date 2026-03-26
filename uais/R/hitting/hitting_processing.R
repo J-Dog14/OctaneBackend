@@ -1493,6 +1493,10 @@ process_all_files <- function(data_root = NULL) {
           if (!"name" %in% names(trials_df)) {
             trials_df$name <- NA_character_
           }
+          # Fallback: use athlete name from session info if d_athletes lookup returned NA
+          if (any(is.na(trials_df$name)) && nrow(athlete_info) > 0 && "name" %in% names(athlete_info) && !is.na(athlete_info$name[1])) {
+            trials_df$name <- ifelse(is.na(trials_df$name), athlete_info$name[1], trials_df$name)
+          }
           # Insert/upsert trials
           trials_df$source_system <- "hitting"
           for (r in seq_len(nrow(trials_df))) {
@@ -2027,6 +2031,16 @@ process_all_files <- function(data_root = NULL) {
           json_df <- json_df %>% left_join(json_names_df, by = "athlete_uuid")
         }
         if (!"name" %in% names(json_df)) json_df$name <- NA_character_
+        # Fallback: use name from athlete_list if d_athletes lookup returned NA
+        if (any(is.na(json_df$name))) {
+          uid_name_fallback <- vapply(json_df$athlete_uuid, function(u) {
+            for (ai in athlete_list) {
+              if (nrow(ai) > 0 && !is.na(ai$uid[1]) && ai$uid[1] == u && "name" %in% names(ai) && !is.na(ai$name[1])) return(ai$name[1])
+            }
+            NA_character_
+          }, character(1))
+          json_df$name <- ifelse(is.na(json_df$name), uid_name_fallback, json_df$name)
+        }
         json_df$source_system <- "hitting"
         json_df$trial_index <- NA_integer_
         for (i in seq_len(nrow(json_df))) {

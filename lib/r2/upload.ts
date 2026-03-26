@@ -62,6 +62,24 @@ export async function downloadFromR2ToDir(key: string, destDir: string): Promise
   return destPath;
 }
 
+/** Upload a file from disk to R2 using a caller-specified key. Returns the key. */
+export async function uploadFileToR2(filePath: string, key: string, contentType = "application/octet-stream"): Promise<string> {
+  const { readFile } = await import("node:fs/promises");
+  const buffer = await readFile(filePath);
+  const client = await getR2Client();
+  const bucket = await getR2Bucket();
+  await client.send(
+    new PutObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      Body: buffer,
+      ContentType: contentType,
+      ContentLength: buffer.length,
+    })
+  );
+  return key;
+}
+
 /** Generate a presigned GET URL for a file (for viewing/downloading results). */
 export async function getPresignedUrl(key: string, expiresInSeconds = 3600): Promise<string> {
   const client = await getR2Client();

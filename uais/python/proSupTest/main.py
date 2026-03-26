@@ -757,13 +757,18 @@ def main():
     if 'path/to' in default_dir or not os.path.exists(default_dir):
         default_dir = os.getenv('PRO_SUP_DATA_DIR', 'D:/Pro-Sup Test/Data/')
 
-    # Prompt user to select folder
-    print("Please select a folder containing Session.xml...")
-    selected_folder = select_folder_dialog(initial_dir=default_dir)
-
-    if not selected_folder:
-        print("No folder selected. Exiting.")
-        return
+    # Cloud/headless mode: use PRO_SUP_DATA_DIR directly if it points to an existing directory
+    env_folder = os.environ.get('PRO_SUP_DATA_DIR', '').strip()
+    if env_folder and os.path.isdir(env_folder):
+        selected_folder = env_folder
+        print(f"Using data directory from PRO_SUP_DATA_DIR: {selected_folder}")
+    else:
+        # Interactive mode: open folder selection dialog
+        print("Please select a folder containing Session.xml...")
+        selected_folder = select_folder_dialog(initial_dir=default_dir or env_folder or None)
+        if not selected_folder:
+            print("No folder selected. Exiting.")
+            return
 
     # Process the selected folder
     try:
