@@ -136,7 +136,7 @@ function SingleChart({
             typeof value === "number" ? value.toFixed(4) : (value ?? ""),
             name ?? "",
           ]}
-          labelFormatter={(label: number) => `Frame ${label}`}
+          labelFormatter={(label: unknown) => `Frame ${label}`}
           contentStyle={{
             background: "var(--mantine-color-body)",
             border: "1px solid var(--mantine-color-default-border)",
