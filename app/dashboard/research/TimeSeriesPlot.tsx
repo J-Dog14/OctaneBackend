@@ -132,8 +132,8 @@ function SingleChart({
           style={{ fontSize: 11 }}
         />
         <Tooltip
-          formatter={(value: number, name: string) => [
-            typeof value === "number" ? value.toFixed(4) : value,
+          formatter={(value: number | undefined, name: string) => [
+            typeof value === "number" ? value.toFixed(4) : (value ?? ""),
             name,
           ]}
           labelFormatter={(label: number) => `Frame ${label}`}
