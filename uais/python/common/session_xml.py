@@ -249,6 +249,55 @@ def parse_gender_from_session_xml(session_xml_path) -> Optional[str]:
     return None
 
 
+def parse_session_date_from_session_xml(session_xml_path) -> Optional[str]:
+    """
+    Parse session.xml and return the Session's Creation_date.
+
+    Reads Session/Fields/Creation_date under the Subject root — this is
+    the date the assessment session was conducted, NOT the Subject/Fields/
+    Creation_date which records when the athlete was first registered.
+
+    Args:
+        session_xml_path: Path to session.xml (str or Path).
+
+    Returns:
+        Date string YYYY-MM-DD, or None if not found / parse failed.
+    """
+    path = Path(session_xml_path)
+    if not path.exists():
+        return None
+    try:
+        text = _read_session_xml(path)
+        root = ET.fromstring(text)
+    except Exception:
+        return None
+
+    tag = root.tag.split("}")[-1] if "}" in root.tag else root.tag
+    if tag != "Subject":
+        return None
+
+    # Walk direct children of Subject looking for Session elements
+    for child in root:
+        ctag = child.tag.split("}")[-1] if "}" in child.tag else child.tag
+        if ctag != "Session":
+            continue
+        for fields_el in child:
+            ftag = fields_el.tag.split("}")[-1] if "}" in fields_el.tag else fields_el.tag
+            if ftag != "Fields":
+                continue
+            for f in fields_el:
+                tag_name = f.tag.split("}")[-1] if "}" in f.tag else f.tag
+                if tag_name == "Creation_date" and f.text and f.text.strip():
+                    raw_value = f.text.strip()
+                    for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%m-%d-%Y", "%d/%m/%Y", "%Y/%m/%d", "%d-%m-%Y"):
+                        try:
+                            dt = datetime.strptime(raw_value, fmt)
+                            return dt.strftime("%Y-%m-%d")
+                        except ValueError:
+                            continue
+    return None
+
+
 def get_dob_from_session_xml_next_to_file(file_path) -> Optional[str]:
     """
     Given a path to a data file (e.g. .c3d) from the first row of the export/txt file,
@@ -266,3 +315,65 @@ def get_dob_from_session_xml_next_to_file(file_path) -> Optional[str]:
     if not session_path.exists():
         return None
     return parse_birthdate_from_session_xml(session_path)
+
+
+# Field names to look for subject name in Subject/Fields
+_LAST_NAME_FIELD_NAMES = ("Last_name", "LastName", "last_name", "Surname", "surname")
+_FIRST_NAME_FIELD_NAMES = ("First_name", "FirstName", "first_name", "Given_name", "given_name")
+_FULL_NAME_FIELD_NAMES = ("Name", "name", "Full_name", "full_name", "FullName")
+
+
+def parse_subject_name_from_session_xml(session_xml_path) -> Optional[str]:
+    """
+    Parse session.xml and return the subject's name from Subject/Fields.
+
+    Tries Last_name + First_name first, then falls back to a single Name field.
+    Returns "LAST FIRST" or just the full-name value, or None if not found.
+
+    Args:
+        session_xml_path: Path to session.xml (str or Path).
+
+    Returns:
+        Name string (uppercased, whitespace-normalized), or None.
+    """
+    path = Path(session_xml_path)
+    if not path.exists():
+        return None
+    try:
+        text = _read_session_xml(path)
+        root = ET.fromstring(text)
+    except Exception:
+        return None
+
+    tag = root.tag.split("}")[-1] if "}" in root.tag else root.tag
+    if tag != "Subject":
+        return None
+
+    last_name = None
+    first_name = None
+    full_name = None
+
+    for child in root:
+        ctag = child.tag.split("}")[-1] if "}" in child.tag else child.tag
+        if ctag == "Fields":
+            for f in child:
+                ftag = f.tag.split("}")[-1] if "}" in f.tag else f.tag
+                val = (f.text or "").strip()
+                if not val:
+                    continue
+                if ftag in _LAST_NAME_FIELD_NAMES:
+                    last_name = val
+                elif ftag in _FIRST_NAME_FIELD_NAMES:
+                    first_name = val
+                elif ftag in _FULL_NAME_FIELD_NAMES:
+                    full_name = val
+
+    if last_name and first_name:
+        return f"{last_name} {first_name}".upper()
+    if last_name:
+        return last_name.upper()
+    if first_name:
+        return first_name.upper()
+    if full_name:
+        return full_name.upper()
+    return None

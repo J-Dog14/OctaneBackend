@@ -131,18 +131,21 @@ def normalize_email(email: Optional[str]) -> Optional[str]:
 def normalize_name_for_matching(name: str) -> str:
     """
     Normalize athlete name for matching.
-    
+
     Converts "LAST, FIRST" to "FIRST LAST", removes dates, converts to uppercase.
-    
+
     Args:
         name: Original name (e.g., "Weiss, Ryan 11-25" or "Ryan Weiss")
-        
+
     Returns:
         Normalized name (e.g., "RYAN WEISS")
     """
     if not name or name.strip() == "":
         return ""
-    
+
+    # Normalize underscores to spaces so suffixes like "_CH" don't skew matching
+    name = name.replace('_', ' ')
+
     # Remove dates (various formats)
     # Full dates: MM/DD/YYYY, MM-DD-YYYY, YYYY-MM-DD, etc.
     name = re.sub(r'\s*\d{1,2}[/-]\d{1,2}[/-]\d{2,4}', '', name)
@@ -577,11 +580,18 @@ def get_athlete_from_warehouse(normalized_name: str, date_of_birth: Optional[str
             conn.close()
 
 
+def _normalize_for_sim(name: str) -> str:
+    """Strip underscores/trailing initials before fuzzy comparison."""
+    n = name.replace('_', ' ')
+    n = re.sub(r'\s+[A-Z]{2,3}\s*$', '', n.strip())
+    return n.strip().lower()
+
+
 def _name_similarity(name1: str, name2: str) -> float:
     """Similarity ratio 0.0--1.0 (uses same logic as duplicate_detector)."""
     if not name1 or not name2:
         return 0.0
-    return SequenceMatcher(None, name1.lower(), name2.lower()).ratio()
+    return SequenceMatcher(None, _normalize_for_sim(name1), _normalize_for_sim(name2)).ratio()
 
 
 def find_existing_athlete_by_name_or_email(
@@ -1117,6 +1127,41 @@ def get_or_create_athlete(
         
     finally:
         conn.close()
+
+
+def verify_athlete_uuid(conn, athlete_uuid: str) -> Optional[Dict[str, Any]]:
+    """
+    Confirm that an athlete_uuid exists in d_athletes and return the record.
+
+    Call this at the top of every pipeline main when ATHLETE_UUID is provided
+    via environment variable. Raises ValueError with a clear message if the
+    UUID is not found, preventing silent data insertion under a wrong athlete.
+
+    Args:
+        conn: Active warehouse connection.
+        athlete_uuid: UUID string to verify.
+
+    Returns:
+        The athlete row as a dict if found.
+
+    Raises:
+        ValueError: If the UUID does not exist in d_athletes.
+    """
+    if not athlete_uuid or not athlete_uuid.strip():
+        raise ValueError("ATHLETE_UUID is empty — cannot proceed.")
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute(
+            "SELECT athlete_uuid, name, date_of_birth, email, gender "
+            "FROM analytics.d_athletes WHERE athlete_uuid = %s",
+            (athlete_uuid.strip(),),
+        )
+        row = cur.fetchone()
+    if row is None:
+        raise ValueError(
+            f"ATHLETE_UUID '{athlete_uuid}' not found in d_athletes. "
+            "Check the UUID on the UAIS maintenance page and try again."
+        )
+    return dict(row)
 
 
 def update_athlete_flags(conn=None, verbose=True):

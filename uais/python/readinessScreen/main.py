@@ -19,7 +19,7 @@ from common.age_utils import (
     normalize_session_date,
     parse_date,
 )
-from common.athlete_manager import get_warehouse_connection, get_or_create_athlete, update_athlete_age_group_from_insert
+from common.athlete_manager import get_warehouse_connection, get_or_create_athlete, update_athlete_age_group_from_insert, verify_athlete_uuid, normalize_name_for_matching
 from common.athlete_matcher import update_athlete_data_flag
 from common.athlete_utils import extract_source_athlete_id
 from common.duplicate_detector import check_and_merge_duplicates
@@ -206,7 +206,7 @@ def process_txt_files(output_path: str, athlete_uuid: str = None, profile: dict 
             
             name = parsed_data['name']
             date_str = parsed_data['date']
-            athlete_key = (name, date_str)
+            athlete_key = (normalize_name_for_matching(name), date_str)
             
             # Get or create athlete (or use provided athlete_uuid when running for Existing Athlete)
             if athlete_key not in processed_athletes:
@@ -457,6 +457,16 @@ def main():
         # Extract name and date from first line of each txt file (like Athletic Screen)
         # Insert directly into PostgreSQL
         athlete_uuid_env = os.environ.get("ATHLETE_UUID", "").strip() or None
+        if athlete_uuid_env:
+            _vconn = get_warehouse_connection()
+            try:
+                _rec = verify_athlete_uuid(_vconn, athlete_uuid_env)
+                print(f"Athlete UUID verified: {_rec['name']} ({athlete_uuid_env})")
+            except ValueError as _ve:
+                print(f"Error: {_ve}")
+                sys.exit(1)
+            finally:
+                _vconn.close()
         processed = process_txt_files(output_path, athlete_uuid=athlete_uuid_env, profile=None)
         
         if not processed:

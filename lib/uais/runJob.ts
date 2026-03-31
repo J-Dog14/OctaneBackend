@@ -2,17 +2,30 @@ import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
 import { rm, readdir } from "node:fs/promises";
 import path from "node:path";
-import os from "node:os";
 import type { UaisRunner } from "./runners";
 
-/** Prepend R's bin to PATH so spawned jobs can find Rscript when the Next.js process didn't inherit it (e.g. Cursor/VS Code). */
-function getEnvWithROnPath(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
-  let rBin: string | null = null;
+/**
+ * Resolve R and Python binary directories and return:
+ *  - env: process env with those dirs prepended to PATH (belt-and-suspenders)
+ *  - pythonExe: absolute path to python.exe on Windows (used to rewrite the command
+ *    so it never goes through the Windows App Execution Alias)
+ *  - rBinDir: absolute path to the R bin dir (for Rscript command rewriting)
+ */
+function resolveRuntimes(env: NodeJS.ProcessEnv): {
+  env: NodeJS.ProcessEnv;
+  pythonExe: string | null;
+  rBinDir: string | null;
+} {
+  const pathSep = process.platform === "win32" ? ";" : ":";
+  const extraBins: string[] = [];
+
+  // --- R ---
+  let rBinDir: string | null = null;
   if (process.env.R_HOME) {
     const candidate = path.join(process.env.R_HOME, "bin");
-    if (existsSync(candidate)) rBin = candidate;
+    if (existsSync(candidate)) rBinDir = candidate;
   }
-  if (!rBin && process.platform === "win32") {
+  if (!rBinDir && process.platform === "win32") {
     const programFiles = process.env.PROGRAMFILES || "C:\\Program Files";
     const rRoot = path.join(programFiles, "R");
     if (existsSync(rRoot)) {
@@ -20,14 +33,75 @@ function getEnvWithROnPath(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
       if (dirs.length > 0) {
         dirs.sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
         const bin = path.join(rRoot, dirs[0], "bin");
-        if (existsSync(bin)) rBin = bin;
+        if (existsSync(bin)) rBinDir = bin;
       }
     }
   }
-  if (!rBin) return env;
-  const pathSep = process.platform === "win32" ? ";" : ":";
+  if (rBinDir) extraBins.push(rBinDir);
+
+  // --- Python (Windows only) ---
+  // On Windows, `python` / `python3` in PATH can resolve to the Windows App Execution
+  // Alias even when the real Python dir is prepended, because the alias lives in a
+  // directory that gets special OS-level treatment. The only reliable fix is to replace
+  // `python`/`python3` in the command with the absolute path to python.exe.
+  let pythonExe: string | null = null;
+  if (process.platform === "win32") {
+    let pyDir: string | null = null;
+    if (process.env.PYTHON_HOME) {
+      const exe = path.join(process.env.PYTHON_HOME, "python.exe");
+      if (existsSync(exe)) pyDir = process.env.PYTHON_HOME;
+    }
+    if (!pyDir) {
+      const localAppData = process.env.LOCALAPPDATA || "";
+      const userProfile = process.env.USERPROFILE || "";
+      const roots = [
+        path.join(localAppData, "Programs", "Python"),
+        path.join(userProfile, "AppData", "Local", "Programs", "Python"),
+        "C:\\Python313", "C:\\Python312", "C:\\Python311", "C:\\Python310", "C:\\Python39",
+      ];
+      outer: for (const root of roots) {
+        if (!existsSync(root)) continue;
+        if (existsSync(path.join(root, "python.exe"))) { pyDir = root; break; }
+        let dirs: string[] = [];
+        try { dirs = readdirSync(root).filter((d) => /^Python\d/i.test(d)); } catch { continue; }
+        dirs.sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
+        for (const dir of dirs) {
+          const candidate = path.join(root, dir);
+          if (existsSync(path.join(candidate, "python.exe"))) { pyDir = candidate; break outer; }
+        }
+      }
+    }
+    if (pyDir) {
+      pythonExe = path.join(pyDir, "python.exe");
+      extraBins.push(pyDir);
+    }
+  }
+
+  if (extraBins.length === 0) return { env, pythonExe, rBinDir };
   const current = env.PATH ?? env.Path ?? "";
-  return { ...env, PATH: rBin + pathSep + current, Path: rBin + pathSep + current };
+  const newPath = extraBins.join(pathSep) + pathSep + current;
+  return { env: { ...env, PATH: newPath, Path: newPath }, pythonExe, rBinDir };
+}
+
+/**
+ * Rewrite a runner command to use absolute paths for python/python3 and Rscript
+ * so the Windows App Execution Alias can never intercept them.
+ */
+function resolveCommand(command: string, pythonExe: string | null, rBinDir: string | null): string {
+  let cmd = command;
+  if (pythonExe) {
+    // Replace leading `python3` or `python` word with the absolute exe path (quoted for spaces)
+    const quoted = `"${pythonExe}"`;
+    cmd = cmd.replace(/^python3(?=\s|$)/, quoted).replace(/^python(?=\s|$)/, quoted);
+  }
+  if (rBinDir) {
+    const rscript = path.join(rBinDir, "Rscript" + (process.platform === "win32" ? ".exe" : ""));
+    if (existsSync(rscript)) {
+      const quoted = `"${rscript}"`;
+      cmd = cmd.replace(/^Rscript(?=\s|$)/, quoted);
+    }
+  }
+  return cmd;
 }
 
 type Job = {
@@ -39,7 +113,10 @@ type Job = {
   reportDir?: string;
 };
 
-const jobs = new Map<string, Job>();
+// Survive Next.js HMR module re-evaluation in dev mode: attach to globalThis so the Map
+// is not wiped when the stream route compiles and causes runJob.ts to be re-executed.
+declare const globalThis: { __uaisJobs?: Map<string, Job> } & typeof global;
+const jobs: Map<string, Job> = (globalThis.__uaisJobs ??= new Map<string, Job>());
 
 function pushChunk(jobId: string, chunk: Uint8Array) {
   const job = jobs.get(jobId);
@@ -151,6 +228,9 @@ export function createJob(runner: UaisRunner, options?: CreateJobOptions): strin
   if (options?.athleteUuid?.trim()) {
     env.ATHLETE_UUID = options.athleteUuid.trim();
   }
+  // Inject a unique batch ID so every pipeline can tag inserted rows with the originating job.
+  // Format: ISO timestamp + jobId (chronologically sortable, globally unique).
+  env.UPLOAD_BATCH_ID = `${new Date().toISOString().replace(/[:.]/g, "-")}-${jobId}`;
 
   // If uploaded file keys are provided, download them from R2 to a temp dir
   // and set the assessment's DATA_DIR env var. Done asynchronously; process
@@ -175,8 +255,9 @@ export function createJob(runner: UaisRunner, options?: CreateJobOptions): strin
         const dataDirVar = ASSESSMENT_DATA_DIR_ENV[runner.id];
         if (dataDirVar) env[dataDirVar] = tempDir;
 
-        const envWithPath = getEnvWithROnPath(env);
-        const proc = spawn(runner.command, [], { shell: true, cwd: runner.cwd, env: envWithPath });
+        const { env: envWithPath, pythonExe, rBinDir } = resolveRuntimes(env);
+        const command = resolveCommand(runner.command, pythonExe, rBinDir);
+        const proc = spawn(command, [], { shell: true, cwd: runner.cwd, env: envWithPath });
         job.process = proc;
         proc.stdout?.on("data", (data: Buffer) => pushChunk(jobId, data));
         proc.stderr?.on("data", (data: Buffer) => pushChunk(jobId, data));
@@ -203,8 +284,9 @@ export function createJob(runner: UaisRunner, options?: CreateJobOptions): strin
     return jobId;
   }
 
-  const envWithPath = getEnvWithROnPath(env);
-  const proc = spawn(runner.command, [], {
+  const { env: envWithPath, pythonExe, rBinDir } = resolveRuntimes(env);
+  const command = resolveCommand(runner.command, pythonExe, rBinDir);
+  const proc = spawn(command, [], {
     shell: true,
     cwd: runner.cwd,
     env: envWithPath,

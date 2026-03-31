@@ -1,14 +1,11 @@
 # Main entry point for Pitching Data Processing
 # Prompts user to select a folder and processes all data within that folder
 
-# Load tcltk for folder selection dialog (only when running interactively)
-.use_gui <- is.na(Sys.getenv("PITCHING_DATA_DIR", unset = NA))
-if (.use_gui) {
-  if (!requireNamespace("tcltk", quietly = TRUE)) {
-    stop("tcltk package is required for interactive mode. Set PITCHING_DATA_DIR env var to skip the dialog.")
-  }
-  library(tcltk)
+# Load tcltk for folder selection dialog
+if (!requireNamespace("tcltk", quietly = TRUE)) {
+  stop("tcltk package is required. Install with: install.packages('tcltk')")
 }
+library(tcltk)
 
 # Source the processing script
 # Try multiple paths to find pitching_processing.R
@@ -57,47 +54,40 @@ if (!dir.exists(initial_dir)) {
   }
 }
 
-# Prompt user to select a folder
-cat("\nPITCHING DATA PROCESSING\n\n")
-cat("Please select a folder containing pitching data to process.\n")
-cat("Default folder:", default_data_root, "\n")
-cat("\n")
-
-# Use PITCHING_DATA_DIR env var (cloud/headless) or tcltk dialog (interactive)
+# Use PITCHING_DATA_DIR (from env or settings) as the starting directory for the dialog
 env_dir <- Sys.getenv("PITCHING_DATA_DIR", unset = NA)
 if (!is.na(env_dir) && dir.exists(env_dir)) {
-  cat("Using data directory from PITCHING_DATA_DIR:", env_dir, "\n")
-  selected_folder <- env_dir
-} else if (!is.na(env_dir)) {
-  stop("PITCHING_DATA_DIR is set but directory does not exist: ", env_dir)
-} else {
-  # Interactive mode: use tcltk to open folder selection dialog
-  tryCatch({
-    tcltk::tcl("wm", "attributes", ".", "-topmost", 1)
-  }, error = function(e) {
-    # Root may not exist yet; one tcltk call creates it
-    tt <- tcltk::tktoplevel()
-    tcltk::tkdestroy(tt)
-    tcltk::tcl("wm", "attributes", ".", "-topmost", 1)
-  })
-  selected_folder <- tryCatch({
-    tcltk::tk_choose.dir(
-      default = initial_dir,
-      caption = "Select Pitching Data Folder"
-    )
-  }, error = function(e) {
-    tcltk::tcl("wm", "attributes", ".", "-topmost", 0)
-    cat("Error opening folder dialog:", conditionMessage(e), "\n")
-    cat("Falling back to default folder:", default_data_root, "\n")
-    if (dir.exists(default_data_root)) {
-      return(default_data_root)
-    } else {
-      stop("Could not select folder and default folder does not exist.")
-    }
-  })
-  # Clear topmost so the R process doesn't stay on top after dialog closes
-  tryCatch({ tcltk::tcl("wm", "attributes", ".", "-topmost", 0) }, error = function(e) { invisible(NULL) })
+  initial_dir <- env_dir
 }
+
+# Always prompt via tcltk dialog
+cat("\nPITCHING DATA PROCESSING\n\n")
+cat("Please select a folder containing pitching data to process.\n")
+cat("Starting at:", initial_dir, "\n\n")
+
+tryCatch({
+  invisible(tcltk::tcl("wm", "attributes", ".", "-topmost", 1))
+}, error = function(e) {
+  tt <- tcltk::tktoplevel()
+  tcltk::tkdestroy(tt)
+  invisible(tcltk::tcl("wm", "attributes", ".", "-topmost", 1))
+})
+selected_folder <- tryCatch({
+  tcltk::tk_choose.dir(
+    default = initial_dir,
+    caption = "Select Pitching Data Folder"
+  )
+}, error = function(e) {
+  tcltk::tcl("wm", "attributes", ".", "-topmost", 0)
+  cat("Error opening folder dialog:", conditionMessage(e), "\n")
+  cat("Falling back to:", initial_dir, "\n")
+  if (dir.exists(initial_dir)) {
+    return(initial_dir)
+  } else {
+    stop("Could not open folder dialog and starting directory does not exist.")
+  }
+})
+tryCatch({ tcltk::tcl("wm", "attributes", ".", "-topmost", 0) }, error = function(e) { invisible(NULL) })
 
 # Check if user cancelled
 if (length(selected_folder) == 0 || is.na(selected_folder) || selected_folder == "") {

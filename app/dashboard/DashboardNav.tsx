@@ -9,6 +9,7 @@ const TABS = [
   { href: "/dashboard", label: "Dashboard", adminOnly: false },
   { href: "/dashboard/athletes", label: "Athletes", adminOnly: false },
   { href: "/dashboard/athlete-tracking", label: "Athlete Tracking", adminOnly: false },
+  { href: "/dashboard/research", label: "Research", adminOnly: false },
   { href: "/dashboard/send-payload", label: "Send Payload", adminOnly: true },
   { href: "/dashboard/uais-maintenance", label: "UAIS Maintenance", adminOnly: true },
   { href: "/dashboard/reports", label: "PDF Reports", adminOnly: true },

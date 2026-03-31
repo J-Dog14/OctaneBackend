@@ -3,32 +3,36 @@
 # For interactive folder selection, use main.R instead.
 
 # ==== Minimal deps ====
-library(xml2)
-library(purrr)
-library(dplyr)
-library(readr)
-library(stringr)
-library(tibble)
-library(tidyr)
-library(DBI)
-library(RSQLite)
+options(warn = -1)  # Suppress accumulated warnings from library loading
+suppressPackageStartupMessages({
+  library(xml2)
+  library(purrr)
+  library(dplyr)
+  library(readr)
+  library(stringr)
+  library(tibble)
+  library(tidyr)
+  library(DBI)
+  library(RSQLite)
+})
 # Try to load RPostgres, fall back to RPostgreSQL if not available
 if (!requireNamespace("RPostgres", quietly = TRUE)) {
   if (requireNamespace("RPostgreSQL", quietly = TRUE)) {
-    library(RPostgreSQL)
-    # RPostgreSQL uses different connection function, we'll handle this in get_warehouse_connection
+    suppressPackageStartupMessages(library(RPostgreSQL))
   } else {
     warning("Neither RPostgres nor RPostgreSQL is installed. Install with: install.packages('RPostgres')")
   }
 } else {
-  library(RPostgres)
+  suppressPackageStartupMessages(library(RPostgres))
 }
-library(uuid)
-library(tools)
+suppressPackageStartupMessages({
+  library(uuid)
+  library(tools)
+})
 if (!requireNamespace("jsonlite", quietly = TRUE)) {
   warning("jsonlite not installed - f_pitching_trials will not be written. Install with: install.packages('jsonlite')")
 } else {
-  library(jsonlite)
+  suppressPackageStartupMessages(library(jsonlite))
 }
 
 # Load common utilities
@@ -120,6 +124,14 @@ for (path in athlete_manager_paths) {
 }
 if (!athlete_manager_loaded) {
   warning("Could not find athlete_manager.R - warehouse integration will be limited")
+}
+
+# ---------- SQL helper (avoids prepared statements for Neon/pgBouncer compatibility) ----------
+# Use DBI::dbQuoteLiteral so values are safely escaped and inlined into the SQL string,
+# avoiding the extended query protocol (prepared statements) that pgBouncer rejects.
+.sql_lit <- function(con, x) {
+  if (is.null(x) || (length(x) == 1 && is.na(x))) return("NULL")
+  as.character(DBI::dbQuoteLiteral(con, x))
 }
 
 # ---------- Configuration ----------
@@ -1080,7 +1092,6 @@ process_all_files <- function(data_root = NULL) {
   
   # Fetch athlete UUID mapping from warehouse database (not app database)
   # This is just for pre-populating the cache - athlete_manager will handle actual matching
-  cat("\n*** STEP 1: FETCHING UUIDs FROM WAREHOUSE DATABASE (optional pre-cache) ***\n")
   log_progress("Fetching athlete UUIDs from warehouse database for pre-caching...")
   
   uuid_map <- list()  # Start empty - athlete_manager will handle matching
@@ -1104,21 +1115,7 @@ process_all_files <- function(data_root = NULL) {
     })
   }
   
-  cat("*** UUID MAP RESULT: Contains", length(uuid_map), "entries (pre-cache) ***\n")
   log_progress("UUID map contains", length(uuid_map), "entries")
-  if (length(uuid_map) > 0) {
-    cat("*** FIRST 5 UUID MAPPINGS (pre-cache) ***\n")
-    log_progress("First few UUID mappings:")
-    for (i in seq_len(min(5, length(uuid_map)))) {
-      cat("  '", names(uuid_map)[i], "' -> '", uuid_map[[i]], "'\n", sep = "")
-      log_progress("  ", names(uuid_map)[i], " -> ", uuid_map[[i]])
-    }
-  } else {
-    cat("*** NOTE: UUID MAP IS EMPTY (pre-cache) - this is OK! ***\n")
-    cat("*** athlete_manager will handle UUID matching when creating athletes ***\n")
-    log_progress("NOTE: UUID pre-cache is empty - athlete_manager will handle matching")
-  }
-  cat("\n")
   
   # Process session.xml files to get athlete info
   athlete_list <- list()
@@ -1317,17 +1314,12 @@ process_all_files <- function(data_root = NULL) {
   log_progress("PHASE 2: Processing", total_data_files, "session_data.xml files for metric data")
   log_progress("")
   
-  # Force output immediately
-  cat("\n*** PHASE 2 STARTING ***\n")
-  cat("Total session_data.xml files:", total_data_files, "\n")
   flush.console()
   
   for (i in seq_along(session_data_files)) {
     sdf <- session_data_files[i]
-    if (i <= 3 || i %% 10 == 0) {  # Log first 3 files and every 10th file
+    if (i <= 3 || i %% 10 == 0) {
       log_progress("[", i, "/", total_data_files, "] Processing:", basename(sdf))
-      cat("Processing file", i, "of", total_data_files, ":", basename(sdf), "\n")
-      flush.console()
     }
     doc <- tryCatch(read_xml_robust(sdf), error = function(e) {
       if (i <= 3) {
@@ -1353,8 +1345,6 @@ process_all_files <- function(data_root = NULL) {
       
       if (i <= 3) {
         log_progress("  Found", length(owner_names), "owners:", paste(owner_names, collapse = ", "))
-        cat("  Found", length(owner_names), "owners in file", i, "\n")
-        flush.console()
       }
       
       # Try to match owner to athlete
@@ -1376,10 +1366,6 @@ process_all_files <- function(data_root = NULL) {
         # First check if we already mapped this directory (from a previous owner in same file)
         if (dir_path_normalized %in% names(owner_mapping)) {
           matched_uid <- owner_mapping[[dir_path_normalized]]
-          if (i <= 3) {
-            cat("    [MATCH-CACHED] Owner", owner_name, "-> Directory already mapped to UID:", matched_uid, "\n")
-            flush.console()
-          }
         } else {
           # Find session.xml in same directory (most reliable)
           session_xml <- file.path(dir_path, "session.xml")
@@ -1405,11 +1391,8 @@ process_all_files <- function(data_root = NULL) {
               best_match <- found_athlete
               # Cache this mapping for future owners in same directory
               owner_mapping[[dir_path_normalized]] <- matched_uid
-              if (i <= 3) {
-                cat("    [MATCH-SESSION] Owner", owner_name, "matched via session.xml in same directory\n")
-                cat("      Athlete:", found_athlete$name[1], "| UID:", matched_uid, "\n")
-                flush.console()
-              }
+              cat("  Athlete:", found_athlete$name[1], "| UUID:", matched_uid, "\n")
+              flush.console()
             } else {
               if (i <= 3) {
                 cat("    [WARNING] session.xml found but not in athlete_list:", session_xml, "\n")
@@ -1441,11 +1424,8 @@ process_all_files <- function(data_root = NULL) {
                 matched_uid <- found_athlete$uid[1]
                 best_match <- found_athlete
                 owner_mapping[[dir_path_normalized]] <- matched_uid
-                if (i <= 3) {
-                  cat("    [MATCH-SESSION] Owner", owner_name, "matched via session.xml in parent directory\n")
-                  cat("      Athlete:", found_athlete$name[1], "| UID:", matched_uid, "\n")
-                  flush.console()
-                }
+                cat("  Athlete:", found_athlete$name[1], "| UUID:", matched_uid, "\n")
+                flush.console()
               } else {
                 if (i <= 3) {
                   cat("    [WARNING] session.xml in parent found but not in athlete_list:", session_xml, "\n")
@@ -1526,11 +1506,8 @@ process_all_files <- function(data_root = NULL) {
           # Only use match if score is high enough (at least 2 common directory parts to avoid false matches)
           if (!is.null(best_match) && best_match_score >= 2 && "uid" %in% names(best_match) && !is.na(best_match$uid[1])) {
             matched_uid <- best_match$uid[1]
-            if (i <= 3) {
-              cat("    [MATCH] Owner", owner_name, "matched via directory similarity (score:", best_match_score, ")\n")
-              cat("      Athlete:", best_match$name[1], "| UID:", matched_uid, "\n")
-              flush.console()
-            }
+            cat("  Athlete:", best_match$name[1], "| UUID:", matched_uid, "\n")
+            flush.console()
           }
         }
         
@@ -1549,50 +1526,16 @@ process_all_files <- function(data_root = NULL) {
         is_static <- grepl("static", owner_name_lower)
         is_fastball <- grepl("fastball", owner_name_lower)
         
-        if (is_static) {
-          if (i <= 3) {
-            cat("    [SKIP] Static trial owner:", owner_name, "\n")
-            flush.console()
-          }
-          next  # Skip static trials
-        }
-        
-        if (!is_fastball) {
-          if (i <= 3) {
-            cat("    [SKIP] Non-Fastball trial owner:", owner_name, "\n")
-            flush.console()
-          }
-          next  # Skip non-Fastball trials
-        }
-        
+        if (is_static) next
+        if (!is_fastball) next
+
         total_owners_matched <- total_owners_matched + 1
-        
-        # Extract ALL metric data for this owner
-        if (i <= 3) {
-          log_progress("    [MATCHED] Owner:", owner_name, "-> UID:", matched_uid)
-          cat("    [PROCESSING] Fastball owner:", owner_name, "\n")
-          flush.console()
-        }
-        
-        # Call extract_metric_data and get detailed feedback
-        if (i <= 3) {
-          cat("    Calling extract_metric_data for owner:", owner_name, "\n")
-          flush.console()
-        }
+        log_progress("    [MATCHED] Owner:", owner_name, "-> UID:", matched_uid)
+
         metric_data <- extract_metric_data(doc, owner_name)
-        
-        if (i <= 3) {
-          cat("    extract_metric_data returned", nrow(metric_data), "rows\n")
-          flush.console()
-        }
-        
+
         if (nrow(metric_data) > 0) {
           total_rows_extracted <- total_rows_extracted + nrow(metric_data)
-          if (i <= 3) {
-            log_progress("      Extracted", nrow(metric_data), "rows of METRIC data")
-            cat("    [SUCCESS] Extracted", nrow(metric_data), "rows for owner", owner_name, "\n")
-            flush.console()
-          }
           metric_data$uid <- matched_uid
           # Add athlete_id if we have a mapping
           if (!is.na(matched_uid) && matched_uid %in% names(uid_to_athlete_id)) {
@@ -1712,13 +1655,6 @@ process_all_files <- function(data_root = NULL) {
   log_progress("  Total metric rows extracted:", total_rows_extracted)
   log_progress("  Metric data lists created:", length(metric_data_list))
   
-  # Force output with cat
-  cat("\n*** PHASE 2 SUMMARY ***\n")
-  cat("Total owners processed:", total_owners_processed, "\n")
-  cat("Owners matched:", total_owners_matched, "\n")
-  cat("Owners skipped:", total_owners_skipped, "\n")
-  cat("Total metric rows extracted:", total_rows_extracted, "\n")
-  cat("Metric data lists created:", length(metric_data_list), "\n")
   flush.console()
   
   # Combine and write to database
@@ -1777,12 +1713,8 @@ process_all_files <- function(data_root = NULL) {
       log_progress("  First dataframe dimensions:", nrow(padded_list[[1]]), "rows,", ncol(padded_list[[1]]), "columns")
       log_progress("  First dataframe columns:", paste(names(padded_list[[1]]), collapse = ", "))
     }
-    cat("  [PROGRESS] Binding", length(padded_list), "dataframes (this may take a while)...\n")
-    flush.console()
     metric_df <- bind_rows(padded_list)
     log_progress("  metric_df after binding:", nrow(metric_df), "rows,", ncol(metric_df), "columns")
-    cat("  [SUCCESS] Binding complete!\n")
-    flush.console()
     
     if (isTRUE(use_warehouse)) {
       # Write to PostgreSQL warehouse f_kinematics_pitching table
@@ -1798,8 +1730,6 @@ process_all_files <- function(data_root = NULL) {
       
       # Ensure session_date is set from Session/Fields/Creation_date (already attached per owner in Phase 2)
       log_progress("  Setting session_date for", nrow(metric_df), "rows...")
-      cat("  [PROGRESS] Creating session_date mapping (optimized)...\n")
-      flush.console()
 
       default_date <- Sys.Date()
       if (!"session_date" %in% names(metric_df)) {
@@ -1833,8 +1763,6 @@ process_all_files <- function(data_root = NULL) {
       # Final fallback: today, only when session date still missing
       metric_df$session_date[is.na(metric_df$session_date)] <- default_date
 
-      cat("  [SUCCESS] Session dates assigned!\n")
-      flush.console()
       
       # Create mapping from athlete_uuid to age_at_collection, height, weight
       log_progress("  Creating age/height/weight mapping from athlete_list...")
@@ -2013,9 +1941,10 @@ process_all_files <- function(data_root = NULL) {
             au <- as.character(trials_df$athlete_uuid[1])
             sd <- trials_df$session_date[1]
             if (au == athlete_uuid_env) {
-              existing <- DBI::dbGetQuery(con,
-                "SELECT 1 FROM public.f_pitching_trials WHERE athlete_uuid = $1 AND session_date = $2 LIMIT 1",
-                params = list(au, sd))
+              existing <- DBI::dbGetQuery(con, paste0(
+                "SELECT 1 FROM public.f_pitching_trials WHERE athlete_uuid = ",
+                .sql_lit(con, au), " AND session_date = ", .sql_lit(con, format(sd, "%Y-%m-%d")), " LIMIT 1"
+              ))
               if (nrow(existing) > 0) {
                 date_str <- format(sd, "%Y-%m-%d")
                 cat("DUPLICATE_SESSION:", date_str, "\n", sep = "")
@@ -2086,11 +2015,29 @@ process_all_files <- function(data_root = NULL) {
           trials_df$source_system <- "pitching"
           for (r in seq_len(nrow(trials_df))) {
             row <- trials_df[r, ]
-            DBI::dbExecute(con, "
+            DBI::dbExecute(con, paste0("
               INSERT INTO public.f_pitching_trials
                 (athlete_uuid, name, session_date, source_system, source_athlete_id, owner_filename, handedness, trial_index,
                  velocity_mph, score, age_at_collection, age_group, height, weight, metrics, session_xml_path, session_data_xml_path)
-              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15::jsonb, $16, $17)
+              VALUES (
+                ", .sql_lit(con, row$athlete_uuid), ",
+                ", .sql_lit(con, if (is.na(row$name) || row$name == "") NULL else as.character(row$name)), ",
+                ", .sql_lit(con, format(row$session_date, "%Y-%m-%d")), ",
+                ", .sql_lit(con, row$source_system), ",
+                ", .sql_lit(con, row$source_athlete_id), ",
+                ", .sql_lit(con, row$owner_filename), ",
+                ", .sql_lit(con, if (is.na(row$handedness) || row$handedness == "") NULL else row$handedness), ",
+                ", .sql_lit(con, row$trial_index), ",
+                ", .sql_lit(con, row$velocity_mph), ",
+                ", .sql_lit(con, row$score), ",
+                ", .sql_lit(con, row$age_at_collection), ",
+                ", .sql_lit(con, row$age_group), ",
+                ", .sql_lit(con, row$height), ",
+                ", .sql_lit(con, row$weight), ",
+                ", .sql_lit(con, row$metrics_json), "::jsonb,
+                ", .sql_lit(con, row$session_xml_path), ",
+                ", .sql_lit(con, row$session_data_xml_path), "
+              )
               ON CONFLICT (athlete_uuid, session_date, trial_index) DO UPDATE SET
                 name = COALESCE(EXCLUDED.name, f_pitching_trials.name),
                 owner_filename = EXCLUDED.owner_filename,
@@ -2106,24 +2053,23 @@ process_all_files <- function(data_root = NULL) {
                 session_xml_path = EXCLUDED.session_xml_path,
                 session_data_xml_path = EXCLUDED.session_data_xml_path,
                 created_at = NOW()
-            ", params = list(
-              row$athlete_uuid, if (is.na(row$name) || row$name == "") NULL else as.character(row$name), row$session_date, row$source_system, row$source_athlete_id,
-              row$owner_filename, if (is.na(row$handedness) || row$handedness == "") NULL else row$handedness, row$trial_index,
-              row$velocity_mph, row$score,
-              row$age_at_collection, row$age_group, row$height, row$weight, row$metrics_json,
-              row$session_xml_path, row$session_data_xml_path
-            ))
+            "))
           }
           log_progress("  [SUCCESS] Wrote", nrow(trials_df), "rows to f_pitching_trials")
 
           # -------------------------------------------------------------------
-          # Insert 3-D time-series JSON data into f_pitching_time_data
-          # Same demographic columns as f_pitching_trials; metrics = raw JSON blob.
+          # Insert 3-D time-series JSON data into normalized typed tables.
           # JSON file naming convention: "{owner_filename}-3d-data.json"
           # located in the same directory as session.xml.
+          # Tables:
+          #   f_pitching_time_data      - metadata header (no JSONB)
+          #   f_pitching_marker_data    - frame x marker x (x,y,z)
+          #   f_pitching_segment_pos_data - frame x segment x (x,y,z)
+          #   f_pitching_segment_rot_data - frame x segment x (rot_x,rot_y,rot_z)
+          #   f_pitching_force_data     - frame x force_index x (fx,fy,fz)
           # -------------------------------------------------------------------
           tryCatch({
-            # Auto-migrate old single-metrics-column schema if present
+            # Auto-migrate: drop old f_pitching_time_data if it has any JSONB columns
             time_data_cols_check <- tryCatch(
               DBI::dbGetQuery(con, "
                 SELECT column_name FROM information_schema.columns
@@ -2131,15 +2077,34 @@ process_all_files <- function(data_root = NULL) {
               ")$column_name,
               error = function(e) character(0)
             )
-            if (length(time_data_cols_check) > 0 && "metrics" %in% time_data_cols_check && !"frames" %in% time_data_cols_check) {
-              log_progress("  Migrating f_pitching_time_data from old single-metrics schema...")
-              DBI::dbExecute(con, "DROP TABLE IF EXISTS public.f_pitching_time_data CASCADE")
-              log_progress("  Dropped old f_pitching_time_data table")
-              time_data_cols_check <- character(0)
+            jsonb_cols_present <- intersect(
+              c("metrics", "frames", "labels", "segments", "bones", "force"),
+              time_data_cols_check
+            )
+            needs_migration <- length(time_data_cols_check) > 0 && length(jsonb_cols_present) > 0
+            if (needs_migration) {
+              log_progress("  Migrating f_pitching_time_data: dropping JSONB columns (preserving metadata rows)...")
+              for (col in jsonb_cols_present) {
+                tryCatch(
+                  DBI::dbExecute(con, paste0(
+                    "ALTER TABLE public.f_pitching_time_data DROP COLUMN IF EXISTS ", col
+                  )),
+                  error = function(e) log_progress(paste0("  [WARNING] Could not drop column ", col, ": ", conditionMessage(e)))
+                )
+              }
+              log_progress("  Dropped JSONB columns from f_pitching_time_data. Metadata rows preserved.")
+              # Refresh column list after migration
+              time_data_cols_check <- tryCatch(
+                DBI::dbGetQuery(con, "
+                  SELECT column_name FROM information_schema.columns
+                  WHERE table_schema = 'public' AND table_name = 'f_pitching_time_data'
+                ")$column_name,
+                error = function(e) character(0)
+              )
             }
             time_data_table_exists <- length(time_data_cols_check) > 0
             if (!time_data_table_exists) {
-              log_progress("  Creating f_pitching_time_data table...")
+              log_progress("  Creating f_pitching_time_data table (metadata only, no JSONB)...")
               DBI::dbExecute(con, "
                 CREATE TABLE IF NOT EXISTS public.f_pitching_time_data (
                   id SERIAL PRIMARY KEY,
@@ -2161,11 +2126,6 @@ process_all_files <- function(data_root = NULL) {
                   start_time NUMERIC,
                   end_time NUMERIC,
                   uncropped_length NUMERIC,
-                  labels JSONB,
-                  bones JSONB,
-                  segments JSONB,
-                  force JSONB,
-                  frames JSONB NOT NULL,
                   session_xml_path TEXT,
                   session_data_xml_path TEXT,
                   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -2187,6 +2147,98 @@ process_all_files <- function(data_root = NULL) {
               ")
               log_progress("  [SUCCESS] Created f_pitching_time_data table")
             }
+
+            # Ensure typed 3D tables exist (one row per trial, JSONB per data type).
+            # If old row-per-frame tables exist (identified by marker_name/frame columns),
+            # drop them so the new schema takes effect.
+            tryCatch({
+              old_marker_cols <- DBI::dbGetQuery(con, "
+                SELECT column_name FROM information_schema.columns
+                WHERE table_schema = 'public' AND table_name = 'f_pitching_marker_data'
+              ")$column_name
+              if ("marker_name" %in% old_marker_cols || "frame" %in% old_marker_cols) {
+                log_progress("  Auto-migrating typed tables to one-row-per-trial schema...")
+                for (tbl in c("f_pitching_marker_data", "f_pitching_segment_pos_data",
+                               "f_pitching_segment_rot_data", "f_pitching_force_data")) {
+                  DBI::dbExecute(con, paste0("DROP TABLE IF EXISTS public.", tbl, " CASCADE"))
+                }
+                log_progress("  Dropped old row-per-frame typed tables.")
+              }
+            }, error = function(e) NULL)
+
+            DBI::dbExecute(con, "
+              CREATE TABLE IF NOT EXISTS public.f_pitching_marker_data (
+                id SERIAL PRIMARY KEY,
+                athlete_uuid VARCHAR(36) NOT NULL,
+                session_date DATE NOT NULL,
+                source_system VARCHAR(50) NOT NULL DEFAULT 'pitching',
+                source_athlete_id VARCHAR(100),
+                owner_filename TEXT,
+                trial_index INTEGER NOT NULL,
+                label_names JSONB,
+                data JSONB,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                CONSTRAINT f_pitching_marker_data_fkey
+                  FOREIGN KEY (athlete_uuid) REFERENCES analytics.d_athletes(athlete_uuid) ON DELETE CASCADE,
+                CONSTRAINT f_pitching_marker_data_unique
+                  UNIQUE (athlete_uuid, session_date, trial_index)
+              )
+            ")
+            DBI::dbExecute(con, "
+              CREATE TABLE IF NOT EXISTS public.f_pitching_segment_pos_data (
+                id SERIAL PRIMARY KEY,
+                athlete_uuid VARCHAR(36) NOT NULL,
+                session_date DATE NOT NULL,
+                source_system VARCHAR(50) NOT NULL DEFAULT 'pitching',
+                source_athlete_id VARCHAR(100),
+                owner_filename TEXT,
+                trial_index INTEGER NOT NULL,
+                segment_names JSONB,
+                data JSONB,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                CONSTRAINT f_pitching_segment_pos_data_fkey
+                  FOREIGN KEY (athlete_uuid) REFERENCES analytics.d_athletes(athlete_uuid) ON DELETE CASCADE,
+                CONSTRAINT f_pitching_segment_pos_data_unique
+                  UNIQUE (athlete_uuid, session_date, trial_index)
+              )
+            ")
+            DBI::dbExecute(con, "
+              CREATE TABLE IF NOT EXISTS public.f_pitching_segment_rot_data (
+                id SERIAL PRIMARY KEY,
+                athlete_uuid VARCHAR(36) NOT NULL,
+                session_date DATE NOT NULL,
+                source_system VARCHAR(50) NOT NULL DEFAULT 'pitching',
+                source_athlete_id VARCHAR(100),
+                owner_filename TEXT,
+                trial_index INTEGER NOT NULL,
+                segment_names JSONB,
+                data JSONB,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                CONSTRAINT f_pitching_segment_rot_data_fkey
+                  FOREIGN KEY (athlete_uuid) REFERENCES analytics.d_athletes(athlete_uuid) ON DELETE CASCADE,
+                CONSTRAINT f_pitching_segment_rot_data_unique
+                  UNIQUE (athlete_uuid, session_date, trial_index)
+              )
+            ")
+            DBI::dbExecute(con, "
+              CREATE TABLE IF NOT EXISTS public.f_pitching_force_data (
+                id SERIAL PRIMARY KEY,
+                athlete_uuid VARCHAR(36) NOT NULL,
+                session_date DATE NOT NULL,
+                source_system VARCHAR(50) NOT NULL DEFAULT 'pitching',
+                source_athlete_id VARCHAR(100),
+                owner_filename TEXT,
+                trial_index INTEGER NOT NULL,
+                data JSONB,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                CONSTRAINT f_pitching_force_data_fkey
+                  FOREIGN KEY (athlete_uuid) REFERENCES analytics.d_athletes(athlete_uuid) ON DELETE CASCADE,
+                CONSTRAINT f_pitching_force_data_unique
+                  UNIQUE (athlete_uuid, session_date, trial_index)
+              )
+            ")
+            log_progress("  [SUCCESS] Ensured typed 3D tables exist")
+
             n_json_inserted <- 0L
             n_json_missing  <- 0L
             for (r in seq_len(nrow(trials_df))) {
@@ -2202,27 +2254,42 @@ process_all_files <- function(data_root = NULL) {
                 n_json_missing <- n_json_missing + 1L
                 next
               }
-              frame_rate_val       <- json_data$frameRate
-              start_time_val       <- json_data$startTime
-              end_time_val         <- json_data$endTime
-              uncropped_length_val <- json_data$uncroppedLength
-              labels_str    <- tryCatch(jsonlite::toJSON(json_data$labels   %||% list(), auto_unbox = FALSE), error = function(e) "[]")
-              bones_str     <- tryCatch(jsonlite::toJSON(json_data$bones    %||% list(), auto_unbox = FALSE), error = function(e) "[]")
-              segments_str  <- tryCatch(jsonlite::toJSON(json_data$segments %||% list(), auto_unbox = FALSE), error = function(e) "[]")
-              force_str     <- tryCatch(jsonlite::toJSON(json_data$force    %||% list(), auto_unbox = TRUE),  error = function(e) "{}")
-              frames_str    <- tryCatch(jsonlite::toJSON(json_data$frames   %||% list(), auto_unbox = FALSE), error = function(e) "[]")
-              DBI::dbExecute(con, "
+
+              frame_rate_val       <- json_data$frameRate %||% NA_real_
+              start_time_val       <- json_data$startTime %||% NA_real_
+              end_time_val         <- json_data$endTime %||% NA_real_
+              uncropped_length_val <- json_data$uncroppedLength %||% NA_real_
+
+              # -- Insert metadata header row into f_pitching_time_data --
+              DBI::dbExecute(con, paste0("
                 INSERT INTO public.f_pitching_time_data
                   (athlete_uuid, name, session_date, source_system, source_athlete_id,
                    owner_filename, handedness, trial_index, velocity_mph, score,
                    age_at_collection, age_group, height, weight,
                    frame_rate, start_time, end_time, uncropped_length,
-                   labels, bones, segments, force, frames,
                    session_xml_path, session_data_xml_path)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
-                        $15, $16, $17, $18,
-                        $19::jsonb, $20::jsonb, $21::jsonb, $22::jsonb, $23::jsonb,
-                        $24, $25)
+                VALUES (
+                  ", .sql_lit(con, row$athlete_uuid), ",
+                  ", .sql_lit(con, if (is.na(row$name) || row$name == "") NULL else as.character(row$name)), ",
+                  ", .sql_lit(con, format(row$session_date, "%Y-%m-%d")), ",
+                  'pitching',
+                  ", .sql_lit(con, row$source_athlete_id), ",
+                  ", .sql_lit(con, row$owner_filename), ",
+                  ", .sql_lit(con, if (is.na(row$handedness) || row$handedness == "") NULL else row$handedness), ",
+                  ", .sql_lit(con, row$trial_index), ",
+                  ", .sql_lit(con, row$velocity_mph), ",
+                  ", .sql_lit(con, row$score), ",
+                  ", .sql_lit(con, row$age_at_collection), ",
+                  ", .sql_lit(con, row$age_group), ",
+                  ", .sql_lit(con, row$height), ",
+                  ", .sql_lit(con, row$weight), ",
+                  ", .sql_lit(con, frame_rate_val), ",
+                  ", .sql_lit(con, start_time_val), ",
+                  ", .sql_lit(con, end_time_val), ",
+                  ", .sql_lit(con, uncropped_length_val), ",
+                  ", .sql_lit(con, row$session_xml_path), ",
+                  ", .sql_lit(con, row$session_data_xml_path), "
+                )
                 ON CONFLICT (athlete_uuid, session_date, trial_index) DO UPDATE SET
                   name = COALESCE(EXCLUDED.name, f_pitching_time_data.name),
                   owner_filename = EXCLUDED.owner_filename,
@@ -2238,34 +2305,84 @@ process_all_files <- function(data_root = NULL) {
                   start_time = EXCLUDED.start_time,
                   end_time = EXCLUDED.end_time,
                   uncropped_length = EXCLUDED.uncropped_length,
-                  labels = EXCLUDED.labels,
-                  bones = EXCLUDED.bones,
-                  segments = EXCLUDED.segments,
-                  force = EXCLUDED.force,
-                  frames = EXCLUDED.frames,
                   session_xml_path = EXCLUDED.session_xml_path,
                   session_data_xml_path = EXCLUDED.session_data_xml_path,
                   created_at = NOW()
-              ", params = list(
-                row$athlete_uuid,
-                if (is.na(row$name) || row$name == "") NULL else as.character(row$name),
-                row$session_date,
-                "pitching",
-                row$source_athlete_id,
-                row$owner_filename,
-                if (is.na(row$handedness) || row$handedness == "") NULL else row$handedness,
-                row$trial_index,
-                row$velocity_mph, row$score,
-                row$age_at_collection, row$age_group, row$height, row$weight,
-                frame_rate_val, start_time_val, end_time_val, uncropped_length_val,
-                as.character(labels_str), as.character(bones_str),
-                as.character(segments_str), as.character(force_str),
-                as.character(frames_str),
-                row$session_xml_path, row$session_data_xml_path
-              ))
+              "))
+
+              # -- Insert 3D data into typed tables (one row per trial, JSONB per data type) --
+              frames_list       <- json_data$frames %||% list()
+              label_names_vec   <- tryCatch(sapply(json_data$labels,   function(l) l$name), error = function(e) character(0))
+              segment_names_vec <- tryCatch(sapply(json_data$segments, function(s) s$name), error = function(e) character(0))
+
+              if (length(frames_list) > 0) {
+                uuid_str  <- as.character(row$athlete_uuid)
+                date_str  <- format(row$session_date, "%Y-%m-%d")
+                sa_id     <- if (is.na(row$source_athlete_id)) NA_character_ else as.character(row$source_athlete_id)
+                fn_str    <- as.character(row$owner_filename)
+                trial_idx <- as.integer(row$trial_index)
+
+                marker_data  <- lapply(frames_list, function(f) f$markers    %||% list())
+                seg_pos_data <- lapply(frames_list, function(f) f$segmentPos %||% list())
+                seg_rot_data <- lapply(frames_list, function(f) f$segmentRot %||% list())
+                force_data   <- lapply(frames_list, function(f) f$force      %||% list())
+
+                label_json    <- as.character(jsonlite::toJSON(label_names_vec,   auto_unbox = FALSE))
+                seg_name_json <- as.character(jsonlite::toJSON(segment_names_vec, auto_unbox = FALSE))
+                marker_json   <- as.character(jsonlite::toJSON(marker_data,    auto_unbox = TRUE, null = "null"))
+                seg_pos_json  <- as.character(jsonlite::toJSON(seg_pos_data,   auto_unbox = TRUE, null = "null"))
+                seg_rot_json  <- as.character(jsonlite::toJSON(seg_rot_data,   auto_unbox = TRUE, null = "null"))
+                force_json    <- as.character(jsonlite::toJSON(force_data,     auto_unbox = TRUE, null = "null"))
+
+                tryCatch(DBI::dbExecute(con,
+                  "INSERT INTO public.f_pitching_marker_data
+                     (athlete_uuid, session_date, source_system, source_athlete_id,
+                      owner_filename, trial_index, label_names, data)
+                   VALUES ($1, $2::date, $3, $4, $5, $6, $7::jsonb, $8::jsonb)
+                   ON CONFLICT (athlete_uuid, session_date, trial_index) DO UPDATE SET
+                     label_names = EXCLUDED.label_names, data = EXCLUDED.data, created_at = NOW()",
+                  params = list(uuid_str, date_str, "pitching", sa_id, fn_str, trial_idx,
+                                label_json, marker_json)
+                ), error = function(e) log_progress("  [WARNING] marker_data insert:", conditionMessage(e)))
+
+                tryCatch(DBI::dbExecute(con,
+                  "INSERT INTO public.f_pitching_segment_pos_data
+                     (athlete_uuid, session_date, source_system, source_athlete_id,
+                      owner_filename, trial_index, segment_names, data)
+                   VALUES ($1, $2::date, $3, $4, $5, $6, $7::jsonb, $8::jsonb)
+                   ON CONFLICT (athlete_uuid, session_date, trial_index) DO UPDATE SET
+                     segment_names = EXCLUDED.segment_names, data = EXCLUDED.data, created_at = NOW()",
+                  params = list(uuid_str, date_str, "pitching", sa_id, fn_str, trial_idx,
+                                seg_name_json, seg_pos_json)
+                ), error = function(e) log_progress("  [WARNING] seg_pos_data insert:", conditionMessage(e)))
+
+                tryCatch(DBI::dbExecute(con,
+                  "INSERT INTO public.f_pitching_segment_rot_data
+                     (athlete_uuid, session_date, source_system, source_athlete_id,
+                      owner_filename, trial_index, segment_names, data)
+                   VALUES ($1, $2::date, $3, $4, $5, $6, $7::jsonb, $8::jsonb)
+                   ON CONFLICT (athlete_uuid, session_date, trial_index) DO UPDATE SET
+                     segment_names = EXCLUDED.segment_names, data = EXCLUDED.data, created_at = NOW()",
+                  params = list(uuid_str, date_str, "pitching", sa_id, fn_str, trial_idx,
+                                seg_name_json, seg_rot_json)
+                ), error = function(e) log_progress("  [WARNING] seg_rot_data insert:", conditionMessage(e)))
+
+                if (any(sapply(force_data, length) > 0)) {
+                  tryCatch(DBI::dbExecute(con,
+                    "INSERT INTO public.f_pitching_force_data
+                       (athlete_uuid, session_date, source_system, source_athlete_id,
+                        owner_filename, trial_index, data)
+                     VALUES ($1, $2::date, $3, $4, $5, $6, $7::jsonb)
+                     ON CONFLICT (athlete_uuid, session_date, trial_index) DO UPDATE SET
+                       data = EXCLUDED.data, created_at = NOW()",
+                    params = list(uuid_str, date_str, "pitching", sa_id, fn_str, trial_idx, force_json)
+                  ), error = function(e) log_progress("  [WARNING] force_data insert:", conditionMessage(e)))
+                }
+              }
+
               n_json_inserted <- n_json_inserted + 1L
             }
-            log_progress("  [SUCCESS] Wrote", n_json_inserted, "rows to f_pitching_time_data;",
+            log_progress("  [SUCCESS] Wrote", n_json_inserted, "trials to f_pitching_time_data + typed 3D tables;",
                          n_json_missing, "JSON file(s) not found/skipped")
             cat("  [SUCCESS] f_pitching_time_data:", n_json_inserted, "inserted,", n_json_missing, "JSON files not found\n")
             flush.console()
@@ -2284,8 +2401,6 @@ process_all_files <- function(data_root = NULL) {
       
       # Prepare data for warehouse - pivot to long format
       log_progress("  Transforming data for warehouse format...")
-      cat("  [PROGRESS] Pivoting to long format (this may take a while with", nrow(metric_df), "rows)...\n")
-      flush.console()
       
       # Get all value columns
       value_cols <- grep("^value_\\d+$", names(metric_df), value = TRUE)
@@ -2329,8 +2444,6 @@ process_all_files <- function(data_root = NULL) {
         )
       
       log_progress("  Pivot complete! warehouse_df has", nrow(warehouse_df), "rows")
-      cat("  [SUCCESS] Pivot complete! Final row count:", nrow(warehouse_df), "\n")
-      flush.console()
       
       # Filter out rows whose athlete_uuid is not in analytics.d_athletes (avoid FK violation if get_or_create_athlete failed in Phase 1)
       if (nrow(warehouse_df) > 0) {
@@ -2358,8 +2471,6 @@ process_all_files <- function(data_root = NULL) {
       # Write to warehouse
       log_progress("  ===== STARTING DATABASE WRITE =====")
       log_progress("  Writing", nrow(warehouse_df), "rows to f_kinematics_pitching...")
-      cat("  [INFO] Starting database write operation...\n")
-      flush.console()
       
       # Check if table exists, create if not
       log_progress("  Checking if table exists...")
@@ -2483,7 +2594,6 @@ process_all_files <- function(data_root = NULL) {
       log_progress("  warehouse_df columns:", paste(names(warehouse_df), collapse = ", "))
       if (nrow(warehouse_df) > 0) {
         log_progress("  First few rows sample:")
-        print(head(warehouse_df, 3))
       } else {
         log_progress("  [WARNING] warehouse_df is EMPTY - no data to write!")
         log_progress("  This means no metric data was extracted from the XML files")
@@ -2530,8 +2640,7 @@ process_all_files <- function(data_root = NULL) {
           
           # OPTIMIZED: Use temp table + single COPY + INSERT for maximum speed
           log_progress("  Using optimized bulk insert (temp table + COPY + ON CONFLICT)...")
-          cat("  [INFO] Writing data to database (this may take a moment)...\n")
-          flush.console()
+
           
           rows_inserted <- tryCatch({
             # Create a temporary table with the same structure
@@ -2693,7 +2802,6 @@ process_all_files <- function(data_root = NULL) {
           log_progress("[ERROR] Failed to write data:", conditionMessage(e))
           log_progress("  Error details:", toString(e))
           log_progress("  warehouse_df structure:")
-          print(str(warehouse_df))
           stop("Failed to write to warehouse: ", conditionMessage(e))
         })
       } else {
@@ -2829,12 +2937,7 @@ process_all_files <- function(data_root = NULL) {
 # ---------- Auto-run (only if not sourced from main.R) ----------
 # Check if this script is being run directly (not sourced)
 if (!exists("MAIN_R_SOURCING", envir = .GlobalEnv)) {
-  cat("\n")
-  cat("=", rep("=", 80), "\n", sep = "")
-  cat("*** VERSION 2.0 - UUID MATCHING ENABLED ***\n")
-  cat("=", rep("=", 80), "\n", sep = "")
-  cat("\n")
-  
+
   log_progress("=", rep("=", 60), sep = "")
   log_progress("STARTING PITCHING DATA EXTRACTION - VERSION WITH UUID MATCHING")
   log_progress("=", rep("=", 60), sep = "")

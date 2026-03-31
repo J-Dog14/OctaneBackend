@@ -20,6 +20,7 @@ Usage:
     python python/scripts/find_and_merge_similar_athletes.py --dry-run
 """
 
+import re
 import sys
 from pathlib import Path
 
@@ -38,20 +39,21 @@ logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(name)s:%(message
 logger = logging.getLogger(__name__)
 
 
+def _normalize_for_sim(name: str) -> str:
+    """Strip underscores and trailing initials before fuzzy comparison."""
+    n = name.replace('_', ' ')
+    n = re.sub(r'\s+[A-Z]{2,3}\s*$', '', n.strip())
+    return n.strip().lower()
+
+
 def similarity_score(name1: str, name2: str) -> float:
     """
     Calculate similarity score between two names (0.0 to 1.0).
-    
-    Uses SequenceMatcher for fuzzy matching.
-    
-    Args:
-        name1: First name
-        name2: Second name
-        
-    Returns:
-        Similarity score (0.0 = completely different, 1.0 = identical)
+
+    Normalizes underscores to spaces and strips trailing initials before
+    comparing so names like "Clay Haigh" and "Clay Haigh_CH" score 1.0.
     """
-    return SequenceMatcher(None, name1.lower(), name2.lower()).ratio()
+    return SequenceMatcher(None, _normalize_for_sim(name1), _normalize_for_sim(name2)).ratio()
 
 
 def find_similar_athletes(conn, min_similarity: float = 0.80) -> List[Tuple[Dict[str, Any], Dict[str, Any], float]]:

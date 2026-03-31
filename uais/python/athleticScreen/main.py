@@ -28,15 +28,15 @@ from common.athlete_manager import (
     get_or_create_athlete,
     update_athlete_in_warehouse,
     update_athlete_age_group_from_insert,
-    merge_by_email,
     normalize_email,
     normalize_name_for_matching,
+    verify_athlete_uuid,
 )
 from common.athlete_matcher import update_athlete_data_flag
 from common.athlete_utils import extract_source_athlete_id
 from common.duplicate_detector import check_and_merge_duplicates
 from common.session_duplicate_prompt import prompt_duplicate_session
-from common.session_xml import get_dob_from_session_xml_next_to_file, parse_email_from_session_xml, parse_gender_from_session_xml, normalize_gender
+from common.session_xml import get_dob_from_session_xml_next_to_file, parse_email_from_session_xml, parse_gender_from_session_xml, normalize_gender, parse_session_date_from_session_xml, parse_birthdate_from_session_xml, parse_subject_name_from_session_xml
 from file_parsers import parse_movement_file
 from power_analysis import load_power_txt, analyze_power_curve_advanced
 
@@ -184,7 +184,7 @@ def _process_txt_files_dry_run(folder_path: str, txt_files: list) -> list:
         if not name or not date_str or not movement_type:
             errors.append(file_path)
             continue
-        athlete_key = (name, date_str)
+        athlete_key = (normalize_name_for_matching(name), date_str)
         seen_athletes.add(athlete_key)
         processed.append((name, "(dry-run)", file_name))
     print(f"DRY RUN: {len(processed)} file(s) would be processed, {len(seen_athletes)} unique athlete(s)" + (f"; {len(errors)} skipped/errors" if errors else ""))
@@ -234,7 +234,21 @@ def process_txt_files(folder_path: str, dry_run: bool = False, athlete_uuid: str
         return _process_txt_files_dry_run(folder_path, txt_files)
 
     pg_conn = get_warehouse_connection()
-    
+
+    # Locate session.xml for this batch.  The file is uploaded alongside the txt
+    # files, so check the upload/temp folder first.  Only fall back to the
+    # original source-path approach when running directly against a local data
+    # directory (where session.xml lives next to the c3d files).
+    _batch_session_xml = Path(folder_path) / "session.xml"
+    session_xml_for_batch: Path | None = _batch_session_xml if _batch_session_xml.exists() else None
+
+    # Parse the subject name embedded in the batch session.xml so we can warn when
+    # a multi-athlete batch has a single session.xml that belongs to only one of them.
+    _batch_xml_subject_name: str | None = (
+        parse_subject_name_from_session_xml(session_xml_for_batch)
+        if session_xml_for_batch else None
+    )
+
     # Process each txt file
     processed_athletes = {}  # Track athletes by (name, date) -> athlete_uuid
     duplicate_session_prompted = set()  # (athlete_uuid, date_str) already prompted and user said yes
@@ -266,31 +280,78 @@ def process_txt_files(folder_path: str, dry_run: bool = False, athlete_uuid: str
             name = parsed_data.get('name')
             date_str = parsed_data.get('date')
             movement_type = parsed_data.get('movement_type')
-            
+
+            # Override date_str with the authoritative Session/Fields/Creation_date from session.xml.
+            # Priority: (1) session.xml in the upload/temp folder, (2) session.xml next to the
+            # original source .c3d path (local-only fallback).  This fixes the case where the
+            # source path embedded in the txt file points to an old session folder whose name
+            # carries a stale date, and the Subject/Fields/Creation_date (athlete registration
+            # date) would otherwise be mistakenly used.
+            _xml_session_date = (
+                parse_session_date_from_session_xml(session_xml_for_batch)
+                if session_xml_for_batch else None
+            )
+            if not _xml_session_date:
+                _src_path = parsed_data.get('source_path')
+                if _src_path:
+                    _fallback_xml = Path(_src_path).parent / "session.xml"
+                    _xml_session_date = parse_session_date_from_session_xml(_fallback_xml)
+            if _xml_session_date:
+                date_str = _xml_session_date
+
             if not name or not date_str or not movement_type:
                 print(f"Warning: Skipping {file_name} - missing required data")
                 errors.append(f"{file_path}: Missing required data")
                 continue
-            
-            athlete_key = (name, date_str)
+
+            athlete_key = (normalize_name_for_matching(name), date_str)
             
             # Get or create athlete (or use provided athlete_uuid when running for Existing Athlete)
             if athlete_key not in processed_athletes:
                 try:
+                    # Guard: only apply batch session.xml demographics to this athlete if the
+                    # session.xml subject name matches — prevents cross-contamination in
+                    # multi-athlete batches where a single session.xml belongs to one person.
+                    if session_xml_for_batch and _batch_xml_subject_name:
+                        _norm_athlete = normalize_name_for_matching(name)
+                        _norm_xml = normalize_name_for_matching(_batch_xml_subject_name)
+                        if _norm_athlete != _norm_xml:
+                            print(
+                                f"Warning: session.xml subject '{_batch_xml_subject_name}' does not "
+                                f"match athlete '{name}' — skipping session.xml demographics for this "
+                                f"athlete to prevent cross-contamination."
+                            )
+                            _effective_batch_xml = None
+                        else:
+                            _effective_batch_xml = session_xml_for_batch
+                    else:
+                        _effective_batch_xml = session_xml_for_batch
+
                     if athlete_uuid:
                         # Existing-athlete flow: use provided UUID; only fill missing profile from session.xml
                         source_path = parsed_data.get("source_path")
-                        date_of_birth = get_dob_from_session_xml_next_to_file(source_path) if source_path else None
-                        session_xml_path = (Path(source_path).parent / "session.xml") if source_path else None
+                        # Prefer batch session.xml (upload/temp folder); fall back to source-path sibling
+                        session_xml_path = _effective_batch_xml or (
+                            (Path(source_path).parent / "session.xml") if source_path else None
+                        )
+                        if _effective_batch_xml:
+                            date_of_birth = parse_birthdate_from_session_xml(_effective_batch_xml)
+                        else:
+                            date_of_birth = get_dob_from_session_xml_next_to_file(source_path) if source_path else None
                         email = parse_email_from_session_xml(session_xml_path) if session_xml_path and Path(session_xml_path).exists() else None
                         norm_email = normalize_email(email)
                         raw_gender = parse_gender_from_session_xml(session_xml_path) if session_xml_path else None
                         gender = normalize_gender(raw_gender)
                         profile_updates = {}
-                        if date_of_birth and (not profile or not profile.get("date_of_birth")):
+                        if date_of_birth:
                             profile_updates["date_of_birth"] = date_of_birth
-                        if norm_email:
-                            profile_updates["email"] = norm_email
+                        if norm_email and (not profile or not profile.get("email")):
+                            # Only backfill email if the athlete's profile doesn't already have one
+                            with pg_conn.cursor() as _ec:
+                                _ec.execute("SELECT email FROM analytics.d_athletes WHERE athlete_uuid = %s", (athlete_uuid,))
+                                _er = _ec.fetchone()
+                            if not _er or not _er[0]:
+                                profile_updates["email"] = norm_email
                         if gender and (not profile or not profile.get("gender")):
                             profile_updates["gender"] = gender
                         # If adding height/weight from session XML: convert to imperial first (common.units: meters_to_inches, kg_to_lbs)
@@ -302,8 +363,14 @@ def process_txt_files(folder_path: str, dry_run: bool = False, athlete_uuid: str
                     else:
                         source_athlete_id = extract_source_athlete_id(name)
                         source_path = parsed_data.get("source_path")
-                        date_of_birth = get_dob_from_session_xml_next_to_file(source_path) if source_path else None
-                        session_xml_path = (Path(source_path).parent / "session.xml") if source_path else None
+                        # Prefer batch session.xml (upload/temp folder); fall back to source-path sibling
+                        session_xml_path = _effective_batch_xml or (
+                            (Path(source_path).parent / "session.xml") if source_path else None
+                        )
+                        if _effective_batch_xml:
+                            date_of_birth = parse_birthdate_from_session_xml(_effective_batch_xml)
+                        else:
+                            date_of_birth = get_dob_from_session_xml_next_to_file(source_path) if source_path else None
                         email = parse_email_from_session_xml(session_xml_path) if session_xml_path and Path(session_xml_path).exists() else None
                         normalized_email = normalize_email(email) if email else None
                         raw_gender = parse_gender_from_session_xml(session_xml_path) if session_xml_path else None
@@ -319,10 +386,21 @@ def process_txt_files(folder_path: str, dry_run: bool = False, athlete_uuid: str
                             source_athlete_id=source_athlete_id,
                         )
                         if normalized_email:
-                            athlete_uuid = merge_by_email(normalized_email, pg_conn) or athlete_uuid
+                            # NOTE: auto-merge by email is disabled during ingestion to prevent
+                            # silently consolidating two real athletes who share a family/team email.
+                            # Run the deduplication scripts manually if a merge is needed.
+                            pass
                         processed_athletes[athlete_key] = athlete_uuid
                         print(f"Athlete: {name}")
                         print("New athlete profile created" if created else "Successful match with athlete in DB")
+                        # If athlete already existed and has no email in DB, backfill from session.xml
+                        if not created and normalized_email:
+                            with pg_conn.cursor() as _ec:
+                                _ec.execute("SELECT email FROM analytics.d_athletes WHERE athlete_uuid = %s", (processed_athletes[athlete_key],))
+                                _er = _ec.fetchone()
+                            if not _er or not _er[0]:
+                                update_athlete_in_warehouse(processed_athletes[athlete_key], conn=pg_conn, email=normalized_email)
+                                print(f"  Backfilled missing email from session.xml: {normalized_email}")
                     update_athlete_data_flag(pg_conn, processed_athletes[athlete_key], "athletic_screen", has_data=True)
                 except Exception as e:
                     print(f"Error: {str(e)}")
@@ -798,6 +876,16 @@ def main():
 
     if BATCH_PROCESS:
         athlete_uuid_env = os.environ.get("ATHLETE_UUID", "").strip() or None
+        if athlete_uuid_env:
+            _vconn = get_warehouse_connection()
+            try:
+                _rec = verify_athlete_uuid(_vconn, athlete_uuid_env)
+                print(f"Athlete UUID verified: {_rec['name']} ({athlete_uuid_env})")
+            except ValueError as _ve:
+                print(f"Error: {_ve}")
+                sys.exit(1)
+            finally:
+                _vconn.close()
         processed = process_txt_files(
             folder_path,
             dry_run=args.dry_run,

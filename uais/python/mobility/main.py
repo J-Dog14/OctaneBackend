@@ -23,9 +23,10 @@ if str(python_dir) not in sys.path:
 
 from common.config import get_raw_paths
 from common.athlete_manager import (
-    get_warehouse_connection, 
+    get_warehouse_connection,
     get_or_create_athlete,
-    update_athlete_flags
+    update_athlete_flags,
+    verify_athlete_uuid,
 )
 from common.athlete_matcher import update_athlete_data_flag
 from common.athlete_utils import extract_source_athlete_id
@@ -1106,6 +1107,16 @@ def main():
     
     try:
         athlete_uuid_env = os.environ.get("ATHLETE_UUID", "").strip() or None
+        if athlete_uuid_env:
+            _vconn = get_warehouse_connection()
+            try:
+                _rec = verify_athlete_uuid(_vconn, athlete_uuid_env)
+                print(f"Athlete UUID verified: {_rec['name']} ({athlete_uuid_env})")
+            except ValueError as _ve:
+                print(f"Error: {_ve}")
+                sys.exit(1)
+            finally:
+                _vconn.close()
         process_mobility_directory(excel_directory, athlete_uuid=athlete_uuid_env)
         
         logger.info("=" * 80)

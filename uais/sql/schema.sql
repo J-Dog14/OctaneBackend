@@ -168,6 +168,217 @@ CREATE TABLE IF NOT EXISTS f_kinematics_hitting (
     FOREIGN KEY (athlete_uuid) REFERENCES athletes(athlete_uuid)
 );
 
+-- ============================================================================
+-- PITCHING 3D TIME-SERIES TABLES
+-- ============================================================================
+-- f_pitching_time_data: lightweight metadata header per trial (no JSONB)
+CREATE TABLE IF NOT EXISTS public.f_pitching_time_data (
+  id SERIAL PRIMARY KEY,
+  athlete_uuid VARCHAR(36) NOT NULL,
+  name VARCHAR(255),
+  session_date DATE NOT NULL,
+  source_system VARCHAR(50) NOT NULL DEFAULT 'pitching',
+  source_athlete_id VARCHAR(100),
+  owner_filename TEXT,
+  handedness VARCHAR(20),
+  trial_index INTEGER NOT NULL,
+  velocity_mph NUMERIC,
+  score NUMERIC,
+  age_at_collection NUMERIC,
+  age_group TEXT,
+  height NUMERIC,
+  weight NUMERIC,
+  frame_rate NUMERIC,
+  start_time NUMERIC,
+  end_time NUMERIC,
+  uncropped_length NUMERIC,
+  session_xml_path TEXT,
+  session_data_xml_path TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT f_pitching_time_data_fkey
+    FOREIGN KEY (athlete_uuid) REFERENCES analytics.d_athletes(athlete_uuid) ON DELETE CASCADE,
+  CONSTRAINT f_pitching_time_data_unique
+    UNIQUE (athlete_uuid, session_date, trial_index)
+);
+
+-- f_pitching_marker_data: one row per trial; label_names = JSON array of names,
+--   data = JSON array of frames where each frame is an array of [x,y,z] per marker
+CREATE TABLE IF NOT EXISTS public.f_pitching_marker_data (
+  id SERIAL PRIMARY KEY,
+  athlete_uuid VARCHAR(36) NOT NULL,
+  session_date DATE NOT NULL,
+  source_system VARCHAR(50) NOT NULL DEFAULT 'pitching',
+  source_athlete_id VARCHAR(100),
+  owner_filename TEXT,
+  trial_index INTEGER NOT NULL,
+  label_names JSONB,
+  data JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT f_pitching_marker_data_fkey
+    FOREIGN KEY (athlete_uuid) REFERENCES analytics.d_athletes(athlete_uuid) ON DELETE CASCADE,
+  CONSTRAINT f_pitching_marker_data_unique
+    UNIQUE (athlete_uuid, session_date, trial_index)
+);
+
+-- f_pitching_segment_pos_data: one row per trial; segment_names = JSON array of names,
+--   data = JSON array of frames where each frame is an array of [x,y,z] per segment
+CREATE TABLE IF NOT EXISTS public.f_pitching_segment_pos_data (
+  id SERIAL PRIMARY KEY,
+  athlete_uuid VARCHAR(36) NOT NULL,
+  session_date DATE NOT NULL,
+  source_system VARCHAR(50) NOT NULL DEFAULT 'pitching',
+  source_athlete_id VARCHAR(100),
+  owner_filename TEXT,
+  trial_index INTEGER NOT NULL,
+  segment_names JSONB,
+  data JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT f_pitching_segment_pos_data_fkey
+    FOREIGN KEY (athlete_uuid) REFERENCES analytics.d_athletes(athlete_uuid) ON DELETE CASCADE,
+  CONSTRAINT f_pitching_segment_pos_data_unique
+    UNIQUE (athlete_uuid, session_date, trial_index)
+);
+
+-- f_pitching_segment_rot_data: one row per trial; segment_names = JSON array of names,
+--   data = JSON array of frames where each frame is an array of [rx,ry,rz] per segment
+CREATE TABLE IF NOT EXISTS public.f_pitching_segment_rot_data (
+  id SERIAL PRIMARY KEY,
+  athlete_uuid VARCHAR(36) NOT NULL,
+  session_date DATE NOT NULL,
+  source_system VARCHAR(50) NOT NULL DEFAULT 'pitching',
+  source_athlete_id VARCHAR(100),
+  owner_filename TEXT,
+  trial_index INTEGER NOT NULL,
+  segment_names JSONB,
+  data JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT f_pitching_segment_rot_data_fkey
+    FOREIGN KEY (athlete_uuid) REFERENCES analytics.d_athletes(athlete_uuid) ON DELETE CASCADE,
+  CONSTRAINT f_pitching_segment_rot_data_unique
+    UNIQUE (athlete_uuid, session_date, trial_index)
+);
+
+-- f_pitching_force_data: one row per trial;
+--   data = JSON array of frames where each frame is an array of [fx,fy,fz] force vectors
+CREATE TABLE IF NOT EXISTS public.f_pitching_force_data (
+  id SERIAL PRIMARY KEY,
+  athlete_uuid VARCHAR(36) NOT NULL,
+  session_date DATE NOT NULL,
+  source_system VARCHAR(50) NOT NULL DEFAULT 'pitching',
+  source_athlete_id VARCHAR(100),
+  owner_filename TEXT,
+  trial_index INTEGER NOT NULL,
+  data JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT f_pitching_force_data_fkey
+    FOREIGN KEY (athlete_uuid) REFERENCES analytics.d_athletes(athlete_uuid) ON DELETE CASCADE,
+  CONSTRAINT f_pitching_force_data_unique
+    UNIQUE (athlete_uuid, session_date, trial_index)
+);
+
+-- ============================================================================
+-- HITTING 3D TIME-SERIES TABLES
+-- ============================================================================
+-- f_hitting_3d_trials: metadata header for 3D JSON trials (replaces 3D rows in f_hitting_trials)
+CREATE TABLE IF NOT EXISTS public.f_hitting_3d_trials (
+  id SERIAL PRIMARY KEY,
+  athlete_uuid VARCHAR(36) NOT NULL,
+  name VARCHAR(255),
+  session_date DATE NOT NULL,
+  source_system VARCHAR(50) NOT NULL DEFAULT 'hitting',
+  source_athlete_id VARCHAR(100),
+  owner_filename TEXT,
+  trial_index INTEGER NOT NULL,
+  age_at_collection NUMERIC,
+  age_group TEXT,
+  height NUMERIC,
+  weight NUMERIC,
+  frame_rate NUMERIC,
+  start_time NUMERIC,
+  end_time NUMERIC,
+  session_xml_path TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT f_hitting_3d_trials_fkey
+    FOREIGN KEY (athlete_uuid) REFERENCES analytics.d_athletes(athlete_uuid) ON DELETE CASCADE,
+  CONSTRAINT f_hitting_3d_trials_unique
+    UNIQUE (athlete_uuid, session_date, trial_index)
+);
+
+-- f_hitting_marker_data: one row per trial; label_names = JSON array of names,
+--   data = JSON array of frames where each frame is an array of [x,y,z] per marker
+CREATE TABLE IF NOT EXISTS public.f_hitting_marker_data (
+  id SERIAL PRIMARY KEY,
+  athlete_uuid VARCHAR(36) NOT NULL,
+  session_date DATE NOT NULL,
+  source_system VARCHAR(50) NOT NULL DEFAULT 'hitting',
+  source_athlete_id VARCHAR(100),
+  owner_filename TEXT,
+  trial_index INTEGER NOT NULL,
+  label_names JSONB,
+  data JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT f_hitting_marker_data_fkey
+    FOREIGN KEY (athlete_uuid) REFERENCES analytics.d_athletes(athlete_uuid) ON DELETE CASCADE,
+  CONSTRAINT f_hitting_marker_data_unique
+    UNIQUE (athlete_uuid, session_date, trial_index)
+);
+
+-- f_hitting_segment_pos_data: one row per trial; segment_names = JSON array of names,
+--   data = JSON array of frames where each frame is an array of [x,y,z] per segment
+CREATE TABLE IF NOT EXISTS public.f_hitting_segment_pos_data (
+  id SERIAL PRIMARY KEY,
+  athlete_uuid VARCHAR(36) NOT NULL,
+  session_date DATE NOT NULL,
+  source_system VARCHAR(50) NOT NULL DEFAULT 'hitting',
+  source_athlete_id VARCHAR(100),
+  owner_filename TEXT,
+  trial_index INTEGER NOT NULL,
+  segment_names JSONB,
+  data JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT f_hitting_segment_pos_data_fkey
+    FOREIGN KEY (athlete_uuid) REFERENCES analytics.d_athletes(athlete_uuid) ON DELETE CASCADE,
+  CONSTRAINT f_hitting_segment_pos_data_unique
+    UNIQUE (athlete_uuid, session_date, trial_index)
+);
+
+-- f_hitting_segment_rot_data: one row per trial; segment_names = JSON array of names,
+--   data = JSON array of frames where each frame is an array of [rx,ry,rz] per segment
+CREATE TABLE IF NOT EXISTS public.f_hitting_segment_rot_data (
+  id SERIAL PRIMARY KEY,
+  athlete_uuid VARCHAR(36) NOT NULL,
+  session_date DATE NOT NULL,
+  source_system VARCHAR(50) NOT NULL DEFAULT 'hitting',
+  source_athlete_id VARCHAR(100),
+  owner_filename TEXT,
+  trial_index INTEGER NOT NULL,
+  segment_names JSONB,
+  data JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT f_hitting_segment_rot_data_fkey
+    FOREIGN KEY (athlete_uuid) REFERENCES analytics.d_athletes(athlete_uuid) ON DELETE CASCADE,
+  CONSTRAINT f_hitting_segment_rot_data_unique
+    UNIQUE (athlete_uuid, session_date, trial_index)
+);
+
+-- f_hitting_force_data: one row per trial;
+--   data = JSON array of frames where each frame is an array of [fx,fy,fz] force vectors
+CREATE TABLE IF NOT EXISTS public.f_hitting_force_data (
+  id SERIAL PRIMARY KEY,
+  athlete_uuid VARCHAR(36) NOT NULL,
+  session_date DATE NOT NULL,
+  source_system VARCHAR(50) NOT NULL DEFAULT 'hitting',
+  source_athlete_id VARCHAR(100),
+  owner_filename TEXT,
+  trial_index INTEGER NOT NULL,
+  data JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT f_hitting_force_data_fkey
+    FOREIGN KEY (athlete_uuid) REFERENCES analytics.d_athletes(athlete_uuid) ON DELETE CASCADE,
+  CONSTRAINT f_hitting_force_data_unique
+    UNIQUE (athlete_uuid, session_date, trial_index)
+);
+
 -- Indexes for warehouse fact tables
 CREATE INDEX IF NOT EXISTS idx_f_athletic_screen_uuid ON f_athletic_screen(athlete_uuid);
 CREATE INDEX IF NOT EXISTS idx_f_athletic_screen_date ON f_athletic_screen(session_date);

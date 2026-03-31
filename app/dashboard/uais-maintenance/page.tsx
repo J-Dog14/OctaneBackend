@@ -52,6 +52,9 @@ export default function UaisMaintenancePage() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [r2Available, setR2Available] = useState<boolean | null>(null);
 
+  // Local vs cloud data mode
+  const [dataMode, setDataMode] = useState<"local" | "cloud">("local");
+
   // Sync agent state
   const [agentOnline, setAgentOnline] = useState(false);
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
@@ -260,18 +263,19 @@ export default function UaisMaintenancePage() {
       const runner = ordered[i];
       setRunSelectedProgress({ current: i + 1, total, label: runner.label });
       try {
-        // Agent flow: auto-upload from the configured local folder
-        let uploadedFileKeys: string[] | undefined = uploadedFiles.length > 0
-          ? uploadedFiles.map((f) => f.key)
-          : undefined;
-
-        if (!uploadedFileKeys && agentOnline) {
-          try {
-            const agentKeys = await waitForAgentUpload(runner.id, athleteUuid, runnerDataPaths[runner.id]);
-            if (agentKeys && agentKeys.length > 0) uploadedFileKeys = agentKeys;
-          } catch (agentErr) {
-            setOutput((prev) => prev + `\n[Sync Agent Error] ${agentErr instanceof Error ? agentErr.message : String(agentErr)}\n`);
-            continue;
+        let uploadedFileKeys: string[] | undefined = undefined;
+        if (dataMode === "cloud") {
+          if (agentOnline) {
+            const dataPath = runnerDataPaths[runner.id];
+            try {
+              const keys = await waitForAgentUpload(runner.id, athleteUuid, dataPath);
+              uploadedFileKeys = keys ?? undefined;
+            } catch (e) {
+              setOutput((prev) => prev + `\n[Error] ${runner.label}: ${e instanceof Error ? e.message : "Agent upload failed"}\n`);
+              continue;
+            }
+          } else if (uploadedFiles.length > 0) {
+            uploadedFileKeys = uploadedFiles.map((f) => f.key);
           }
         }
 
@@ -619,25 +623,55 @@ export default function UaisMaintenancePage() {
         </div>
 
         <h2 style={{ margin: "0 0 0.5rem", fontSize: "1rem" }}>Which data to run</h2>
-        <div style={{ marginBottom: "0.75rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <span
-            style={{
-              display: "inline-block",
-              width: 8,
-              height: 8,
-              borderRadius: "50%",
-              background: agentOnline ? "#22c55e" : "#6b7280",
-            }}
-          />
-          <span className="text-muted" style={{ fontSize: "13px" }}>
-            {agentOnline
-              ? "OctaneSync agent online — files will be fetched automatically"
-              : "OctaneSync agent offline — upload files manually below, or install the sync agent"}
-          </span>
-          {syncStatus && (
-            <span style={{ fontSize: "13px", color: "var(--accent)" }}>{syncStatus}</span>
-          )}
+        {/* Data mode toggle */}
+        <div style={{ marginBottom: "0.75rem", display: "flex", gap: "0.5rem" }}>
+          {(["local", "cloud"] as const).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => !streaming && setDataMode(mode)}
+              disabled={streaming}
+              style={{
+                padding: "0.3rem 0.9rem",
+                borderRadius: "6px",
+                border: "1px solid var(--border)",
+                background: dataMode === mode ? "rgba(34,197,94,0.25)" : "var(--bg-primary)",
+                color: "var(--text-primary)",
+                fontWeight: dataMode === mode ? 600 : 400,
+                cursor: streaming ? "not-allowed" : "pointer",
+                fontSize: "13px",
+              }}
+            >
+              {mode === "local" ? "Local" : "Cloud (sync agent)"}
+            </button>
+          ))}
         </div>
+        {dataMode === "local" && (
+          <p className="text-muted" style={{ marginBottom: "0.75rem", fontSize: "13px" }}>
+            Scripts run directly using the data directories configured in Settings. No file transfer needed.
+          </p>
+        )}
+        {dataMode === "cloud" && (
+          <div style={{ marginBottom: "0.75rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <span
+              style={{
+                display: "inline-block",
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                background: agentOnline ? "#22c55e" : "#6b7280",
+              }}
+            />
+            <span className="text-muted" style={{ fontSize: "13px" }}>
+              {agentOnline
+                ? "OctaneSync agent online — files will be fetched automatically"
+                : "OctaneSync agent offline — upload files manually below, or install the sync agent"}
+            </span>
+            {syncStatus && (
+              <span style={{ fontSize: "13px", color: "var(--accent)" }}>{syncStatus}</span>
+            )}
+          </div>
+        )}
         {loading ? (
           <p className="text-muted">Loading runners…</p>
         ) : runners.length === 0 ? (
@@ -669,8 +703,8 @@ export default function UaisMaintenancePage() {
                 );
               })}
             </div>
-            {/* Per-runner data path inputs — shown when agent is online and at least one runner is selected */}
-            {agentOnline && selectedRunnerIds.size > 0 && (
+            {/* Per-runner data path inputs — shown when cloud mode, agent is online and at least one runner is selected */}
+            {dataMode === "cloud" && agentOnline && selectedRunnerIds.size > 0 && (
               <div style={{ margin: "0.75rem 0", padding: "0.75rem 1rem", border: "1px solid var(--border)", borderRadius: "8px" }}>
                 <p style={{ margin: "0 0 0.5rem", fontSize: "13px", fontWeight: 600 }}>Data folder paths</p>
                 <p className="text-muted" style={{ margin: "0 0 0.75rem", fontSize: "12px" }}>
@@ -692,8 +726,8 @@ export default function UaisMaintenancePage() {
               </div>
             )}
 
-            {/* Manual upload — shown when agent is offline and R2 is available */}
-            {r2Available && !agentOnline && selectedRunnerIds.size > 0 && (
+            {/* Manual upload — shown when cloud mode, agent is offline and R2 is available */}
+            {dataMode === "cloud" && r2Available && !agentOnline && selectedRunnerIds.size > 0 && (
               <div style={{ margin: "1rem 0", padding: "0.75rem 1rem", border: "1px dashed var(--border)", borderRadius: "8px" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.5rem" }}>
                   <span style={{ fontSize: "14px", fontWeight: 600 }}>Upload data files</span>

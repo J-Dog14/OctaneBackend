@@ -246,8 +246,8 @@ def ingest_data(aPlusDataPath: str, aPlusEventsPath: str, dry_run: bool = False,
             
             processed_count += 1
         
-        # Safeguard 4 (Existing Athlete): prompt before overwriting existing session(s)
-        if athlete_uuid and warehouse_rows:
+        # Safeguard: prompt before overwriting existing session(s) for any athlete
+        if warehouse_rows:
             unique_sessions = set((row[0], row[1]) for row in warehouse_rows)
             skip_sessions = set()
             for auuid, sdate in unique_sessions:

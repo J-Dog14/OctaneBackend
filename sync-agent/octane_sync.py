@@ -52,6 +52,9 @@ def load_local_config() -> dict:
             log.error(f"config.json is missing required field: {key}")
             sys.exit(1)
     cfg["railway_url"] = cfg["railway_url"].rstrip("/")
+    # Strip accidental /dashboard suffix (the API lives at /api/..., not /dashboard/api/...)
+    if cfg["railway_url"].endswith("/dashboard"):
+        cfg["railway_url"] = cfg["railway_url"][: -len("/dashboard")]
     return cfg
 
 

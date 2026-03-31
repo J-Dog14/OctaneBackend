@@ -6,6 +6,7 @@ This module provides functions to check for and merge similar-named athletes
 after data insertion. Can be integrated into ETL pipelines.
 """
 
+import re
 import sys
 import logging
 from pathlib import Path
@@ -25,20 +26,28 @@ logging.basicConfig(level=logging.INFO, format='%(levelname)s:%(name)s:%(message
 logger = logging.getLogger(__name__)
 
 
+def _normalize_for_sim(name: str) -> str:
+    """Strip underscores and trailing initials before fuzzy comparison."""
+    n = name.replace('_', ' ')
+    n = re.sub(r'\s+[A-Z]{2,3}\s*$', '', n.strip())
+    return n.strip().lower()
+
+
 def similarity_score(name1: str, name2: str) -> float:
     """
     Calculate similarity score between two names (0.0 to 1.0).
-    
-    Uses SequenceMatcher for fuzzy matching.
-    
+
+    Normalizes underscores to spaces and strips trailing initials (e.g. "_CH")
+    before comparing so "Clay Haigh" and "Clay Haigh_CH" score 1.0.
+
     Args:
         name1: First name
         name2: Second name
-        
+
     Returns:
         Similarity score (0.0 = completely different, 1.0 = identical)
     """
-    return SequenceMatcher(None, name1.lower(), name2.lower()).ratio()
+    return SequenceMatcher(None, _normalize_for_sim(name1), _normalize_for_sim(name2)).ratio()
 
 
 def get_athlete_summary(athlete: Dict[str, Any], conn) -> str:

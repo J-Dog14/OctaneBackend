@@ -27,7 +27,7 @@ from common.age_utils import (
     normalize_session_date,
     parse_date,
 )
-from common.athlete_manager import get_warehouse_connection, get_or_create_athlete, update_athlete_in_warehouse, update_athlete_age_group_from_insert
+from common.athlete_manager import get_warehouse_connection, get_or_create_athlete, update_athlete_in_warehouse, update_athlete_age_group_from_insert, verify_athlete_uuid
 from common.athlete_matcher import update_athlete_data_flag
 from common.athlete_utils import extract_source_athlete_id
 from common.duplicate_detector import check_and_merge_duplicates
@@ -773,6 +773,16 @@ def main():
     # Process the selected folder
     try:
         athlete_uuid_env = os.environ.get("ATHLETE_UUID", "").strip() or None
+        if athlete_uuid_env:
+            _vconn = get_warehouse_connection()
+            try:
+                _rec = verify_athlete_uuid(_vconn, athlete_uuid_env)
+                print(f"Athlete UUID verified: {_rec['name']} ({athlete_uuid_env})")
+            except ValueError as _ve:
+                print(f"Error: {_ve}")
+                sys.exit(1)
+            finally:
+                _vconn.close()
         process_single_folder(selected_folder, athlete_uuid=athlete_uuid_env, profile=None)
     except Exception as e:
         print(f"\nError processing folder: {e}")

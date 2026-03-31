@@ -64,7 +64,10 @@ def clean_and_normalize_name(name: str) -> str:
     """
     if not name or name.strip() == "":
         return ""
-    
+
+    # Normalize underscores to spaces so suffixes like "_CH" are treated as initials
+    name = name.replace('_', ' ')
+
     # Remove dates anywhere in the name (MM-DD, MM/DD format)
     # This handles dates between names like "GAVIN 04-28 LARSEN"
     name = re.sub(r'\s*\d{1,2}[/-]\d{1,2}(?![/-]\d)', '', name)  # MM-DD or MM/DD (not part of full date)

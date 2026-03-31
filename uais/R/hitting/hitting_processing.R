@@ -1891,9 +1891,16 @@ process_all_files <- function(data_root = NULL) {
     })
     }
     
-    # ---------- Process JSON files into f_hitting_trials ----------
+    # ---------- Process JSON files into typed 3D tables ----------
+    # JSON 3D data routes to:
+    #   f_hitting_3d_trials        - metadata header (no JSONB)
+    #   f_hitting_marker_data      - frame x marker x (x,y,z)
+    #   f_hitting_segment_pos_data - frame x segment x (x,y,z)
+    #   f_hitting_segment_rot_data - frame x segment x (rot_x,rot_y,rot_z)
+    #   f_hitting_force_data       - frame x force_index x (fx,fy,fz)
+    # f_hitting_trials is NOT written to for JSON files.
     if (length(json_files) > 0 && requireNamespace("jsonlite", quietly = TRUE)) {
-      log_progress("  Processing JSON files for f_hitting_trials...")
+      log_progress("  Processing JSON files for typed 3D tables...")
       if (!exists("uuid_to_age_df") || is.null(uuid_to_age_df) || nrow(uuid_to_age_df) == 0) {
         uuid_to_age_df <- tibble(uid = character(), age_at_collection = numeric(), height = numeric(), weight = numeric())
         for (athlete_info in athlete_list) {
@@ -1947,8 +1954,6 @@ process_all_files <- function(data_root = NULL) {
           }
         }
         if (is.na(matched_uid)) next
-        json_content <- tryCatch(readr::read_file(jpath), error = function(e) NULL)
-        if (is.null(json_content) || nchar(trimws(json_content)) == 0) next
         age_row <- uuid_to_age_df %>% filter(.data$uid == !!matched_uid)
         age_at_collection <- if (nrow(age_row) > 0) age_row$age_at_collection[1] else NA_real_
         age_group <- if (!is.na(age_at_collection)) calculate_age_group_from_age(age_at_collection) else NA_character_
@@ -1967,19 +1972,17 @@ process_all_files <- function(data_root = NULL) {
           age_group = age_group,
           height = height,
           weight = weight,
-          metrics_json = json_content,
           session_xml_path = session_xml_path,
-          session_data_xml_path = NA_character_,
           json_path = jpath
         )
       }
       if (length(json_rows) > 0) {
         json_df <- bind_rows(json_rows)
-        trials_table_exists <- DBI::dbExistsTable(con, DBI::Id(schema = "public", table = "f_hitting_trials"))
-        if (!trials_table_exists) {
-          log_progress("  Creating f_hitting_trials table (for JSON)...")
+
+        # Ensure f_hitting_3d_trials metadata table exists
+        tryCatch({
           DBI::dbExecute(con, "
-            CREATE TABLE IF NOT EXISTS public.f_hitting_trials (
+            CREATE TABLE IF NOT EXISTS public.f_hitting_3d_trials (
               id SERIAL PRIMARY KEY,
               athlete_uuid VARCHAR(36) NOT NULL,
               name VARCHAR(255),
@@ -1992,31 +1995,121 @@ process_all_files <- function(data_root = NULL) {
               age_group TEXT,
               height NUMERIC,
               weight NUMERIC,
-              metrics JSONB NOT NULL,
+              frame_rate NUMERIC,
+              start_time NUMERIC,
+              end_time NUMERIC,
               session_xml_path TEXT,
-              session_data_xml_path TEXT,
               created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-              CONSTRAINT f_hitting_trials_athlete_uuid_fkey
-                FOREIGN KEY (athlete_uuid) REFERENCES analytics.d_athletes(athlete_uuid) ON DELETE CASCADE
+              CONSTRAINT f_hitting_3d_trials_fkey
+                FOREIGN KEY (athlete_uuid) REFERENCES analytics.d_athletes(athlete_uuid) ON DELETE CASCADE,
+              CONSTRAINT f_hitting_3d_trials_unique
+                UNIQUE (athlete_uuid, session_date, trial_index)
+            )
+          ")
+          DBI::dbExecute(con, "CREATE INDEX IF NOT EXISTS idx_f_hitting_3d_trials_owner ON public.f_hitting_3d_trials(owner_filename)")
+          DBI::dbExecute(con, "CREATE INDEX IF NOT EXISTS idx_f_hitting_3d_trials_date ON public.f_hitting_3d_trials(session_date)")
+        }, error = function(e) log_progress("  [WARNING] Could not create f_hitting_3d_trials:", conditionMessage(e)))
+
+        # Ensure typed 3D tables exist (one row per trial, JSONB per data type).
+        # Drop old row-per-frame tables if they still exist.
+        tryCatch({
+          old_marker_cols <- tryCatch(DBI::dbGetQuery(con, "
+            SELECT column_name FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = 'f_hitting_marker_data'
+          ")$column_name, error = function(e) character(0))
+          if ("marker_name" %in% old_marker_cols || "frame" %in% old_marker_cols) {
+            log_progress("  Auto-migrating hitting typed tables to one-row-per-trial schema...")
+            for (tbl in c("f_hitting_marker_data", "f_hitting_segment_pos_data",
+                           "f_hitting_segment_rot_data", "f_hitting_force_data")) {
+              DBI::dbExecute(con, paste0("DROP TABLE IF EXISTS public.", tbl, " CASCADE"))
+            }
+            log_progress("  Dropped old row-per-frame typed tables.")
+          }
+          DBI::dbExecute(con, "
+            CREATE TABLE IF NOT EXISTS public.f_hitting_marker_data (
+              id SERIAL PRIMARY KEY,
+              athlete_uuid VARCHAR(36) NOT NULL,
+              session_date DATE NOT NULL,
+              source_system VARCHAR(50) NOT NULL DEFAULT 'hitting',
+              source_athlete_id VARCHAR(100),
+              owner_filename TEXT,
+              trial_index INTEGER NOT NULL,
+              label_names JSONB,
+              data JSONB,
+              created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+              CONSTRAINT f_hitting_marker_data_fkey
+                FOREIGN KEY (athlete_uuid) REFERENCES analytics.d_athletes(athlete_uuid) ON DELETE CASCADE,
+              CONSTRAINT f_hitting_marker_data_unique
+                UNIQUE (athlete_uuid, session_date, trial_index)
             )
           ")
           DBI::dbExecute(con, "
-            CREATE UNIQUE INDEX IF NOT EXISTS idx_f_hitting_trials_unique
-              ON public.f_hitting_trials(athlete_uuid, session_date, trial_index)
+            CREATE TABLE IF NOT EXISTS public.f_hitting_segment_pos_data (
+              id SERIAL PRIMARY KEY,
+              athlete_uuid VARCHAR(36) NOT NULL,
+              session_date DATE NOT NULL,
+              source_system VARCHAR(50) NOT NULL DEFAULT 'hitting',
+              source_athlete_id VARCHAR(100),
+              owner_filename TEXT,
+              trial_index INTEGER NOT NULL,
+              segment_names JSONB,
+              data JSONB,
+              created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+              CONSTRAINT f_hitting_segment_pos_data_fkey
+                FOREIGN KEY (athlete_uuid) REFERENCES analytics.d_athletes(athlete_uuid) ON DELETE CASCADE,
+              CONSTRAINT f_hitting_segment_pos_data_unique
+                UNIQUE (athlete_uuid, session_date, trial_index)
+            )
           ")
           DBI::dbExecute(con, "
-            CREATE INDEX IF NOT EXISTS idx_f_hitting_trials_owner ON public.f_hitting_trials(owner_filename)
+            CREATE TABLE IF NOT EXISTS public.f_hitting_segment_rot_data (
+              id SERIAL PRIMARY KEY,
+              athlete_uuid VARCHAR(36) NOT NULL,
+              session_date DATE NOT NULL,
+              source_system VARCHAR(50) NOT NULL DEFAULT 'hitting',
+              source_athlete_id VARCHAR(100),
+              owner_filename TEXT,
+              trial_index INTEGER NOT NULL,
+              segment_names JSONB,
+              data JSONB,
+              created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+              CONSTRAINT f_hitting_segment_rot_data_fkey
+                FOREIGN KEY (athlete_uuid) REFERENCES analytics.d_athletes(athlete_uuid) ON DELETE CASCADE,
+              CONSTRAINT f_hitting_segment_rot_data_unique
+                UNIQUE (athlete_uuid, session_date, trial_index)
+            )
           ")
           DBI::dbExecute(con, "
-            CREATE INDEX IF NOT EXISTS idx_f_hitting_trials_date ON public.f_hitting_trials(session_date)
+            CREATE TABLE IF NOT EXISTS public.f_hitting_force_data (
+              id SERIAL PRIMARY KEY,
+              athlete_uuid VARCHAR(36) NOT NULL,
+              session_date DATE NOT NULL,
+              source_system VARCHAR(50) NOT NULL DEFAULT 'hitting',
+              source_athlete_id VARCHAR(100),
+              owner_filename TEXT,
+              trial_index INTEGER NOT NULL,
+              data JSONB,
+              created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+              CONSTRAINT f_hitting_force_data_fkey
+                FOREIGN KEY (athlete_uuid) REFERENCES analytics.d_athletes(athlete_uuid) ON DELETE CASCADE,
+              CONSTRAINT f_hitting_force_data_unique
+                UNIQUE (athlete_uuid, session_date, trial_index)
+            )
           ")
-        }
-        max_trial <- DBI::dbGetQuery(con, "
-          SELECT athlete_uuid, session_date, COALESCE(MAX(trial_index), -1) AS max_idx
-          FROM public.f_hitting_trials
-          GROUP BY athlete_uuid, session_date
-        ")
-        # Lookup names for JSON trial rows
+          log_progress("  [SUCCESS] Ensured hitting typed 3D tables exist")
+        }, error = function(e) log_progress("  [WARNING] Could not create hitting typed 3D tables:", conditionMessage(e)))
+
+        # Assign trial_index per athlete/session based on f_hitting_3d_trials (not f_hitting_trials)
+        max_trial_3d <- tryCatch(
+          DBI::dbGetQuery(con, "
+            SELECT athlete_uuid, session_date, COALESCE(MAX(trial_index), -1) AS max_idx
+            FROM public.f_hitting_3d_trials
+            GROUP BY athlete_uuid, session_date
+          "),
+          error = function(e) data.frame(athlete_uuid = character(0), session_date = as.Date(character(0)), max_idx = integer(0))
+        )
+
+        # Lookup athlete names
         json_uuids <- unique(as.character(json_df$athlete_uuid))
         json_names_df <- tryCatch({
           if (length(json_uuids) > 0) {
@@ -2031,7 +2124,6 @@ process_all_files <- function(data_root = NULL) {
           json_df <- json_df %>% left_join(json_names_df, by = "athlete_uuid")
         }
         if (!"name" %in% names(json_df)) json_df$name <- NA_character_
-        # Fallback: use name from athlete_list if d_athletes lookup returned NA
         if (any(is.na(json_df$name))) {
           uid_name_fallback <- vapply(json_df$athlete_uuid, function(u) {
             for (ai in athlete_list) {
@@ -2045,7 +2137,7 @@ process_all_files <- function(data_root = NULL) {
         json_df$trial_index <- NA_integer_
         for (i in seq_len(nrow(json_df))) {
           r <- json_df[i, ]
-          existing <- max_trial %>% filter(.data$athlete_uuid == r$athlete_uuid & as.character(.data$session_date) == as.character(r$session_date))
+          existing <- max_trial_3d %>% filter(.data$athlete_uuid == r$athlete_uuid & as.character(.data$session_date) == as.character(r$session_date))
           start_idx <- if (nrow(existing) > 0) as.integer(existing$max_idx[1]) + 1L else 0L
           idx_in_session <- sum(
             json_df$athlete_uuid[1:i] == r$athlete_uuid &
@@ -2053,33 +2145,135 @@ process_all_files <- function(data_root = NULL) {
           )
           json_df$trial_index[i] <- start_idx + idx_in_session - 1L
         }
+
+        n_3d_inserted <- 0L
+        n_3d_skipped  <- 0L
         for (i in seq_len(nrow(json_df))) {
           r <- json_df[i, ]
-          DBI::dbExecute(con, "
-            INSERT INTO public.f_hitting_trials
-              (athlete_uuid, name, session_date, source_system, source_athlete_id, owner_filename, trial_index,
-               age_at_collection, age_group, height, weight, metrics, session_xml_path, session_data_xml_path)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13, $14)
+          json_data <- tryCatch(jsonlite::parse_json(as.character(r$json_path)), error = function(e) NULL)
+          if (is.null(json_data)) {
+            log_progress("  [WARNING] Could not parse JSON:", as.character(r$json_path))
+            n_3d_skipped <- n_3d_skipped + 1L
+            next
+          }
+
+          frame_rate_val <- json_data$frameRate %||% NA_real_
+          start_time_val <- json_data$startTime %||% NA_real_
+          end_time_val   <- json_data$endTime %||% NA_real_
+
+          # Insert metadata header into f_hitting_3d_trials
+          tryCatch(DBI::dbExecute(con, paste0("
+            INSERT INTO public.f_hitting_3d_trials
+              (athlete_uuid, name, session_date, source_system, source_athlete_id,
+               owner_filename, trial_index, age_at_collection, age_group,
+               height, weight, frame_rate, start_time, end_time, session_xml_path)
+            VALUES (
+              ", .sql_lit(con, r$athlete_uuid), ",
+              ", .sql_lit(con, if (is.na(r$name) || r$name == "") NULL else as.character(r$name)), ",
+              ", .sql_lit(con, format(r$session_date, "%Y-%m-%d")), ",
+              'hitting',
+              ", .sql_lit(con, r$source_athlete_id), ",
+              ", .sql_lit(con, r$owner_filename), ",
+              ", .sql_lit(con, r$trial_index), ",
+              ", .sql_lit(con, r$age_at_collection), ",
+              ", .sql_lit(con, r$age_group), ",
+              ", .sql_lit(con, r$height), ",
+              ", .sql_lit(con, r$weight), ",
+              ", .sql_lit(con, frame_rate_val), ",
+              ", .sql_lit(con, start_time_val), ",
+              ", .sql_lit(con, end_time_val), ",
+              ", .sql_lit(con, r$session_xml_path), "
+            )
             ON CONFLICT (athlete_uuid, session_date, trial_index) DO UPDATE SET
-              name = COALESCE(EXCLUDED.name, f_hitting_trials.name),
+              name = COALESCE(EXCLUDED.name, f_hitting_3d_trials.name),
               owner_filename = EXCLUDED.owner_filename,
-              source_athlete_id = COALESCE(EXCLUDED.source_athlete_id, f_hitting_trials.source_athlete_id),
+              source_athlete_id = COALESCE(EXCLUDED.source_athlete_id, f_hitting_3d_trials.source_athlete_id),
               age_at_collection = EXCLUDED.age_at_collection,
               age_group = EXCLUDED.age_group,
-              height = COALESCE(EXCLUDED.height, f_hitting_trials.height),
-              weight = COALESCE(EXCLUDED.weight, f_hitting_trials.weight),
-              metrics = EXCLUDED.metrics,
+              height = COALESCE(EXCLUDED.height, f_hitting_3d_trials.height),
+              weight = COALESCE(EXCLUDED.weight, f_hitting_3d_trials.weight),
+              frame_rate = EXCLUDED.frame_rate,
+              start_time = EXCLUDED.start_time,
+              end_time = EXCLUDED.end_time,
               session_xml_path = EXCLUDED.session_xml_path,
-              session_data_xml_path = EXCLUDED.session_data_xml_path,
               created_at = NOW()
-          ", params = list(
-            r$athlete_uuid, if (is.na(r$name) || r$name == "") NULL else as.character(r$name), r$session_date, r$source_system, r$source_athlete_id,
-            r$owner_filename, r$trial_index,
-            r$age_at_collection, r$age_group, r$height, r$weight, r$metrics_json,
-            r$session_xml_path, r$session_data_xml_path
-          ))
+          ")), error = function(e) log_progress("  [WARNING] f_hitting_3d_trials insert:", conditionMessage(e)))
+
+          # -- Insert 3D data into typed tables (one row per trial, JSONB per data type) --
+          frames_list       <- json_data$frames %||% list()
+          label_names_vec   <- tryCatch(sapply(json_data$labels,   function(l) l$name), error = function(e) character(0))
+          segment_names_vec <- tryCatch(sapply(json_data$segments, function(s) s$name), error = function(e) character(0))
+
+          if (length(frames_list) > 0) {
+            uuid_str  <- as.character(r$athlete_uuid)
+            date_str  <- format(r$session_date, "%Y-%m-%d")
+            sa_id     <- if (is.na(r$source_athlete_id)) NA_character_ else as.character(r$source_athlete_id)
+            fn_str    <- as.character(r$owner_filename)
+            trial_idx <- as.integer(r$trial_index)
+
+            marker_data  <- lapply(frames_list, function(f) f$markers    %||% list())
+            seg_pos_data <- lapply(frames_list, function(f) f$segmentPos %||% list())
+            seg_rot_data <- lapply(frames_list, function(f) f$segmentRot %||% list())
+            force_data   <- lapply(frames_list, function(f) f$force      %||% list())
+
+            label_json    <- as.character(jsonlite::toJSON(label_names_vec,   auto_unbox = FALSE))
+            seg_name_json <- as.character(jsonlite::toJSON(segment_names_vec, auto_unbox = FALSE))
+            marker_json   <- as.character(jsonlite::toJSON(marker_data,    auto_unbox = TRUE, null = "null"))
+            seg_pos_json  <- as.character(jsonlite::toJSON(seg_pos_data,   auto_unbox = TRUE, null = "null"))
+            seg_rot_json  <- as.character(jsonlite::toJSON(seg_rot_data,   auto_unbox = TRUE, null = "null"))
+            force_json    <- as.character(jsonlite::toJSON(force_data,     auto_unbox = TRUE, null = "null"))
+
+            tryCatch(DBI::dbExecute(con,
+              "INSERT INTO public.f_hitting_marker_data
+                 (athlete_uuid, session_date, source_system, source_athlete_id,
+                  owner_filename, trial_index, label_names, data)
+               VALUES ($1, $2::date, $3, $4, $5, $6, $7::jsonb, $8::jsonb)
+               ON CONFLICT (athlete_uuid, session_date, trial_index) DO UPDATE SET
+                 label_names = EXCLUDED.label_names, data = EXCLUDED.data, created_at = NOW()",
+              params = list(uuid_str, date_str, "hitting", sa_id, fn_str, trial_idx,
+                            label_json, marker_json)
+            ), error = function(e) log_progress("  [WARNING] marker_data insert:", conditionMessage(e)))
+
+            tryCatch(DBI::dbExecute(con,
+              "INSERT INTO public.f_hitting_segment_pos_data
+                 (athlete_uuid, session_date, source_system, source_athlete_id,
+                  owner_filename, trial_index, segment_names, data)
+               VALUES ($1, $2::date, $3, $4, $5, $6, $7::jsonb, $8::jsonb)
+               ON CONFLICT (athlete_uuid, session_date, trial_index) DO UPDATE SET
+                 segment_names = EXCLUDED.segment_names, data = EXCLUDED.data, created_at = NOW()",
+              params = list(uuid_str, date_str, "hitting", sa_id, fn_str, trial_idx,
+                            seg_name_json, seg_pos_json)
+            ), error = function(e) log_progress("  [WARNING] seg_pos_data insert:", conditionMessage(e)))
+
+            tryCatch(DBI::dbExecute(con,
+              "INSERT INTO public.f_hitting_segment_rot_data
+                 (athlete_uuid, session_date, source_system, source_athlete_id,
+                  owner_filename, trial_index, segment_names, data)
+               VALUES ($1, $2::date, $3, $4, $5, $6, $7::jsonb, $8::jsonb)
+               ON CONFLICT (athlete_uuid, session_date, trial_index) DO UPDATE SET
+                 segment_names = EXCLUDED.segment_names, data = EXCLUDED.data, created_at = NOW()",
+              params = list(uuid_str, date_str, "hitting", sa_id, fn_str, trial_idx,
+                            seg_name_json, seg_rot_json)
+            ), error = function(e) log_progress("  [WARNING] seg_rot_data insert:", conditionMessage(e)))
+
+            if (any(sapply(force_data, length) > 0)) {
+              tryCatch(DBI::dbExecute(con,
+                "INSERT INTO public.f_hitting_force_data
+                   (athlete_uuid, session_date, source_system, source_athlete_id,
+                    owner_filename, trial_index, data)
+                 VALUES ($1, $2::date, $3, $4, $5, $6, $7::jsonb)
+                 ON CONFLICT (athlete_uuid, session_date, trial_index) DO UPDATE SET
+                   data = EXCLUDED.data, created_at = NOW()",
+                params = list(uuid_str, date_str, "hitting", sa_id, fn_str, trial_idx, force_json)
+              ), error = function(e) log_progress("  [WARNING] force_data insert:", conditionMessage(e)))
+            }
+          }
+
+          n_3d_inserted <- n_3d_inserted + 1L
         }
-        log_progress("  [SUCCESS] Wrote", nrow(json_df), "JSON trial row(s) to f_hitting_trials")
+        log_progress("  [SUCCESS] Wrote", n_3d_inserted, "3D trial(s) to typed tables;", n_3d_skipped, "skipped")
+        cat("  [SUCCESS] Hitting 3D tables:", n_3d_inserted, "inserted,", n_3d_skipped, "skipped\n")
+        flush.console()
       }
     }
   } else {

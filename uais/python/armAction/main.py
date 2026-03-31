@@ -20,6 +20,7 @@ from database import (
 from athletes import init_athletes_db, update_athletes_summary
 from reports import generate_movement_report
 from common.duplicate_detector import check_and_merge_duplicates
+from common.athlete_manager import verify_athlete_uuid
 
 
 if __name__ == "__main__":
@@ -68,6 +69,16 @@ if __name__ == "__main__":
 
     init_athletes_db()
     athlete_uuid_env = os.environ.get("ATHLETE_UUID", "").strip() or None
+    if athlete_uuid_env:
+        _vconn = get_warehouse_connection()
+        try:
+            _rec = verify_athlete_uuid(_vconn, athlete_uuid_env)
+            print(f"Athlete UUID verified: {_rec['name']} ({athlete_uuid_env})")
+        except ValueError as _ve:
+            print(f"Error: {_ve}")
+            sys.exit(1)
+        finally:
+            _vconn.close()
     print("Processing 1 file")
     processed_athlete_uuids, athlete_first_seen = ingest_data(
         APLUS_DATA_PATH, APLUS_EVENTS_PATH, athlete_uuid=athlete_uuid_env
