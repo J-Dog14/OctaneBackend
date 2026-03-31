@@ -295,6 +295,13 @@ export function ResearchContent() {
     }
   }, [tsTable, tsSelectedMetrics, tsGroup, tsAvgMode, tsSelectedAthletes]);
 
+  // Reset byTrial aggregation when tables differ
+  useEffect(() => {
+    if (aggregation === "byTrial" && !(xVar.table && yVar.table && xVar.table === yVar.table)) {
+      setAggregation("byAthlete");
+    }
+  }, [xVar.table, yVar.table, aggregation]);
+
   // ─── Helpers ─────────────────────────────────────────────────────────────
   const sameTables    = xVar.table && yVar.table && xVar.table === yVar.table;
   const canLoadMetric = !!(xVar.table && xVar.variable && yVar.table && yVar.variable);
@@ -370,7 +377,6 @@ export function ResearchContent() {
                         Each dot = one individual trial. Only available when X and Y are from the same table.
                       </Text>
                     )}
-                    {!sameTables && aggregation === "byTrial" && setAggregation("byAthlete") && null}
                   </div>
                   <div>
                     <Text size="xs" c="dimmed" mb={4}>Trendline</Text>
