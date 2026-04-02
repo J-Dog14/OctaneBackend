@@ -1,4 +1,4 @@
-export const revalidate = 30;
+export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { Card, Text, Title, SimpleGrid, Group, Stack } from "@mantine/core";
