@@ -252,9 +252,16 @@ export const TABLE_LABELS: Record<string, string> = {
   readiness_screen_y:    "Readiness Screen — Y",
 };
 
+/** Tables that have a filterable movement/exercise column */
+const MOVEMENT_TABLES = new Set(["proteus"]);
+const MOVEMENT_SQL_TABLES: Record<string, string> = {
+  proteus: "f_proteus",
+};
+
 /**
  * GET /api/dashboard/research/variables?table=pitching
  * Returns all selectable variables for the given table.
+ * For tables with a movement column (e.g. proteus), also returns `movements: string[]`.
  */
 export async function GET(request: NextRequest) {
   await requireAuth();
@@ -292,7 +299,16 @@ export async function GET(request: NextRequest) {
       }));
     }
 
-    return success({ variables: [...direct, ...jsonbVars] });
+    let movements: string[] | undefined;
+    if (MOVEMENT_TABLES.has(table)) {
+      const movTable = MOVEMENT_SQL_TABLES[table]!;
+      const movRows = await prisma.$queryRawUnsafe<Array<{ movement: string }>>(
+        `SELECT DISTINCT movement FROM "${movTable}" WHERE movement IS NOT NULL ORDER BY movement`
+      );
+      movements = movRows.map((r) => r.movement);
+    }
+
+    return success({ variables: [...direct, ...jsonbVars], movements });
   } catch (err) {
     console.error("[research/variables] error:", err);
     return internalError("Failed to fetch variables");

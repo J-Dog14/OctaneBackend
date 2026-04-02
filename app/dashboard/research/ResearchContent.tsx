@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import useSWR from "swr";
 import {
@@ -30,6 +30,7 @@ import { StatisticsPanel } from "./StatisticsPanel";
 import type { VariableInfo } from "@/app/api/dashboard/research/variables/route";
 import type { ResearchDataResponse } from "@/app/api/dashboard/research/data/route";
 import type { TimeSeriesSeries } from "@/app/api/dashboard/research/timeseries/route";
+import { computeStatistics } from "@/lib/research/statistics";
 
 const ScatterPlot = dynamic(
   () => import("./ScatterPlot").then((m) => ({ default: m.ScatterPlot })),
@@ -99,6 +100,7 @@ type VarSelector = {
   table: string;
   variable: string;
   groups: string[]; // empty = all groups
+  exerciseName?: string; // only for tables with movement filter (e.g. proteus)
 };
 
 const DEFAULT_VAR: VarSelector = { table: "", variable: "", groups: [] };
@@ -111,12 +113,14 @@ function VariableSelector({
   onChange,
   variables,
   loadingVars,
+  movements,
 }: {
   label: string;
   value: VarSelector;
   onChange: (v: VarSelector) => void;
   variables: VariableInfo[];
   loadingVars: boolean;
+  movements?: string[];
 }) {
   // Group variables by their group field
   const selectData = Object.entries(
@@ -135,7 +139,7 @@ function VariableSelector({
         placeholder="Select a table..."
         data={TABLE_OPTIONS}
         value={value.table || null}
-        onChange={(v) => onChange({ ...value, table: v ?? "", variable: "" })}
+        onChange={(v) => onChange({ ...value, table: v ?? "", variable: "", exerciseName: undefined })}
         searchable
         clearable
 
@@ -158,6 +162,19 @@ function VariableSelector({
         maxDropdownHeight={320}
         nothingFoundMessage="No variables match — try a different search"
       />
+      {movements && movements.length > 0 && (
+        <Select
+          label="Exercise / Movement"
+          placeholder="All exercises (unfiltered)"
+          data={movements.map((m) => ({ value: m, label: m }))}
+          value={value.exerciseName ?? null}
+          onChange={(v) => onChange({ ...value, exerciseName: v ?? undefined })}
+          searchable
+          clearable
+
+          maxDropdownHeight={260}
+        />
+      )}
       <div>
         <Text size="sm" fw={500} mb={4}>Age Groups (unchecked = all)</Text>
         <Checkbox.Group
@@ -205,6 +222,8 @@ export function ResearchContent() {
 
   const [xVariables, setXVariables] = useState<VariableInfo[]>([]);
   const [yVariables, setYVariables] = useState<VariableInfo[]>([]);
+  const [xMovements, setXMovements] = useState<string[]>([]);
+  const [yMovements, setYMovements] = useState<string[]>([]);
   const [loadingXVars, setLoadingXVars] = useState(false);
   const [loadingYVars, setLoadingYVars] = useState(false);
 
@@ -212,6 +231,8 @@ export function ResearchContent() {
   const [metricLoading, setMetricLoading] = useState(false);
   const [metricError, setMetricError] = useState<string | null>(null);
   const [statsOpen, setStatsOpen] = useState(true);
+  const [outlierMethod, setOutlierMethod] = useState<"none" | "iqr" | "zscore">("none");
+  const [outlierThreshold, setOutlierThreshold] = useState("1.5");
 
   // ── Time series state ─────────────────────────────────────────────────────
   const [tsTable, setTsTable] = useState("pitching_markers");
@@ -231,22 +252,22 @@ export function ResearchContent() {
 
   // ─── Load X variables ───────────────────────────────────────────────────
   useEffect(() => {
-    if (!xVar.table) { setXVariables([]); return; }
+    if (!xVar.table) { setXVariables([]); setXMovements([]); return; }
     setLoadingXVars(true);
     fetch(`/api/dashboard/research/variables?table=${xVar.table}`)
       .then((r) => r.json())
-      .then((d) => setXVariables(d.variables ?? []))
+      .then((d) => { setXVariables(d.variables ?? []); setXMovements(d.movements ?? []); })
       .catch(console.error)
       .finally(() => setLoadingXVars(false));
   }, [xVar.table]);
 
   // ─── Load Y variables ───────────────────────────────────────────────────
   useEffect(() => {
-    if (!yVar.table) { setYVariables([]); return; }
+    if (!yVar.table) { setYVariables([]); setYMovements([]); return; }
     setLoadingYVars(true);
     fetch(`/api/dashboard/research/variables?table=${yVar.table}`)
       .then((r) => r.json())
-      .then((d) => setYVariables(d.variables ?? []))
+      .then((d) => { setYVariables(d.variables ?? []); setYMovements(d.movements ?? []); })
       .catch(console.error)
       .finally(() => setLoadingYVars(false));
   }, [yVar.table]);
@@ -280,6 +301,8 @@ export function ResearchContent() {
         groups:      xVar.groups.join(","),
         aggregation,
       });
+      if (xVar.exerciseName) params.set("xMovement", xVar.exerciseName);
+      if (yVar.exerciseName) params.set("yMovement", yVar.exerciseName);
       if (selectedAthletes.length > 0) {
         params.set("athleteUuids", selectedAthletes.join(","));
       }
@@ -335,6 +358,49 @@ export function ResearchContent() {
     }
   }, [xVar.table, yVar.table, aggregation]);
 
+  // ─── Outlier filtering ───────────────────────────────────────────────────
+  const filteredPoints = useMemo(() => {
+    const pts = metricResult?.points ?? [];
+    if (outlierMethod === "none" || pts.length < 4) return pts;
+
+    const threshold = parseFloat(outlierThreshold);
+
+    if (outlierMethod === "iqr") {
+      function iqrBounds(vals: number[]): [number, number] {
+        const sorted = [...vals].sort((a, b) => a - b);
+        const n = sorted.length;
+        const q1 = sorted[Math.floor(n * 0.25)]!;
+        const q3 = sorted[Math.floor(n * 0.75)]!;
+        const iqr = q3 - q1;
+        return [q1 - threshold * iqr, q3 + threshold * iqr];
+      }
+      const [xLo, xHi] = iqrBounds(pts.map((p) => p.x));
+      const [yLo, yHi] = iqrBounds(pts.map((p) => p.y));
+      return pts.filter((p) => p.x >= xLo && p.x <= xHi && p.y >= yLo && p.y <= yHi);
+    }
+
+    if (outlierMethod === "zscore") {
+      function zBounds(vals: number[]): [number, number] {
+        const mean = vals.reduce((s, v) => s + v, 0) / vals.length;
+        const std  = Math.sqrt(vals.reduce((s, v) => s + (v - mean) ** 2, 0) / vals.length);
+        return [mean - threshold * std, mean + threshold * std];
+      }
+      const [xLo, xHi] = zBounds(pts.map((p) => p.x));
+      const [yLo, yHi] = zBounds(pts.map((p) => p.y));
+      return pts.filter((p) => p.x >= xLo && p.x <= xHi && p.y >= yLo && p.y <= yHi);
+    }
+
+    return pts;
+  }, [metricResult, outlierMethod, outlierThreshold]);
+
+  const removedCount = (metricResult?.points.length ?? 0) - filteredPoints.length;
+  const filteredStats = useMemo(
+    () => removedCount > 0
+      ? computeStatistics(filteredPoints.map((p) => p.x), filteredPoints.map((p) => p.y))
+      : metricResult?.statistics ?? null,
+    [filteredPoints, removedCount, metricResult],
+  );
+
   // ─── Helpers ─────────────────────────────────────────────────────────────
   const sameTables    = xVar.table && yVar.table && xVar.table === yVar.table;
   const canLoadMetric = !!(xVar.table && xVar.variable && yVar.table && yVar.variable);
@@ -384,6 +450,7 @@ export function ResearchContent() {
                     onChange={setXVar}
                     variables={xVariables}
                     loadingVars={loadingXVars}
+                    movements={xMovements}
                   />
                   <VariableSelector
                     label="Y Variable (Dependent)"
@@ -391,6 +458,7 @@ export function ResearchContent() {
                     onChange={setYVar}
                     variables={yVariables}
                     loadingVars={loadingYVars}
+                    movements={yMovements}
                   />
                 </Group>
 
@@ -429,6 +497,47 @@ export function ResearchContent() {
                       onChange={(v) => setTrendlineMode(v as "linear" | "polynomial" | "none")}
                       size="xs"
                     />
+                  </div>
+                  <div>
+                    <Text size="xs" c="dimmed" mb={4}>Outlier Filter</Text>
+                    <Group gap="xs" wrap="nowrap">
+                      <SegmentedControl
+                        data={[
+                          { value: "none",   label: "None" },
+                          { value: "iqr",    label: "IQR" },
+                          { value: "zscore", label: "Z-score" },
+                        ]}
+                        value={outlierMethod}
+                        onChange={(v) => {
+                          setOutlierMethod(v as "none" | "iqr" | "zscore");
+                          if (v === "iqr")    setOutlierThreshold("1.5");
+                          if (v === "zscore") setOutlierThreshold("2.5");
+                        }}
+                        size="xs"
+                      />
+                      {outlierMethod !== "none" && (
+                        <Select
+                          size="xs"
+                          style={{ width: 80 }}
+                          data={
+                            outlierMethod === "iqr"
+                              ? [
+                                  { value: "1.5", label: "1.5×" },
+                                  { value: "2.0", label: "2.0×" },
+                                  { value: "3.0", label: "3.0×" },
+                                ]
+                              : [
+                                  { value: "2.0", label: "2.0σ" },
+                                  { value: "2.5", label: "2.5σ" },
+                                  { value: "3.0", label: "3.0σ" },
+                                ]
+                          }
+                          value={outlierThreshold}
+                          onChange={(v) => setOutlierThreshold(v ?? outlierThreshold)}
+                          allowDeselect={false}
+                        />
+                      )}
+                    </Group>
                   </div>
                   <div>
                     <Text size="xs" c="dimmed" mb={6}>Colour dots by</Text>
@@ -496,20 +605,23 @@ export function ResearchContent() {
             {metricResult && (
               <Stack gap="md">
                 <Group gap="sm">
-                  <Badge variant="light" color="blue">{metricResult.points.length} data points</Badge>
-                  {metricResult.statistics.pearsonR !== null && (
-                    <Badge variant="light" color={Math.abs(metricResult.statistics.pearsonR) > 0.5 ? "green" : "yellow"}>
-                      r = {metricResult.statistics.pearsonR.toFixed(3)}
+                  <Badge variant="light" color="blue">{filteredPoints.length} data points</Badge>
+                  {removedCount > 0 && (
+                    <Badge variant="light" color="orange">{removedCount} outlier{removedCount > 1 ? "s" : ""} removed</Badge>
+                  )}
+                  {filteredStats?.pearsonR !== null && filteredStats?.pearsonR !== undefined && (
+                    <Badge variant="light" color={Math.abs(filteredStats.pearsonR) > 0.5 ? "green" : "yellow"}>
+                      r = {filteredStats.pearsonR.toFixed(3)}
                     </Badge>
                   )}
-                  {metricResult.statistics.rSquared !== null && (
+                  {filteredStats?.rSquared !== null && filteredStats?.rSquared !== undefined && (
                     <Badge variant="light" color="grape">
-                      R² = {metricResult.statistics.rSquared.toFixed(3)}
+                      R² = {filteredStats.rSquared.toFixed(3)}
                     </Badge>
                   )}
-                  {metricResult.statistics.pValue !== null && (
-                    <Badge variant="light" color={metricResult.statistics.pValue < 0.05 ? "teal" : "orange"}>
-                      {metricResult.statistics.pValue < 0.0001 ? "p < 0.0001" : `p = ${metricResult.statistics.pValue.toFixed(4)}`}
+                  {filteredStats?.pValue !== null && filteredStats?.pValue !== undefined && (
+                    <Badge variant="light" color={filteredStats.pValue < 0.05 ? "teal" : "orange"}>
+                      {filteredStats.pValue < 0.0001 ? "p < 0.0001" : `p = ${filteredStats.pValue.toFixed(4)}`}
                     </Badge>
                   )}
                 </Group>
@@ -519,11 +631,11 @@ export function ResearchContent() {
                     {metricResult.xLabel} vs {metricResult.yLabel}
                   </Text>
                   <ScatterPlot
-                    points={metricResult.points}
+                    points={filteredPoints}
                     xLabel={metricResult.xLabel}
                     yLabel={metricResult.yLabel}
                     trendlineMode={trendlineMode}
-                    statistics={metricResult.statistics}
+                    statistics={filteredStats ?? metricResult.statistics}
                     colorByAgeGroup={colorByAgeGroup}
                   />
                 </Card>
@@ -537,7 +649,7 @@ export function ResearchContent() {
                   </Group>
                   <Collapse in={statsOpen}>
                     <StatisticsPanel
-                      stats={metricResult.statistics}
+                      stats={filteredStats ?? metricResult.statistics}
                       xLabel={metricResult.xLabel}
                       yLabel={metricResult.yLabel}
                       trendlineMode={trendlineMode}

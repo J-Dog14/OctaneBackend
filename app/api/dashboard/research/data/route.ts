@@ -123,10 +123,14 @@ const GROUP_SQL_MAP: Record<string, string> = {
 
 // ─── Build per-variable CTE SQL ───────────────────────────────────────────────
 
+/** Tables that support movement filtering (f_proteus.movement column) */
+const HAS_MOVEMENT = new Set(["proteus"]);
+
 type VarSpec = {
   tableKey: string;
   variableKey: string;
   aggregation: "byAthlete" | "bySession" | "byTrial" | "byRound";
+  movement?: string; // only for tables in HAS_MOVEMENT
 };
 
 /**
@@ -164,6 +168,10 @@ function buildValueCTE(
 
   // WHERE conditions (used for byTrial; aggregate modes drop the IS NOT NULL to HAVING)
   const conditions: string[] = [`${rawValueExpr} IS NOT NULL`];
+  if (spec.movement && HAS_MOVEMENT.has(spec.tableKey)) {
+    conditions.push(`t.movement ILIKE $${pIdx++}`);
+    params.push(spec.movement);
+  }
   if (ageGroups && ageGroups.length > 0) {
     conditions.push(`da.age_group = ANY($${pIdx++}::text[])`);
     params.push(ageGroups);
@@ -275,6 +283,8 @@ export async function GET(request: NextRequest) {
   const groupsParam  = sp.get("groups") ?? "";
   const aggParam     = sp.get("aggregation") ?? "byAthlete";
   const uuidsParam   = sp.get("athleteUuids");
+  const xMovement    = sp.get("xMovement") ?? undefined;
+  const yMovement    = sp.get("yMovement") ?? undefined;
 
   if (!SQL_TABLE[xTable]) return badRequest(`Unknown xTable: ${xTable}`);
   if (!SQL_TABLE[yTable]) return badRequest(`Unknown yTable: ${yTable}`);
@@ -316,8 +326,8 @@ export async function GET(request: NextRequest) {
 
   try {
     let offset = 1;
-    const xSpec: VarSpec = { tableKey: xTable, variableKey: xVariable, aggregation };
-    const ySpec: VarSpec = { tableKey: yTable, variableKey: yVariable, aggregation };
+    const xSpec: VarSpec = { tableKey: xTable, variableKey: xVariable, aggregation, movement: xMovement };
+    const ySpec: VarSpec = { tableKey: yTable, variableKey: yVariable, aggregation, movement: yMovement };
 
     const xCTE = buildValueCTE("x_cte", xSpec, ageGroups, athleteUuids, offset);
     offset = xCTE.nextOffset;
