@@ -2,9 +2,9 @@
 
 import { Fragment, useCallback, useEffect, useRef, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import useSWR from "swr";
 import Link from "next/link";
 import {
-  TextInput,
   Badge,
   Select,
   Tabs,
@@ -18,8 +18,19 @@ import {
   Group,
   Stack,
 } from "@mantine/core";
-import { MetricRadarChart, type RadarMetric, type RadarDataSeries, SERIES_COLORS } from "./MetricRadarChart";
-import { MetricLineChart } from "./MetricLineChart";
+import dynamic from "next/dynamic";
+import type { RadarMetric, RadarDataSeries } from "./MetricRadarChart";
+
+const SERIES_COLORS = ["#2c99d4", "#d62728", "#9467bd", "#2ca02c", "#e6c200", "#ff7f0e"];
+
+const MetricRadarChart = dynamic(
+  () => import("./MetricRadarChart").then((m) => ({ default: m.MetricRadarChart })),
+  { ssr: false }
+);
+const MetricLineChart = dynamic(
+  () => import("./MetricLineChart").then((m) => ({ default: m.MetricLineChart })),
+  { ssr: false }
+);
 import { formatMetricDisplayName, formatValueWithUnit } from "@/lib/athlete-tracking/displayNames";
 import { PitchingDiagram, hasPitchingDiagram } from "./PitchingDiagram";
 
@@ -540,24 +551,55 @@ function buildPitchingDisplayCells(
           percentile: null,
         };
       }
+      // GAIN_OR_LOSS: show "GAIN" or "LOSS" text, never a raw number
+      if (
+        item.key === "HIP_SHOULDER_PROGRESS|GAIN_OR_LOSS" ||
+        item.key === "ABDUCTION_PROGRESS|GAIN_OR_LOSS"
+      ) {
+        const isGain = metric.value === 1;
+        return {
+          key: item.key,
+          label: item.label,
+          valuePart: isGain ? "GAIN" : "LOSS",
+          unitPart: "",
+          percentile: null,
+        };
+      }
+
+      // Diff FP to Peak / Time to Peak: N/A when LOSS
       if (
         item.key === "HIP_SHOULDER_PROGRESS|AMOUNT_TO_PEAK" ||
-        item.key === "ABDUCTION_PROGRESS|AMOUNT_TO_PEAK"
+        item.key === "ABDUCTION_PROGRESS|AMOUNT_TO_PEAK" ||
+        item.key === "HIP_SHOULDER_PROGRESS|PEAK_AFTER_FOOTSTRIKE_MS" ||
+        item.key === "ABDUCTION_PROGRESS|PEAK_AFTER_FOOTSTRIKE_MS"
       ) {
         const gainKey = item.key.startsWith("HIP_SHOULDER_PROGRESS")
           ? "HIP_SHOULDER_PROGRESS|GAIN_OR_LOSS"
           : "ABDUCTION_PROGRESS|GAIN_OR_LOSS";
         const gainMetric = getMetricByKey(metrics, gainKey);
-        if (gainMetric?.value === 0 || gainMetric?.value === -1) {
-          const zero = formatValueWithUnit(0, metric.valueUnit, metric.max);
+        if (gainMetric?.value !== 1) {
           return {
             key: item.key,
             label: item.label,
-            valuePart: "0",
-            unitPart: zero.unitPart,
-            percentile: metric.percentile,
+            valuePart: "N/A",
+            unitPart: "",
+            percentile: null,
           };
         }
+      }
+      // Time to Peak is stored as NUMBER but should display as ms
+      if (
+        item.key === "HIP_SHOULDER_PROGRESS|PEAK_AFTER_FOOTSTRIKE_MS" ||
+        item.key === "ABDUCTION_PROGRESS|PEAK_AFTER_FOOTSTRIKE_MS"
+      ) {
+        const { valuePart } = formatMetricValueParts(metric);
+        return {
+          key: item.key,
+          label: item.label,
+          valuePart,
+          unitPart: " ms",
+          percentile: metric.percentile,
+        };
       }
       const { valuePart, unitPart } = formatMetricValueParts(metric);
       return {
@@ -727,10 +769,17 @@ function AthleteTrackingContentInner() {
     }
   }, []);
 
-  // Initial load — fetch a small recent set so the search box has results immediately.
+  // Initial load via SWR — cached for 60s so navigating back doesn't re-fetch.
+  const { data: initialAthletes } = useSWR<AthleteItem[]>(
+    "/api/dashboard/athletes?limit=40",
+    (url: string) => fetch(url).then((r) => r.json()).then((d) => d.items ?? []),
+    { revalidateOnFocus: false, dedupingInterval: 60_000 }
+  );
   useEffect(() => {
-    void searchAthletes("");
-  }, [searchAthletes]);
+    if (initialAthletes?.length && searchResults.length === 0) {
+      setSearchResults(initialAthletes);
+    }
+  }, [initialAthletes, searchResults.length]);
 
   // Debounce search-box input.
   useEffect(() => {
@@ -948,33 +997,24 @@ function AthleteTrackingContentInner() {
 
       <Card>
         <Text fw={600} size="sm" mb="xs">Select athlete</Text>
-        <Group gap="xs" mb="sm" wrap="wrap" align="flex-start">
-          <TextInput
-            placeholder="Search by name…"
-            value={addAthleteQuery}
-            onChange={(e) => setAddAthleteQuery(e.target.value)}
-            w={220}
-            size="sm"
-          />
-          {loadingSearch && (
-            <Text c="dimmed" size="sm" style={{ alignSelf: "center" }}>Searching…</Text>
-          )}
-          {!loadingSearch && searchResults.length > 0 && (
-            <Group gap={4} wrap="wrap">
-              {searchResults.slice(0, 20).map((a) => (
-                <button
-                  key={a.athlete_uuid}
-                  type="button"
-                  className="btn-ghost"
-                  style={{ fontSize: "13px" }}
-                  onClick={() => selectAthlete(a.athlete_uuid, a.name)}
-                >
-                  {a.name}
-                </button>
-              ))}
-            </Group>
-          )}
-        </Group>
+        <Select
+          placeholder="Search by name…"
+          data={searchResults.map((a) => ({ value: a.athlete_uuid, label: a.name }))}
+          searchable
+          searchValue={addAthleteQuery}
+          onSearchChange={setAddAthleteQuery}
+          onChange={(uuid) => {
+            if (!uuid) return;
+            const athlete = searchResults.find((a) => a.athlete_uuid === uuid);
+            selectAthlete(uuid, athlete?.name);
+          }}
+          value={null}
+          nothingFoundMessage={loadingSearch ? "Searching…" : "No athletes found"}
+          w={280}
+          size="sm"
+          mb="sm"
+          clearable
+        />
 
         <Text fw={600} size="sm" mb={6}>Selected athlete</Text>
         {trackedUuids.length === 0 ? (
@@ -2011,42 +2051,45 @@ function AthleteTrackingContentInner() {
                                   <tr>
                                     {cells.map((cell, cellIdx) => (
                                       <td key={`${section.id}-${cell.key}-value`}>
-                                        {cell.valuePart === "—" ? "—" : (
-                                          <>
-                                            <strong
-                                              style={
-                                                cell.key.endsWith("|GAIN_OR_LOSS")
-                                                  ? cell.valuePart === "GAIN"
-                                                    ? { color: "#16a34a" }
-                                                    : cell.valuePart === "LOSS"
-                                                      ? { color: "var(--accent-secondary)" }
-                                                      : undefined
-                                                  : cell.key === "DERIVED|ARM_TIMING_FLAG"
-                                                    ? cell.valuePart === "ON_TIME"
-                                                      ? { color: "#16a34a" }
-                                                      : cell.valuePart === "EARLY" || cell.valuePart === "LATE"
-                                                        ? { color: "var(--accent-secondary)" }
-                                                        : undefined
-                                                    : cell.percentile != null
-                                                      ? (getPercentileStyle(cell.percentile) ?? undefined)
-                                                      : undefined
-                                              }
-                                            >
-                                              {cell.valuePart}
-                                            </strong>
-                                            {cell.unitPart}
-                                          </>
+                                        {cell.valuePart === "—" ? "—" : (() => {
+                                          const isGainOrLoss = cell.key.endsWith("|GAIN_OR_LOSS");
+                                          const valueStyle: React.CSSProperties | undefined =
+                                            isGainOrLoss
+                                              ? cell.valuePart === "GAIN"
+                                                ? { color: "#16a34a" }
+                                                : cell.valuePart === "LOSS"
+                                                  ? { color: "var(--accent-secondary)" }
+                                                  : undefined
+                                              : cell.key === "DERIVED|ARM_TIMING_FLAG"
+                                                ? cell.valuePart === "ON_TIME"
+                                                  ? { color: "#16a34a" }
+                                                  : cell.valuePart === "EARLY" || cell.valuePart === "LATE"
+                                                    ? { color: "var(--accent-secondary)" }
+                                                    : undefined
+                                                : cell.percentile != null
+                                                  ? (getPercentileStyle(cell.percentile) ?? undefined)
+                                                  : undefined;
+                                          return (
+                                            <>
+                                              <strong style={valueStyle}>{cell.valuePart}</strong>
+                                              {cell.unitPart && (
+                                                <span style={valueStyle}>{cell.unitPart}</span>
+                                              )}
+                                            </>
+                                          );
+                                        })()}
+                                        {!cell.key.endsWith("|GAIN_OR_LOSS") && cell.key !== "DERIVED|ARM_TIMING_FLAG" && cell.valuePart !== "N/A" && (
+                                          <div
+                                            className={cell.percentile == null ? "text-muted" : undefined}
+                                            style={{
+                                              marginTop: "0.2rem",
+                                              fontSize: "0.78rem",
+                                              ...(cell.percentile != null ? (getPercentileStyle(cell.percentile) ?? {}) : {}),
+                                            }}
+                                          >
+                                            {cell.percentile != null ? `${Math.round(cell.percentile)}th %ile` : "—"}
+                                          </div>
                                         )}
-                                        <div
-                                          className={cell.percentile == null ? "text-muted" : undefined}
-                                          style={{
-                                            marginTop: "0.2rem",
-                                            fontSize: "0.78rem",
-                                            ...(cell.percentile != null ? (getPercentileStyle(cell.percentile) ?? {}) : {}),
-                                          }}
-                                        >
-                                          {cell.percentile != null ? `${Math.round(cell.percentile)}th %ile` : "—"}
-                                        </div>
                                         {compCellSets.map(({ label, cells: ccs }) => {
                                           const cc = ccs[cellIdx];
                                           return (

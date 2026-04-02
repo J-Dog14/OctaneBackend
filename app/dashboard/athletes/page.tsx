@@ -1,7 +1,10 @@
-export const dynamic = "force-dynamic";
-
+import dynamic from "next/dynamic";
 import { Title, Text, Card } from "@mantine/core";
-import { AthletesGrid } from "./AthletesGrid";
+
+const AthletesGrid = dynamic(
+  () => import("./AthletesGrid").then((m) => ({ default: m.AthletesGrid })),
+  { loading: () => <div style={{ height: "calc(100vh - 300px)", minHeight: 400 }} /> }
+);
 
 export default async function AthletesPage() {
   return (

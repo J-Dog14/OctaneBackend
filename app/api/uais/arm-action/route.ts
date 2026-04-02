@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { requireApiKey } from "@/lib/auth/requireApiKey";
 import { badRequest, internalError, notFound, success } from "@/lib/responses";
-import { prisma } from "@/lib/db/prisma";
+import { prismaDirect as prisma } from "@/lib/db/prisma-direct";
 import { uaisArmActionQuerySchema } from "@/lib/validation/uais";
 
 /**

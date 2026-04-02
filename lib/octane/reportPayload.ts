@@ -48,45 +48,42 @@ export async function buildAthleteReportPayload(
     throw notFound("Athlete not found");
   }
 
-  const [
-    armAction,
-    athleticScreenLegacy,
-    mobility,
-    proSup,
-    proteus,
-    readinessScreen,
-    pitchingTrials,
-    kinematicsPitching,
-    kinematicsHitting,
-    curveballTest,
-    athleticScreenCmj,
-    athleticScreenDj,
-    athleticScreenPpu,
-    athleticScreenSlv,
-  ] = await Promise.all([
-    prisma.f_arm_action.count({ where: { athlete_uuid: athleteUuid } }),
-    prisma.f_athletic_screen.count({ where: { athlete_uuid: athleteUuid } }),
-    prisma.f_mobility.count({ where: { athlete_uuid: athleteUuid } }),
-    prisma.f_pro_sup.count({ where: { athlete_uuid: athleteUuid } }),
-    prisma.f_proteus.count({ where: { athlete_uuid: athleteUuid } }),
-    prisma.f_readiness_screen.count({ where: { athlete_uuid: athleteUuid } }),
-    prisma.f_pitching_trials.count({ where: { athlete_uuid: athleteUuid } }),
-    prisma.f_kinematics_pitching.count({ where: { athlete_uuid: athleteUuid } }),
-    prisma.f_kinematics_hitting.count({ where: { athlete_uuid: athleteUuid } }),
-    prisma.f_curveball_test.count({ where: { athlete_uuid: athleteUuid } }),
-    prisma.f_athletic_screen_cmj.count({ where: { athlete_uuid: athleteUuid } }),
-    prisma.f_athletic_screen_dj.count({ where: { athlete_uuid: athleteUuid } }),
-    prisma.f_athletic_screen_ppu.count({ where: { athlete_uuid: athleteUuid } }),
-    prisma.f_athletic_screen_slv.count({ where: { athlete_uuid: athleteUuid } }),
-  ]);
-
-  const kinematicsPitchingCount = pitchingTrials + kinematicsPitching;
-  const athleticScreen =
-    athleticScreenLegacy +
-    athleticScreenCmj +
-    athleticScreenDj +
-    athleticScreenPpu +
-    athleticScreenSlv;
+  const [counts] = await prisma.$queryRaw<
+    [
+      {
+        arm_action: bigint;
+        athletic_screen_legacy: bigint;
+        athletic_screen_cmj: bigint;
+        athletic_screen_dj: bigint;
+        athletic_screen_ppu: bigint;
+        athletic_screen_slv: bigint;
+        mobility: bigint;
+        pro_sup: bigint;
+        proteus: bigint;
+        readiness_screen: bigint;
+        pitching_trials: bigint;
+        kinematics_pitching: bigint;
+        kinematics_hitting: bigint;
+        curveball_test: bigint;
+      },
+    ]
+  >`
+    SELECT
+      (SELECT COUNT(*) FROM public.f_arm_action            WHERE athlete_uuid = ${athleteUuid})::int AS arm_action,
+      (SELECT COUNT(*) FROM public.f_athletic_screen        WHERE athlete_uuid = ${athleteUuid})::int AS athletic_screen_legacy,
+      (SELECT COUNT(*) FROM public.f_athletic_screen_cmj    WHERE athlete_uuid = ${athleteUuid})::int AS athletic_screen_cmj,
+      (SELECT COUNT(*) FROM public.f_athletic_screen_dj     WHERE athlete_uuid = ${athleteUuid})::int AS athletic_screen_dj,
+      (SELECT COUNT(*) FROM public.f_athletic_screen_ppu    WHERE athlete_uuid = ${athleteUuid})::int AS athletic_screen_ppu,
+      (SELECT COUNT(*) FROM public.f_athletic_screen_slv    WHERE athlete_uuid = ${athleteUuid})::int AS athletic_screen_slv,
+      (SELECT COUNT(*) FROM public.f_mobility               WHERE athlete_uuid = ${athleteUuid})::int AS mobility,
+      (SELECT COUNT(*) FROM public.f_pro_sup                WHERE athlete_uuid = ${athleteUuid})::int AS pro_sup,
+      (SELECT COUNT(*) FROM public.f_proteus                WHERE athlete_uuid = ${athleteUuid})::int AS proteus,
+      (SELECT COUNT(*) FROM public.f_readiness_screen       WHERE athlete_uuid = ${athleteUuid})::int AS readiness_screen,
+      (SELECT COUNT(*) FROM public.f_pitching_trials        WHERE athlete_uuid = ${athleteUuid})::int AS pitching_trials,
+      (SELECT COUNT(*) FROM public.f_kinematics_pitching    WHERE athlete_uuid = ${athleteUuid})::int AS kinematics_pitching,
+      (SELECT COUNT(*) FROM public.f_kinematics_hitting     WHERE athlete_uuid = ${athleteUuid})::int AS kinematics_hitting,
+      (SELECT COUNT(*) FROM public.f_curveball_test         WHERE athlete_uuid = ${athleteUuid})::int AS curveball_test
+  `;
 
   return {
     generatedAt: new Date().toISOString(),
@@ -101,15 +98,15 @@ export async function buildAthleteReportPayload(
       octaneAppUuid: athlete.app_db_uuid ?? null,
     },
     counts: {
-      armAction,
-      athleticScreen,
-      mobility,
-      proSup,
-      proteus,
-      readinessScreen,
-      kinematicsPitching: kinematicsPitchingCount,
-      kinematicsHitting,
-      curveballTest,
+      armAction:          Number(counts.arm_action),
+      athleticScreen:     Number(counts.athletic_screen_legacy) + Number(counts.athletic_screen_cmj) + Number(counts.athletic_screen_dj) + Number(counts.athletic_screen_ppu) + Number(counts.athletic_screen_slv),
+      mobility:           Number(counts.mobility),
+      proSup:             Number(counts.pro_sup),
+      proteus:            Number(counts.proteus),
+      readinessScreen:    Number(counts.readiness_screen),
+      kinematicsPitching: Number(counts.pitching_trials) + Number(counts.kinematics_pitching),
+      kinematicsHitting:  Number(counts.kinematics_hitting),
+      curveballTest:      Number(counts.curveball_test),
     },
   };
 }

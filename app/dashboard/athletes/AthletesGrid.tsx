@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
+import useSWR from "swr";
 import { AgGridReact } from "ag-grid-react";
-import { ModuleRegistry, AllCommunityModule, type ColDef, type GridReadyEvent, type IRowNode } from "ag-grid-community";
+import { ModuleRegistry, AllCommunityModule, type ColDef, type IRowNode } from "ag-grid-community";
 import Link from "next/link";
 import { TextInput, Checkbox, Group } from "@mantine/core";
 import { AthleteUpdateEmailButton } from "./AthleteUpdateEmailButton";
@@ -26,15 +27,19 @@ type AthleteRow = {
   curveball_test_session_count: number;
 };
 
-export function AthletesGrid() {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+const fetcher = (url: string) =>
+  fetch(url).then((r) => r.json()).then((d) => d.items ?? []);
 
+export function AthletesGrid() {
   const gridRef = useRef<AgGridReact<AthleteRow>>(null);
   const [filterText, setFilterText] = useState("");
   const [filterNonApp, setFilterNonApp] = useState(false);
-  const [rowData, setRowData] = useState<AthleteRow[] | null>(null);
-  const [loading, setLoading] = useState(false);
+
+  const { data: rowData = null, isLoading: loading } = useSWR<AthleteRow[]>(
+    "/api/dashboard/athletes?limit=10000",
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 60_000 }
+  );
 
   const columnDefs = useMemo<ColDef<AthleteRow>[]>(
     () => [
@@ -104,16 +109,7 @@ export function AthletesGrid() {
 
   const defaultColDef = useMemo<ColDef>(() => ({ sortable: true, resizable: true }), []);
 
-  const onGridReady = useCallback(async (_params: GridReadyEvent) => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/dashboard/athletes?limit=10000");
-      const data = await res.json();
-      setRowData(data.items ?? []);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const onGridReady = useCallback(() => {}, []);
 
   const isExternalFilterPresent = useCallback(() => filterNonApp, [filterNonApp]);
 
@@ -149,27 +145,23 @@ export function AthletesGrid() {
         />
       </Group>
 
-      {!mounted ? (
-        <div style={{ height: "calc(100vh - 300px)", minHeight: 400 }} />
-      ) : (
-        <div style={{ height: "calc(100vh - 300px)", minHeight: 400 }}>
-          <AgGridReact
-            theme={octaneTheme}
-            ref={gridRef}
-            rowData={rowData}
-            columnDefs={columnDefs}
-            defaultColDef={defaultColDef}
-            onGridReady={onGridReady}
-            isExternalFilterPresent={isExternalFilterPresent}
-            doesExternalFilterPass={doesExternalFilterPass}
-            pagination
-            paginationPageSize={50}
-            loading={loading}
-            suppressMovableColumns={false}
-            suppressCellFocus
-          />
-        </div>
-      )}
+      <div style={{ height: "calc(100vh - 300px)", minHeight: 400 }}>
+        <AgGridReact
+          theme={octaneTheme}
+          ref={gridRef}
+          rowData={rowData}
+          columnDefs={columnDefs}
+          defaultColDef={defaultColDef}
+          onGridReady={onGridReady}
+          isExternalFilterPresent={isExternalFilterPresent}
+          doesExternalFilterPass={doesExternalFilterPass}
+          pagination
+          paginationPageSize={50}
+          loading={loading}
+          suppressMovableColumns={false}
+          suppressCellFocus
+        />
+      </div>
     </>
   );
 }

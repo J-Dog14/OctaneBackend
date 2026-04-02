@@ -1,9 +1,14 @@
-export const dynamic = "force-dynamic";
+export const revalidate = 30;
 
 import Link from "next/link";
 import { Card, Text, Title, SimpleGrid, Group, Stack } from "@mantine/core";
+import dynamic from "next/dynamic";
 import { getRecentAthletes } from "@/lib/dashboard/athletes";
-import { RecentAthletesGrid } from "./RecentAthletesGrid";
+
+const RecentAthletesGrid = dynamic(
+  () => import("./RecentAthletesGrid").then((m) => ({ default: m.RecentAthletesGrid })),
+  { loading: () => <div style={{ height: 300 }} /> }
+);
 
 export default async function DashboardPage() {
   const recentAthletes = await getRecentAthletes(20);

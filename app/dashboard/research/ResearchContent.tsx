@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useId, useState } from "react";
+import dynamic from "next/dynamic";
+import useSWR from "swr";
 import {
   Title,
   Text,
@@ -9,6 +11,7 @@ import {
   Stack,
   Select,
   MultiSelect,
+  Checkbox,
   Button,
   SegmentedControl,
   Badge,
@@ -23,23 +26,39 @@ import {
   Collapse,
   CloseButton,
 } from "@mantine/core";
-import { ScatterPlot } from "./ScatterPlot";
-import { TimeSeriesPlot } from "./TimeSeriesPlot";
 import { StatisticsPanel } from "./StatisticsPanel";
 import type { VariableInfo } from "@/app/api/dashboard/research/variables/route";
 import type { ResearchDataResponse } from "@/app/api/dashboard/research/data/route";
 import type { TimeSeriesSeries } from "@/app/api/dashboard/research/timeseries/route";
 
+const ScatterPlot = dynamic(
+  () => import("./ScatterPlot").then((m) => ({ default: m.ScatterPlot })),
+  { ssr: false }
+);
+const TimeSeriesPlot = dynamic(
+  () => import("./TimeSeriesPlot").then((m) => ({ default: m.TimeSeriesPlot })),
+  { ssr: false }
+);
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const TABLE_OPTIONS = [
-  { value: "pitching",            label: "Pitching (Trials)" },
-  { value: "hitting",             label: "Hitting (Trials)" },
-  { value: "athletic_screen_cmj", label: "Athletic Screen — CMJ" },
-  { value: "athletic_screen_dj",  label: "Athletic Screen — Drop Jump" },
-  { value: "athletic_screen_slv", label: "Athletic Screen — Single Leg Vert" },
-  { value: "athletic_screen_nmt", label: "Athletic Screen — Neuromuscular" },
-  { value: "athletic_screen_ppu", label: "Athletic Screen — Push-up Power" },
+  { value: "pitching",              label: "Pitching (Trials)" },
+  { value: "hitting",               label: "Hitting (Trials)" },
+  { value: "athletic_screen_cmj",   label: "Athletic Screen — CMJ" },
+  { value: "athletic_screen_dj",    label: "Athletic Screen — Drop Jump" },
+  { value: "athletic_screen_slv",   label: "Athletic Screen — Single Leg Vert" },
+  { value: "athletic_screen_nmt",   label: "Athletic Screen — Neuromuscular" },
+  { value: "athletic_screen_ppu",   label: "Athletic Screen — Push-up Power" },
+  { value: "mobility",              label: "Mobility" },
+  { value: "pro_sup",               label: "Pro-Sup" },
+  { value: "proteus",               label: "Proteus" },
+  { value: "readiness_screen_cmj",  label: "Readiness Screen — CMJ" },
+  { value: "readiness_screen_i",    label: "Readiness Screen — I" },
+  { value: "readiness_screen_ir90", label: "Readiness Screen — IR90" },
+  { value: "readiness_screen_ppu",  label: "Readiness Screen — PPU" },
+  { value: "readiness_screen_t",    label: "Readiness Screen — T" },
+  { value: "readiness_screen_y",    label: "Readiness Screen — Y" },
 ];
 
 const TS_TABLE_OPTIONS = [
@@ -56,6 +75,14 @@ const TS_TABLE_LABEL: Record<string, string> = Object.fromEntries(
   TS_TABLE_OPTIONS.map((o) => [o.value, o.label]),
 );
 
+const GROUP_CHECKBOXES = [
+  { value: "pro",         label: "Pro" },
+  { value: "college",     label: "College" },
+  { value: "high_school", label: "High School" },
+  { value: "softball",    label: "Softball" },
+];
+
+// Used by the time series tab (single-select)
 const GROUP_OPTIONS = [
   { value: "all",         label: "All Groups" },
   { value: "pro",         label: "Pro" },
@@ -71,10 +98,10 @@ type AthleteOption = { value: string; label: string };
 type VarSelector = {
   table: string;
   variable: string;
-  group: string;
+  groups: string[]; // empty = all groups
 };
 
-const DEFAULT_VAR: VarSelector = { table: "", variable: "", group: "all" };
+const DEFAULT_VAR: VarSelector = { table: "", variable: "", groups: [] };
 
 // ─── Variable selector sub-component ─────────────────────────────────────────
 
@@ -131,12 +158,19 @@ function VariableSelector({
         maxDropdownHeight={320}
         nothingFoundMessage="No variables match — try a different search"
       />
-      <Select
-        label="Group Filter"
-        data={GROUP_OPTIONS}
-        value={value.group}
-        onChange={(v) => onChange({ ...value, group: v ?? "all" })}
-      />
+      <div>
+        <Text size="sm" fw={500} mb={4}>Age Groups (unchecked = all)</Text>
+        <Checkbox.Group
+          value={value.groups}
+          onChange={(v) => onChange({ ...value, groups: v })}
+        >
+          <Group gap="sm" wrap="wrap">
+            {GROUP_CHECKBOXES.map((g) => (
+              <Checkbox key={g.value} value={g.value} label={g.label} size="xs" />
+            ))}
+          </Group>
+        </Checkbox.Group>
+      </div>
     </Stack>
   );
 }
@@ -155,7 +189,19 @@ export function ResearchContent() {
   const [colorByAgeGroup, setColorByAgeGroup] = useState(true);
   const [selectedAthletes, setSelectedAthletes] = useState<string[]>([]);
   const [showAthleteFilter, setShowAthleteFilter] = useState(false);
-  const [athleteOptions, setAthleteOptions] = useState<AthleteOption[]>([]);
+  const { data: athleteOptions = [] } = useSWR<AthleteOption[]>(
+    "/api/dashboard/athletes?limit=2000",
+    (url: string) =>
+      fetch(url)
+        .then((r) => r.json())
+        .then((data) =>
+          (data.items ?? []).map((a: { athlete_uuid: string; name: string }) => ({
+            value: a.athlete_uuid,
+            label: a.name,
+          }))
+        ),
+    { revalidateOnFocus: false, dedupingInterval: 300_000 }
+  );
 
   const [xVariables, setXVariables] = useState<VariableInfo[]>([]);
   const [yVariables, setYVariables] = useState<VariableInfo[]>([]);
@@ -181,20 +227,7 @@ export function ResearchContent() {
   const [tsLoading, setTsLoading] = useState(false);
   const [tsError, setTsError] = useState<string | null>(null);
 
-  // ─── Load athletes once ─────────────────────────────────────────────────
-  useEffect(() => {
-    fetch("/api/dashboard/athletes?limit=2000")
-      .then((r) => r.json())
-      .then((data) => {
-        setAthleteOptions(
-          (data.items ?? []).map((a: { athlete_uuid: string; name: string }) => ({
-            value: a.athlete_uuid,
-            label: a.name,
-          })),
-        );
-      })
-      .catch(console.error);
-  }, []);
+  // athleteOptions is loaded via SWR above
 
   // ─── Load X variables ───────────────────────────────────────────────────
   useEffect(() => {
@@ -244,7 +277,7 @@ export function ResearchContent() {
         xVariable:   xVar.variable,
         yTable:      yVar.table,
         yVariable:   yVar.variable,
-        group:       xVar.group,
+        groups:      xVar.groups.join(","),
         aggregation,
       });
       if (selectedAthletes.length > 0) {
@@ -295,10 +328,10 @@ export function ResearchContent() {
     }
   }, [tsTable, tsSelectedMetrics, tsGroup, tsAvgMode, tsSelectedAthletes]);
 
-  // Reset byTrial aggregation when tables differ
+  // Reset byTrial to byRound when tables differ (byRound is the cross-table equivalent)
   useEffect(() => {
     if (aggregation === "byTrial" && !(xVar.table && yVar.table && xVar.table === yVar.table)) {
-      setAggregation("byAthlete");
+      setAggregation("byRound");
     }
   }, [xVar.table, yVar.table, aggregation]);
 
@@ -307,10 +340,11 @@ export function ResearchContent() {
   const canLoadMetric = !!(xVar.table && xVar.variable && yVar.table && yVar.variable);
   const canLoadTs     = tsSelectedMetrics.length > 0;
 
-  // Aggregation options — byTrial only available when same table
+  // Aggregation options — byTrial only when same table; byRound for cross-table
   const aggOptions = [
     { value: "byAthlete", label: "Mean / Athlete" },
     { value: "bySession", label: "Mean / Session" },
+    { value: "byRound",   label: "By Assessment Round" },
     ...(sameTables ? [{ value: "byTrial", label: "Every Trial (raw)" }] : []),
   ];
 
@@ -375,6 +409,11 @@ export function ResearchContent() {
                     {aggregation === "byTrial" && (
                       <Text size="xs" c="blue" mt={4}>
                         Each dot = one individual trial. Only available when X and Y are from the same table.
+                      </Text>
+                    )}
+                    {aggregation === "byRound" && (
+                      <Text size="xs" c="blue" mt={4}>
+                        Sessions within 14 days are grouped into one assessment round per athlete. Useful for comparing across tables (e.g. pitching vs mobility) without mixing separate years.
                       </Text>
                     )}
                   </div>
