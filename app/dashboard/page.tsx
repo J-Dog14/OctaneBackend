@@ -2,10 +2,10 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { Card, Text, Title, SimpleGrid, Group, Stack } from "@mantine/core";
-import dynamic from "next/dynamic";
+import dynamicImport from "next/dynamic";
 import { getRecentAthletes } from "@/lib/dashboard/athletes";
 
-const RecentAthletesGrid = dynamic(
+const RecentAthletesGrid = dynamicImport(
   () => import("./RecentAthletesGrid").then((m) => ({ default: m.RecentAthletesGrid })),
   { loading: () => <div style={{ height: 300 }} /> }
 );
