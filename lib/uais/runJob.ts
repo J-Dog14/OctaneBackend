@@ -1,6 +1,6 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
-import { rm, readdir } from "node:fs/promises";
+import { rm, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import type { UaisRunner } from "./runners";
 
@@ -156,23 +156,38 @@ function onExit(jobId: string) {
  * and emit a presigned download URL line into the stream.
  * Silently no-ops if reportDir is unset or R2 is unavailable.
  */
-async function emitReportLinks(jobId: string, runnerId: string, reportDir?: string): Promise<void> {
+async function emitReportLinks(jobId: string, runnerId: string, reportDir?: string, jobStartTime?: number): Promise<void> {
   if (!reportDir) return;
   // Hard cap: never hold the stream open longer than 30 s waiting for R2
   const timeout = new Promise<void>((resolve) => setTimeout(resolve, 30_000));
-  await Promise.race([doEmitReportLinks(jobId, runnerId, reportDir), timeout]);
+  await Promise.race([doEmitReportLinks(jobId, runnerId, reportDir, jobStartTime), timeout]);
 }
 
-async function doEmitReportLinks(jobId: string, runnerId: string, reportDir: string): Promise<void> {
+async function doEmitReportLinks(jobId: string, runnerId: string, reportDir: string, jobStartTime?: number): Promise<void> {
   try {
     const entries = await readdir(reportDir).catch(() => [] as string[]);
     const pdfs = entries.filter((f) => f.toLowerCase().endsWith(".pdf"));
     if (pdfs.length === 0) return;
 
+    // Only emit PDFs created or modified during this run. This prevents the entire
+    // historical reports folder from flooding the stream after every run.
+    const recentPdfs: string[] = [];
+    if (jobStartTime) {
+      for (const filename of pdfs) {
+        try {
+          const s = await stat(path.join(reportDir, filename));
+          if (s.mtimeMs >= jobStartTime - 2000) recentPdfs.push(filename);
+        } catch { /* skip unreadable files */ }
+      }
+    } else {
+      recentPdfs.push(...pdfs);
+    }
+    if (recentPdfs.length === 0) return;
+
     const { uploadFileToR2, getPresignedUrl } = await import("../r2/upload");
     const timestamp = Date.now();
 
-    for (const filename of pdfs) {
+    for (const filename of recentPdfs) {
       try {
         const filePath = path.join(reportDir, filename);
         const key = `reports/${runnerId}/${timestamp}/${filename}`;
@@ -257,6 +272,7 @@ export function createJob(runner: UaisRunner, options?: CreateJobOptions): strin
 
         const { env: envWithPath, pythonExe, rBinDir } = resolveRuntimes(env);
         const command = resolveCommand(runner.command, pythonExe, rBinDir);
+        const jobStartTime = Date.now();
         const proc = spawn(command, [], { shell: true, cwd: runner.cwd, env: envWithPath });
         job.process = proc;
         proc.stdout?.on("data", (data: Buffer) => pushChunk(jobId, data));
@@ -269,7 +285,7 @@ export function createJob(runner: UaisRunner, options?: CreateJobOptions): strin
             ? `\n[Process exited with code ${code}]\n`
             : `\n[Process exited with signal ${signal}]\n`;
           pushChunk(jobId, new TextEncoder().encode(msg));
-          void emitReportLinks(jobId, runner.id, options?.reportDir).then(() => {
+          void emitReportLinks(jobId, runner.id, options?.reportDir, jobStartTime).then(() => {
             onExit(jobId);
             rm(tempDir, { recursive: true, force: true }).catch(() => undefined);
           });
@@ -286,6 +302,7 @@ export function createJob(runner: UaisRunner, options?: CreateJobOptions): strin
 
   const { env: envWithPath, pythonExe, rBinDir } = resolveRuntimes(env);
   const command = resolveCommand(runner.command, pythonExe, rBinDir);
+  const jobStartTime = Date.now();
   const proc = spawn(command, [], {
     shell: true,
     cwd: runner.cwd,
@@ -312,7 +329,7 @@ export function createJob(runner: UaisRunner, options?: CreateJobOptions): strin
       ? `\n[Process exited with code ${code}]\n`
       : `\n[Process exited with signal ${signal}]\n`;
     pushChunk(jobId, new TextEncoder().encode(msg));
-    void emitReportLinks(jobId, runner.id, options?.reportDir).then(() => onExit(jobId));
+    void emitReportLinks(jobId, runner.id, options?.reportDir, jobStartTime).then(() => onExit(jobId));
   });
 
   return jobId;

@@ -1296,11 +1296,11 @@ function AthleteTrackingContentInner() {
                 if (domain.domainId === "athleticScreen") {
                   const ATHLETIC_SCREEN_MOVEMENT_ORDER = ["DJ", "PPU", "CMJ", "SLV"] as const;
                   const ATHLETIC_SCREEN_VARIABLE_ORDER = [
-                    "JH", "PP", "Work (AUC)", "Kurtosis", "Max RPD", "Time to Max RPD", "RSI", "CT",
+                    "JH", "Peak Power", "Work (AUC)", "Kurtosis", "Max RPD", "Time to Max RPD", "RSI", "CT",
                   ] as const;
                   const ATHLETIC_SCREEN_VARIABLE_DESCRIPTIONS: Record<string, string> = {
                     JH: "Jump height; higher generally indicates better explosive output.",
-                    PP: "Peak power; maximum power generated during the movement.",
+                    "Peak Power": "Peak power; maximum power generated during the movement.",
                     "Work (AUC)": "Total mechanical energy produced during the movement.",
                     Kurtosis: "Shape descriptor of the power-time curve.",
                     "Max RPD": "Peak slope of the power-time curve from 10–90% of peak power.",
@@ -2248,32 +2248,29 @@ function AthleteTrackingContentInner() {
                               </tr>
                             ) : null}
                             {buildMobilityGroupSections(domain.metrics).map((section, idx) => {
-                              const derivedScoreValue =
-                                section.group.category === "Shoulder Mobility"
-                                  ? section.components.reduce((sum, component) => {
-                                      const score = getMobilityComponentScoreValue(component);
-                                      return score == null ? sum : sum + score;
-                                    }, 0)
-                                  : null;
                               const scoreValue =
-                                derivedScoreValue != null
-                                  ? derivedScoreValue
-                                  : section.group.value != null && Number.isFinite(section.group.value)
-                                    ? Math.round(section.group.value)
-                                    : null;
+                                section.group.value != null && Number.isFinite(section.group.value)
+                                  ? Math.round(section.group.value)
+                                  : null;
+                              const isShoulderMobility = section.group.category === "Shoulder Mobility";
                               const scoreText =
                                 scoreValue != null
-                                  ? section.group.max != null && section.group.max > 0
-                                    ? `${scoreValue}/${section.group.max}`
-                                    : `${scoreValue}`
+                                  ? isShoulderMobility
+                                    ? `${scoreValue}°`
+                                    : section.group.max != null && section.group.max > 0
+                                      ? `${scoreValue}/${section.group.max}`
+                                      : `${scoreValue}`
                                   : "—";
                               const percentText =
-                                scoreValue != null && section.group.max != null && section.group.max > 0
-                                  ? `${Math.round((scoreValue / section.group.max) * 100)}%`
-                                  : section.group.category === "Grip Strength" &&
-                                      section.group.percentile != null &&
-                                      Number.isFinite(section.group.percentile)
-                                    ? `${Math.round(section.group.percentile)}th %ile`
+                                (section.group.category === "Grip Strength" || isShoulderMobility) &&
+                                  section.group.percentile != null &&
+                                  Number.isFinite(section.group.percentile)
+                                  ? `${Math.round(section.group.percentile)}th %ile`
+                                  : !isShoulderMobility &&
+                                      scoreValue != null &&
+                                      section.group.max != null &&
+                                      section.group.max > 0
+                                    ? `${Math.round((scoreValue / section.group.max) * 100)}%`
                                     : "—";
                               const isGripStrength = section.group.category === "Grip Strength";
                               const isExpanded = Boolean(expandedMobilityGroups[section.group.category]);

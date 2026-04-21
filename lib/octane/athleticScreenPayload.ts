@@ -80,7 +80,7 @@ export async function buildAthleticScreenPayload(
       orderBy: { created_at: "desc" },
       select: {
         jh_in: true,
-        peak_power: true,
+        pp_w_per_kg: true,
         auc_j: true,
         kurtosis: true,
         rpd_max_w_per_s: true,
@@ -92,7 +92,7 @@ export async function buildAthleticScreenPayload(
       orderBy: { created_at: "desc" },
       select: {
         jh_in: true,
-        peak_power: true,
+        pp_w_per_kg: true,
         auc_j: true,
         kurtosis: true,
         rpd_max_w_per_s: true,
@@ -106,7 +106,7 @@ export async function buildAthleticScreenPayload(
       orderBy: { created_at: "desc" },
       select: {
         jh_in: true,
-        peak_power: true,
+        pp_w_per_kg: true,
         auc_j: true,
         kurtosis: true,
         rpd_max_w_per_s: true,
@@ -119,7 +119,7 @@ export async function buildAthleticScreenPayload(
       select: {
         side: true,
         jh_in: true,
-        peak_power_w: true,
+        pp_w_per_kg: true,
         auc_j: true,
         kurtosis: true,
         rpd_max_w_per_s: true,
@@ -134,7 +134,7 @@ export async function buildAthleticScreenPayload(
 
   const commonSpecs = [
     { name: "JH", key: "jh_in" as const },
-    { name: "PP", key: "peak_power" as const },
+    { name: "Peak Power", key: "pp_w_per_kg" as const },
     { name: "Work (AUC)", key: "auc_j" as const },
     { name: "Kurtosis", key: "kurtosis" as const },
     { name: "Max RPD", key: "rpd_max_w_per_s" as const },
@@ -154,30 +154,15 @@ export async function buildAthleticScreenPayload(
   }
 
   if (djRow) {
-    for (const { name, key } of commonSpecs) {
-      metrics.push({
-        category: "DJ",
-        name,
-        value: decimalToNumber(djRow[key]),
-        valueUnit,
-        orientation,
-      });
-    }
     metrics.push(
-      {
-        category: "DJ",
-        name: "RSI",
-        value: decimalToNumber(djRow.rsi),
-        valueUnit,
-        orientation,
-      },
-      {
-        category: "DJ",
-        name: "CT",
-        value: decimalToNumber(djRow.ct),
-        valueUnit,
-        orientation,
-      }
+      { category: "DJ", name: "JH", value: decimalToNumber(djRow.jh_in), valueUnit, orientation },
+      { category: "DJ", name: "Peak Power", value: decimalToNumber(djRow.pp_w_per_kg), valueUnit, orientation },
+      { category: "DJ", name: "Work (AUC)", value: decimalToNumber(djRow.auc_j), valueUnit, orientation },
+      { category: "DJ", name: "Kurtosis", value: decimalToNumber(djRow.kurtosis), valueUnit, orientation },
+      { category: "DJ", name: "Max RPD", value: decimalToNumber(djRow.rpd_max_w_per_s), valueUnit, orientation },
+      { category: "DJ", name: "Time to Max RPD", value: decimalToNumber(djRow.time_to_rpd_max_s), valueUnit, orientation },
+      { category: "DJ", name: "RSI", value: decimalToNumber(djRow.rsi), valueUnit, orientation },
+      { category: "DJ", name: "CT", value: decimalToNumber(djRow.ct), valueUnit, orientation },
     );
   }
 
@@ -203,7 +188,7 @@ export async function buildAthleticScreenPayload(
     const category = `SLV_${normalizeSide(row.side)}`;
     const slvSpecs = [
       { name: "JH", key: "jh_in" as const },
-      { name: "PP", key: "peak_power_w" as const },
+      { name: "Peak Power", key: "pp_w_per_kg" as const },
       { name: "Work (AUC)", key: "auc_j" as const },
       { name: "Kurtosis", key: "kurtosis" as const },
       { name: "Max RPD", key: "rpd_max_w_per_s" as const },

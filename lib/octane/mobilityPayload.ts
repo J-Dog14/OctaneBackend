@@ -29,7 +29,7 @@ export type MobilityPayload = {
 export const MOBILITY_CATEGORY_MAX: Record<string, number> = {
   "Hip Mobility": 21,
   "Hip Stability": 12,
-  "Shoulder Mobility": 18,
+  "Shoulder Mobility": Number.POSITIVE_INFINITY,
   "Shoulder Stability": 12,
   "Trunk": 18,
   "Elbow": 18,

@@ -296,6 +296,7 @@ export async function getMobilityWithPercentiles(
     const metrics = withPercentiles.map((m) => {
       const keepPercentile =
         m.category === "Grip Strength" ||
+        (m.mobilityMetricKind === "GROUP" && m.category === "Shoulder Mobility") ||
         (m.mobilityMetricKind === "COMPONENT" &&
           (m.name === "shoulder_ir" || m.name === "shoulder_er"));
       const noPercentile = keepPercentile ? m : { ...m, percentile: null };
