@@ -161,7 +161,6 @@ async function emitReportLinks(jobId: string, runnerId: string, reportDir?: stri
   // Hard cap: never hold the stream open longer than 30 s waiting for R2
   const timeout = new Promise<void>((resolve) => setTimeout(resolve, 30_000));
   await Promise.race([doEmitReportLinks(jobId, runnerId, reportDir, jobStartTime), timeout]);
-  await Promise.race([doEmitReportLinks(jobId, runnerId, reportDir, jobStartTime), timeout]);
 }
 
 async function doEmitReportLinks(jobId: string, runnerId: string, reportDir: string, jobStartTime?: number): Promise<void> {
