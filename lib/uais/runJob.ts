@@ -1,7 +1,6 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
 import { rm, readdir, stat } from "node:fs/promises";
-import { rm, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import type { UaisRunner } from "./runners";
 
@@ -64,7 +63,7 @@ function resolveRuntimes(env: NodeJS.ProcessEnv): {
         if (!existsSync(root)) continue;
         if (existsSync(path.join(root, "python.exe"))) { pyDir = root; break; }
         let dirs: string[] = [];
-        try { dirs = readdirSync(root).filter((d) => /^Python\d/i.test(d)); } catch { continue; }
+        try { dirs = readdirSync(root).filter((d) => /^Python\d/i.test(d)); } catch (_e) { continue; }
         dirs.sort((a, b) => b.localeCompare(a, undefined, { numeric: true }));
         for (const dir of dirs) {
           const candidate = path.join(root, dir);
@@ -127,7 +126,7 @@ function pushChunk(jobId: string, chunk: Uint8Array) {
   if (job.controller) {
     try {
       job.controller.enqueue(chunk);
-    } catch {
+    } catch (_e) {
       // stream may be closed
     }
   }
@@ -141,7 +140,7 @@ function onExit(jobId: string) {
     // A stream client is already connected — close it and clean up now.
     try {
       job.controller.close();
-    } catch {
+    } catch (_e) {
       // ignore
     }
     job.controller = null;
@@ -158,7 +157,6 @@ function onExit(jobId: string) {
  * Silently no-ops if reportDir is unset or R2 is unavailable.
  */
 async function emitReportLinks(jobId: string, runnerId: string, reportDir?: string, jobStartTime?: number): Promise<void> {
-async function emitReportLinks(jobId: string, runnerId: string, reportDir?: string, jobStartTime?: number): Promise<void> {
   if (!reportDir) return;
   // Hard cap: never hold the stream open longer than 30 s waiting for R2
   const timeout = new Promise<void>((resolve) => setTimeout(resolve, 30_000));
@@ -166,7 +164,6 @@ async function emitReportLinks(jobId: string, runnerId: string, reportDir?: stri
   await Promise.race([doEmitReportLinks(jobId, runnerId, reportDir, jobStartTime), timeout]);
 }
 
-async function doEmitReportLinks(jobId: string, runnerId: string, reportDir: string, jobStartTime?: number): Promise<void> {
 async function doEmitReportLinks(jobId: string, runnerId: string, reportDir: string, jobStartTime?: number): Promise<void> {
   try {
     const entries = await readdir(reportDir).catch(() => [] as string[]);
@@ -181,7 +178,7 @@ async function doEmitReportLinks(jobId: string, runnerId: string, reportDir: str
         try {
           const s = await stat(path.join(reportDir, filename));
           if (s.mtimeMs >= jobStartTime - 2000) recentPdfs.push(filename);
-        } catch { /* skip unreadable files */ }
+        } catch (_e) { /* skip unreadable files */ }
       }
     } else {
       recentPdfs.push(...pdfs);
@@ -192,18 +189,17 @@ async function doEmitReportLinks(jobId: string, runnerId: string, reportDir: str
     const timestamp = Date.now();
 
     for (const filename of recentPdfs) {
-    for (const filename of recentPdfs) {
       try {
         const filePath = path.join(reportDir, filename);
         const key = `reports/${runnerId}/${timestamp}/${filename}`;
         await uploadFileToR2(filePath, key, "application/pdf");
         const url = await getPresignedUrl(key, 86400); // 24-hour link
         pushChunk(jobId, new TextEncoder().encode(`\n[REPORT] ${filename}::${url}\n`));
-      } catch {
+      } catch (_e) {
         // Non-fatal — report upload failures don't affect the run result
       }
     }
-  } catch {
+  } catch (_e) {
     // Non-fatal
   }
 }
@@ -278,7 +274,6 @@ export function createJob(runner: UaisRunner, options?: CreateJobOptions): strin
         const { env: envWithPath, pythonExe, rBinDir } = resolveRuntimes(env);
         const command = resolveCommand(runner.command, pythonExe, rBinDir);
         const jobStartTime = Date.now();
-        const jobStartTime = Date.now();
         const proc = spawn(command, [], { shell: true, cwd: runner.cwd, env: envWithPath });
         job.process = proc;
         proc.stdout?.on("data", (data: Buffer) => pushChunk(jobId, data));
@@ -291,7 +286,6 @@ export function createJob(runner: UaisRunner, options?: CreateJobOptions): strin
             ? `\n[Process exited with code ${code}]\n`
             : `\n[Process exited with signal ${signal}]\n`;
           pushChunk(jobId, new TextEncoder().encode(msg));
-          void emitReportLinks(jobId, runner.id, options?.reportDir, jobStartTime).then(() => {
           void emitReportLinks(jobId, runner.id, options?.reportDir, jobStartTime).then(() => {
             onExit(jobId);
             rm(tempDir, { recursive: true, force: true }).catch(() => undefined);
@@ -309,7 +303,6 @@ export function createJob(runner: UaisRunner, options?: CreateJobOptions): strin
 
   const { env: envWithPath, pythonExe, rBinDir } = resolveRuntimes(env);
   const command = resolveCommand(runner.command, pythonExe, rBinDir);
-  const jobStartTime = Date.now();
   const jobStartTime = Date.now();
   const proc = spawn(command, [], {
     shell: true,
@@ -338,7 +331,6 @@ export function createJob(runner: UaisRunner, options?: CreateJobOptions): strin
       : `\n[Process exited with signal ${signal}]\n`;
     pushChunk(jobId, new TextEncoder().encode(msg));
     void emitReportLinks(jobId, runner.id, options?.reportDir, jobStartTime).then(() => onExit(jobId));
-    void emitReportLinks(jobId, runner.id, options?.reportDir, jobStartTime).then(() => onExit(jobId));
   });
 
   return jobId;
@@ -356,7 +348,7 @@ export function attachStreamController(jobId: string, controller: ReadableStream
   for (const chunk of job.chunks) {
     try {
       controller.enqueue(chunk);
-    } catch {
+    } catch (_e) {
       break;
     }
   }
@@ -367,7 +359,7 @@ export function attachStreamController(jobId: string, controller: ReadableStream
   if (job.done) {
     try {
       controller.close();
-    } catch {
+    } catch (_e) {
       // ignore
     }
     job.controller = null;
@@ -388,7 +380,7 @@ export function killJob(jobId: string): boolean {
   if (!job || job.done) return false;
   try {
     job.process.kill("SIGTERM");
-  } catch {
+  } catch (_e) {
     // Process may have already exited
   }
   return true;

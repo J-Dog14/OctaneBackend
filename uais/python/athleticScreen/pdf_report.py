@@ -1614,32 +1614,32 @@ def movement_page(pdf, movement_name, df, pop_df, athlete_name, report_date, log
             bar_graphs.append(ax)
             bar_graph(ax, metric, df_ath, pop_df)
         
-        # Third section: Radar chart and Power curve (moved up)
+        # Bottom section: Radar chart and Power curve (moved up)
         # Radar chart - left side
         # [left, bottom, width, height] in figure coordinates
-        ax_radar = fig.add_axes([0.11, 0.31, 0.29, 0.22], polar=True)  # Moved up from 0.28 to 0.33
+        ax_radar = fig.add_axes([0.11, 0.042, 0.29, 0.22], polar=True)  # Moved up from 0.28 to 0.33
         
         # Power curve - right side
         # [left, bottom, width, height] in figure coordinates
-        ax_power = fig.add_axes([0.50, 0.385, 0.43, 0.13])  # Moved up from 0.355 to 0.405
+        ax_power = fig.add_axes([0.50, 0.11, 0.43, 0.13])  # Moved up from 0.355 to 0.405
         
         # Performance table - positioned directly under power curve
         table_width = 0.56  # Increased from 0.535 to make table slightly larger
         table_height = 0.12  # Increased from 0.10 to make table slightly larger
-        table_left = 0.45  # Aligned with power curve left edge
-        table_bottom = 0.27  # Positioned directly under power curve - moved up from 0.24 to 0.29
+        table_left = 0.435  # Aligned with power curve left edge
+        table_bottom = 0.002  # Positioned directly under power curve - moved up from 0.24 to 0.29
         # [left, bottom, width, height] in figure coordinates
         ax_table = fig.add_axes([table_left, table_bottom, table_width, table_height])
         
-        # Bottom section: FV scatter and Progress circles
+        # Third section: FV scatter and Progress circles
         # FV scatter - left side
         # [left, bottom, width, height] in figure coordinates
-        ax_fv = fig.add_axes([0.09, 0.04, 0.50, 0.24])
+        ax_fv = fig.add_axes([0.09, 0.285, 0.50, 0.24])
         
         # Progress Circles Section - right side, vertically aligned
         # Title above both circles
         progress_circles_x = 0.78  # Right side position
-        fig.text(progress_circles_x, 0.28, "@ Peak Power", ha='center', va='center',
+        fig.text(progress_circles_x, 0.53, "@ Peak Power", ha='center', va='center',
                  fontsize=48, color='white', fontweight='bold', transform=fig.transFigure)
 
         # Positions for circles - vertically aligned, Force above Velocity
@@ -1647,18 +1647,18 @@ def movement_page(pdf, movement_name, df, pop_df, athlete_name, report_date, log
         circle_height = 0.16
         
         # Force circle (top)
-        force_y = 0.13
+        force_y = 0.381
         force_x = progress_circles_x - circle_width/2
         
         # Velocity circle (bottom)
-        velocity_y = 0.005
+        velocity_y = 0.255
         velocity_x = progress_circles_x - circle_width/2
 
         # Labels above each circle
-        fig.text(0.78, 0.26, "Force", ha='center', va='bottom',
+        fig.text(0.78, 0.512, "Force", ha='center', va='bottom',
                  fontsize=41, color='white', fontweight='bold', transform=fig.transFigure)
 
-        fig.text(0.78, 0.14, "Velocity", ha='center', va='bottom',
+        fig.text(0.78, 0.387, "Velocity", ha='center', va='bottom',
                  fontsize=41, color='white', fontweight='bold', transform=fig.transFigure)
 
         # Force circle axis (top)
@@ -1695,29 +1695,29 @@ def movement_page(pdf, movement_name, df, pop_df, athlete_name, report_date, log
         # Middle section: Radar chart and Power curve
         # Radar chart - left side
         # [left, bottom, width, height] in figure coordinates
-        ax_radar = fig.add_axes([0.11, 0.38, 0.29, 0.22], polar=True)
+        ax_radar = fig.add_axes([0.11, 0.055, 0.29, 0.22], polar=True)
         
         # Power curve - right side
         # [left, bottom, width, height] in figure coordinates
-        ax_power = fig.add_axes([0.50, 0.45, 0.43, 0.16])
+        ax_power = fig.add_axes([0.50, 0.125, 0.43, 0.16])
         
         # Performance table - positioned directly under power curve
         table_width = 0.56  # Increased from 0.53 to make table slightly larger
         table_height = 0.17  # Increased from 0.15 to make table slightly larger
         table_left = 0.435 # Moved left from 0.45 (lower value = more to the left)
-        table_bottom = 0.30  # Moved down from 0.32 (lower value = lower on page)
+        table_bottom = -0.025  # Moved down from 0.32 (lower value = lower on page)
         # [left, bottom, width, height] in figure coordinates
         ax_table = fig.add_axes([table_left, table_bottom, table_width, table_height])
         
         # Bottom section: FV scatter and Progress circles
         # FV scatter - left side
         # [left, bottom, width, height] in figure coordinates
-        ax_fv = fig.add_axes([0.09, 0.03, 0.50, 0.283])
+        ax_fv = fig.add_axes([0.09, 0.325, 0.50, 0.283])
         
         # Progress Circles Section - right side, vertically aligned
         # Title above both circles
         progress_circles_x = 0.78  # Right side position
-        fig.text(progress_circles_x, 0.33, "@ Peak Power", ha='center', va='center',
+        fig.text(progress_circles_x, 0.625, "@ Peak Power", ha='center', va='center',
                  fontsize=48, color='white', fontweight='bold', transform=fig.transFigure)
 
         # Positions for circles - vertically aligned, Force above Velocity
@@ -1725,18 +1725,18 @@ def movement_page(pdf, movement_name, df, pop_df, athlete_name, report_date, log
         circle_height = 0.16
         
         # Force circle (top)
-        force_y = 0.16
+        force_y = 0.459
         force_x = progress_circles_x - circle_width/2
         
         # Velocity circle (bottom)
-        velocity_y = 0.005
+        velocity_y = 0.30
         velocity_x = progress_circles_x - circle_width/2
 
         # Labels above each circle
-        fig.text(0.78, 0.313, "Force", ha='center', va='bottom',
+        fig.text(0.78, 0.608, "Force", ha='center', va='bottom',
                  fontsize=41, color='white', fontweight='bold', transform=fig.transFigure)
 
-        fig.text(0.78, 0.153, "Velocity", ha='center', va='bottom',
+        fig.text(0.78, 0.452, "Velocity", ha='center', va='bottom',
                  fontsize=41, color='white', fontweight='bold', transform=fig.transFigure)
 
         # Force circle axis (top)
@@ -1846,38 +1846,39 @@ def slv_page(pdf, df, pop_df, athlete_name, report_date, logo_path, power_files_
     # Middle section: Radar chart and Power curve
     # Radar chart - left side
     # [left, bottom, width, height] in figure coordinates
-    ax_radar = fig.add_axes([0.11, 0.38, 0.29, 0.22], polar=True)
+    ax_radar = fig.add_axes([0.11, 0.01, 0.29, 0.22], polar=True)
     
     # Power curve - right side
     # [left, bottom, width, height] in figure coordinates
-    ax_power = fig.add_axes([0.50, 0.495, 0.43, 0.13])
+    ax_power = fig.add_axes([0.50, 0.12, 0.43, 0.13])
     
     # Performance table - positioned directly under power curve
     table_width = 0.57  # Increased from 0.542 to make table slightly larger
     table_height = 0.12  # Increased from 0.10 to make table slightly larger
     table_left = 0.43  # Moved left from 0.45 (lower value = more to the left)
-    table_bottom = 0.35  # Moved down from 0.37 (lower value = lower on page)
+    table_bottom = 0.002  # Moved down from 0.37 (lower value = lower on page)
     # [left, bottom, width, height] in figure coordinates
     ax_table = fig.add_axes([table_left, table_bottom, table_width, table_height])
     
     # Bottom section: FV scatter and Progress circles
     # FV scatter - left side
     # [left, bottom, width, height] in figure coordinates
-    ax_fv = fig.add_axes([0.09, 0.04, 0.49, 0.272])
+    ax_fv = fig.add_axes([0.09, 0.3, 0.49, 0.272])
     
     # Progress circles for both left and right legs - right side, vertically aligned
+    # Circles are aligned to match the FV scatter (bottom=0.30, top=0.572)
     progress_circles_x = 0.78  # Right side position
     circle_width = 0.16
-    circle_height = 0.16
-    
-    # Left leg circles - vertically stacked
-    left_force_y = 0.16
-    left_velocity_y = 0.005
+    circle_height = 0.12  # Reduced from 0.16 so both circles fit within the FV scatter's y range
+
+    # Left leg circles - vertically stacked (force on top, velocity on bottom)
+    left_velocity_y = 0.30   # Velocity circle bottom = FV scatter bottom
+    left_force_y = 0.44      # Force circle bottom: 0.30 + 0.12 + 0.02 gap = 0.44 (top = 0.56)
     left_circle_x = progress_circles_x - 0.10 - circle_width/2  # Offset left from center
-    
-    # Right leg circles - vertically stacked
-    right_force_y = 0.16
-    right_velocity_y = 0.005
+
+    # Right leg circles - vertically stacked (force on top, velocity on bottom)
+    right_velocity_y = 0.30
+    right_force_y = 0.44
     right_circle_x = progress_circles_x + 0.10 - circle_width/2  # Offset right from center
     
     # Create charts - order matches page layout
@@ -1899,13 +1900,13 @@ def slv_page(pdf, df, pop_df, athlete_name, report_date, logo_path, power_files_
         ax_joint_left_vel.set_aspect('equal')
         joint_radial(ax_joint_left_vel, best_left, pop_df, metric="velocity")
         
-        # Labels for left leg
-        fig.text(progress_circles_x - 0.10, 0.315, "Force", ha='center', va='bottom',
-                 fontsize=40, color='white', fontweight='bold', transform=fig.transFigure)
-        fig.text(progress_circles_x - 0.10, 0.152, "Velocity", ha='center', va='bottom',
-                 fontsize=40, color='white', fontweight='bold', transform=fig.transFigure)
-        fig.text(progress_circles_x - 0.10, 0.335, "Left Leg", ha='center', va='center',
+        # Labels for left leg — aligned with FV scatter y range (0.30–0.572)
+        fig.text(progress_circles_x - 0.10, 0.568, "Left Leg", ha='center', va='top',
                  fontsize=48, color='white', fontweight='bold', transform=fig.transFigure)
+        fig.text(progress_circles_x - 0.10, 0.437, "Force", ha='center', va='top',
+                 fontsize=40, color='white', fontweight='bold', transform=fig.transFigure)
+        fig.text(progress_circles_x - 0.10, 0.293, "Velocity", ha='center', va='top',
+                 fontsize=40, color='white', fontweight='bold', transform=fig.transFigure)
     
     if best_right is not None:
         # Right leg Force circle (top)
@@ -1920,13 +1921,13 @@ def slv_page(pdf, df, pop_df, athlete_name, report_date, logo_path, power_files_
         ax_joint_right_vel.set_aspect('equal')
         joint_radial(ax_joint_right_vel, best_right, pop_df, metric="velocity")
         
-        # Labels for right leg
-        fig.text(progress_circles_x + 0.10, 0.315, "Force", ha='center', va='bottom',
-                 fontsize=40, color='white', fontweight='bold', transform=fig.transFigure)
-        fig.text(progress_circles_x + 0.10, 0.152, "Velocity", ha='center', va='bottom',
-                 fontsize=40, color='white', fontweight='bold', transform=fig.transFigure)
-        fig.text(progress_circles_x + 0.10, 0.335, "Right Leg", ha='center', va='center',
+        # Labels for right leg — aligned with FV scatter y range (0.30–0.572)
+        fig.text(progress_circles_x + 0.10, 0.568, "Right Leg", ha='center', va='top',
                  fontsize=48, color='white', fontweight='bold', transform=fig.transFigure)
+        fig.text(progress_circles_x + 0.10, 0.437, "Force", ha='center', va='top',
+                 fontsize=40, color='white', fontweight='bold', transform=fig.transFigure)
+        fig.text(progress_circles_x + 0.10, 0.293, "Velocity", ha='center', va='top',
+                 fontsize=40, color='white', fontweight='bold', transform=fig.transFigure)
 
     # Using Helvetica-BoldOblique font (same as pro sup test report)
     plt.suptitle("Single Leg\nVertical", fontsize=150, color='white', fontweight='bold', 
