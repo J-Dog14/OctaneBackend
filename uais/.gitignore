@@ -52,3 +52,6 @@ config/client_secret_*.json
 config/token.pickle
 config/*.pickle
 config/db_connections.yaml
+
+# report images
+public/biomech
