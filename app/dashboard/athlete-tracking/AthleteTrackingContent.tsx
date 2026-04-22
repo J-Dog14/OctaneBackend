@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, Suspense } from "react";
+import { useCallback, useEffect, useRef, useState, Suspense, Fragment } from "react";
 import { useSearchParams } from "next/navigation";
 import useSWR from "swr";
 import Link from "next/link";
 import {
+  ActionIcon,
   Select,
   Tabs,
   TabsList,
@@ -12,21 +13,36 @@ import {
   Title,
   Text,
   Stack,
+  Tooltip,
 } from "@mantine/core";
 import { MetricRadarChart, type RadarDataSeries } from "./MetricRadarChart";
+import { MetricLineChart } from "./MetricLineChart";
+import { PitchingDiagram, hasPitchingDiagram } from "./PitchingDiagram";
 import { AthleteSelectionPanel } from "./components/AthleteSelectionPanel";
 import { HighlightsLowlightsCard } from "./components/HighlightsLowlightsCard";
 import { AthleticScreenDomain } from "./components/AthleticScreenDomain";
 import { ProteusDomain } from "./components/ProteusDomain";
 import { GenericDomain } from "./components/GenericDomain";
 import type { AthleteItem, MetricWithPercentile, DomainWithMetrics, AthleteTrackingReport } from "./types";
-import { SERIES_COLORS } from "./constants";
+import { SERIES_COLORS, PITCHING_TABLE_SECTIONS, HITTING_TABLE_SECTIONS } from "./constants";
+import { formatMetricDisplayName } from "@/lib/athlete-tracking/displayNames";
 import {
   metricsToRadarData,
   getHighlightsAndLowlights,
   getRadarMetricsForDomain,
   getTimelineMetricKeys,
+  getMetricValueFromDomain,
+  getPercentileStyle,
+  formatMetricValueParts,
+  getMetricByKey,
+  getMetricInsight,
+  isShoulderRomMetric,
+  scoreOutOfThreeFromPercentile,
+  formatMobilityComponentLabel,
+  formatMobilityComponentValue,
+  buildMobilityGroupSections,
 } from "./domainHelpers";
+import { buildPitchingDisplayCells, buildHittingDisplayCells } from "./displayBuilders";
 
 function AthleteTrackingContentInner() {
   const searchParams = useSearchParams();

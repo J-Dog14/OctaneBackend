@@ -50,33 +50,56 @@ MOVEMENT_TO_PG_TABLE = {
 }
 
 
-def get_athletes_with_athletic_screen_data(conn, athlete_name_filter=None, athlete_uuid_filter=None):
+def get_athletes_with_athletic_screen_data(conn, athlete_name_filter=None, athlete_uuid_filter=None, session_date_filter=None):
     """
     Return list of (athlete_uuid, name, session_date) for athletes that have
-    any athletic screen fact data, using their most recent session date.
+    any athletic screen fact data.
+
+    By default uses each athlete's most recent session date.
+    When session_date_filter is provided (YYYY-MM-DD string), only rows for
+    that exact session date are returned instead.
+
     Optionally filter by athlete name (substring match) or exact athlete_uuid.
     """
     with conn.cursor() as cur:
-        cur.execute("""
-            WITH sessions AS (
-                SELECT athlete_uuid, session_date FROM public.f_athletic_screen_cmj
-                UNION ALL
-                SELECT athlete_uuid, session_date FROM public.f_athletic_screen_dj
-                UNION ALL
-                SELECT athlete_uuid, session_date FROM public.f_athletic_screen_ppu
-                UNION ALL
-                SELECT athlete_uuid, session_date FROM public.f_athletic_screen_slv
-            ),
-            latest AS (
-                SELECT athlete_uuid, MAX(session_date) AS session_date
-                FROM sessions
-                GROUP BY athlete_uuid
-            )
-            SELECT a.athlete_uuid, a.name, l.session_date::text
-            FROM analytics.d_athletes a
-            JOIN latest l ON l.athlete_uuid = a.athlete_uuid
-            ORDER BY l.session_date DESC
-        """)
+        if session_date_filter:
+            cur.execute("""
+                WITH sessions AS (
+                    SELECT DISTINCT athlete_uuid, session_date FROM public.f_athletic_screen_cmj
+                    UNION
+                    SELECT DISTINCT athlete_uuid, session_date FROM public.f_athletic_screen_dj
+                    UNION
+                    SELECT DISTINCT athlete_uuid, session_date FROM public.f_athletic_screen_ppu
+                    UNION
+                    SELECT DISTINCT athlete_uuid, session_date FROM public.f_athletic_screen_slv
+                )
+                SELECT a.athlete_uuid, a.name, s.session_date::text
+                FROM analytics.d_athletes a
+                JOIN sessions s ON s.athlete_uuid = a.athlete_uuid
+                WHERE s.session_date = %s::date
+                ORDER BY a.name
+            """, (session_date_filter,))
+        else:
+            cur.execute("""
+                WITH sessions AS (
+                    SELECT athlete_uuid, session_date FROM public.f_athletic_screen_cmj
+                    UNION ALL
+                    SELECT athlete_uuid, session_date FROM public.f_athletic_screen_dj
+                    UNION ALL
+                    SELECT athlete_uuid, session_date FROM public.f_athletic_screen_ppu
+                    UNION ALL
+                    SELECT athlete_uuid, session_date FROM public.f_athletic_screen_slv
+                ),
+                latest AS (
+                    SELECT athlete_uuid, MAX(session_date) AS session_date
+                    FROM sessions
+                    GROUP BY athlete_uuid
+                )
+                SELECT a.athlete_uuid, a.name, l.session_date::text
+                FROM analytics.d_athletes a
+                JOIN latest l ON l.athlete_uuid = a.athlete_uuid
+                ORDER BY l.session_date DESC
+            """)
         rows = cur.fetchall()
     def _date_str(d):
         if d is None:
@@ -850,12 +873,14 @@ def main():
     if args.report_only:
         print("Athletic Screen – report only")
         athlete_uuid_env = os.environ.get("ATHLETE_UUID", "").strip() or None
+        session_date_env = os.environ.get("SESSION_DATE", "").strip() or None
         try:
             pg_conn = get_warehouse_connection()
             athletes = get_athletes_with_athletic_screen_data(
                 pg_conn,
                 athlete_name_filter=args.athlete,
                 athlete_uuid_filter=athlete_uuid_env,
+                session_date_filter=session_date_env,
             )
             pg_conn.close()
         except Exception as e:

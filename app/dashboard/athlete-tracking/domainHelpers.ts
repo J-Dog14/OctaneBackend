@@ -73,6 +73,14 @@ export function getMetricByKey(metrics: MetricWithPercentile[], key: string): Me
   return null;
 }
 
+export function getMetricValueFromDomain(d: { metrics: MetricWithPercentile[] } | undefined, key: string): string {
+  if (!d) return "—";
+  const metric = getMetricByKey(d.metrics, key);
+  if (!metric) return "—";
+  const { valuePart, unitPart } = formatMetricValueParts(metric);
+  return valuePart === "—" ? "—" : `${valuePart}${unitPart}`;
+}
+
 export function getRadarMetricsForDomain(
   metrics: MetricWithPercentile[],
   domainId: string

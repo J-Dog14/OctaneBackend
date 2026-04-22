@@ -22,7 +22,7 @@ export function useReportStream() {
   }, []);
 
   const generateReport = useCallback(
-    async (athleteSelected: AthleteOption | null, reportType: ReportTypeId) => {
+    async (athleteSelected: AthleteOption | null, reportType: ReportTypeId, sessionDate?: string | null) => {
       if (!athleteSelected) {
         setError("Select an athlete first.");
         return;
@@ -40,6 +40,7 @@ export function useReportStream() {
             runnerId: reportType,
             athleteUuid: athleteSelected.athlete_uuid,
             reportOnly: true,
+            sessionDate: sessionDate ?? undefined,
           }),
         });
         const data = await res.json();

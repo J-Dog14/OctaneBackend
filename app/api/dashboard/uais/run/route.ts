@@ -38,7 +38,7 @@ const REPORT_DIR_ENV: Record<string, string[]> = {
 export async function POST(request: NextRequest) {
   await requireRole("admin");
   try {
-    let body: { runnerId?: string; athleteUuid?: string | null; uploadedFileKeys?: string[]; reportOnly?: boolean };
+    let body: { runnerId?: string; athleteUuid?: string | null; uploadedFileKeys?: string[]; reportOnly?: boolean; sessionDate?: string | null };
     try {
       body = await request.json();
     } catch {
@@ -76,6 +76,10 @@ export async function POST(request: NextRequest) {
     }
     if (body.reportOnly) {
       runner = { ...runner, command: runner.command + " --report-only" };
+    }
+    const sessionDate = typeof body.sessionDate === "string" ? body.sessionDate.trim() : null;
+    if (sessionDate && /^\d{4}-\d{2}-\d{2}$/.test(sessionDate)) {
+      extraEnv.SESSION_DATE = sessionDate;
     }
     const athleteUuid = body.athleteUuid ?? null;
     const uploadedFileKeys = Array.isArray(body.uploadedFileKeys) ? body.uploadedFileKeys : undefined;

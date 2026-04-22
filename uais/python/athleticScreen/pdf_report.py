@@ -1552,7 +1552,19 @@ def slv_bar_graph(ax, metric, left_df, right_df, population):
     ax.spines['right'].set_color('white')
     ax.grid(True, color='white', alpha=0.2, axis='y')
     ax.set_facecolor('#373e43')
-    
+
+    # Add percentile text for left and right means
+    if len(pop_values) > 0:
+        left_pct = percentileofscore(pop_values, left_mean, kind='rank') if left_mean > 0 else 0
+        right_pct = percentileofscore(pop_values, right_mean, kind='rank') if right_mean > 0 else 0
+        ax.text(0.98, 0.88,
+                f"Percentile (Mean):\nL: {int(left_pct)}th  R: {int(right_pct)}th",
+                transform=ax.transAxes,
+                ha='right', va='top',
+                color='white',
+                fontsize=27,
+                bbox=dict(facecolor='black', edgecolor='white', alpha=0.5, boxstyle='round,pad=0.3'))
+
     # Add legend if we have lines - bigger text and less opaque
     handles, labels = ax.get_legend_handles_labels()
     if len(handles) > 0:
@@ -1846,24 +1858,24 @@ def slv_page(pdf, df, pop_df, athlete_name, report_date, logo_path, power_files_
     # Middle section: Radar chart and Power curve
     # Radar chart - left side
     # [left, bottom, width, height] in figure coordinates
-    ax_radar = fig.add_axes([0.11, 0.11, 0.29, 0.22], polar=True)
+    ax_radar = fig.add_axes([0.11, 0.01, 0.29, 0.22], polar=True)
 
     # Power curve - right side
     # [left, bottom, width, height] in figure coordinates
-    ax_power = fig.add_axes([0.50, 0.22, 0.43, 0.13])
+    ax_power = fig.add_axes([0.50, 0.165, 0.43, 0.13])
 
     # Performance table - positioned directly under power curve
     table_width = 0.57  # Increased from 0.542 to make table slightly larger
     table_height = 0.12  # Increased from 0.10 to make table slightly larger
     table_left = 0.43  # Moved left from 0.45 (lower value = more to the left)
-    table_bottom = 0.102  # Shifted up by 0.1 from 0.002
+    table_bottom = 0.003  # Moved down from 0.37 (lower value = lower on page)
     # [left, bottom, width, height] in figure coordinates
     ax_table = fig.add_axes([table_left, table_bottom, table_width, table_height])
     
     # Bottom section: FV scatter and Progress circles
     # FV scatter - left side
     # [left, bottom, width, height] in figure coordinates
-    ax_fv = fig.add_axes([0.09, 0.3, 0.49, 0.272])
+    ax_fv = fig.add_axes([0.09, 0.32, 0.49, 0.272])
     
     # Progress circles for both left and right legs - right side, vertically aligned
     # Circles are aligned to match the FV scatter (bottom=0.30, top=0.572)
@@ -1873,13 +1885,13 @@ def slv_page(pdf, df, pop_df, athlete_name, report_date, logo_path, power_files_
 
     # Left leg circles - vertically stacked (force on top, velocity on bottom)
     # Shifted down slightly so labels can sit above each circle within the FV scatter range
-    left_velocity_y = 0.30   # Velocity circle bottom = FV scatter bottom, top = 0.42
-    left_force_y = 0.42      # Force circle bottom just above velocity top, top = 0.54
+    left_velocity_y = 0.325   # Velocity circle bottom = FV scatter bottom, top = 0.42
+    left_force_y = 0.47     # Force circle bottom just above velocity top, top = 0.54
     left_circle_x = progress_circles_x - 0.10 - circle_width/2  # Offset left from center
 
     # Right leg circles - vertically stacked (force on top, velocity on bottom)
-    right_velocity_y = 0.30
-    right_force_y = 0.42
+    right_velocity_y = 0.325
+    right_force_y = 0.47
     right_circle_x = progress_circles_x + 0.10 - circle_width/2  # Offset right from center
     
     # Create charts - order matches page layout
@@ -1902,11 +1914,11 @@ def slv_page(pdf, df, pop_df, athlete_name, report_date, logo_path, power_files_
         joint_radial(ax_joint_left_vel, best_left, pop_df, metric="velocity")
         
         # Labels for left leg — title above group, Force/Velocity above their circles (matches other pages)
-        fig.text(progress_circles_x - 0.10, 0.565, "Left Leg", ha='center', va='bottom',
+        fig.text(progress_circles_x - 0.10, 0.61, "Left Leg", ha='center', va='bottom',
                  fontsize=48, color='white', fontweight='bold', transform=fig.transFigure)
-        fig.text(progress_circles_x - 0.10, 0.530, "Force", ha='center', va='bottom',
+        fig.text(progress_circles_x - 0.10, 0.595, "Force", ha='center', va='bottom',
                  fontsize=40, color='white', fontweight='bold', transform=fig.transFigure)
-        fig.text(progress_circles_x - 0.10, 0.410, "Velocity", ha='center', va='bottom',
+        fig.text(progress_circles_x - 0.10, 0.449, "Velocity", ha='center', va='bottom',
                  fontsize=40, color='white', fontweight='bold', transform=fig.transFigure)
     
     if best_right is not None:
@@ -1923,11 +1935,11 @@ def slv_page(pdf, df, pop_df, athlete_name, report_date, logo_path, power_files_
         joint_radial(ax_joint_right_vel, best_right, pop_df, metric="velocity")
         
         # Labels for right leg — title above group, Force/Velocity above their circles (matches other pages)
-        fig.text(progress_circles_x + 0.10, 0.565, "Right Leg", ha='center', va='bottom',
+        fig.text(progress_circles_x + 0.10, 0.61, "Right Leg", ha='center', va='bottom',
                  fontsize=48, color='white', fontweight='bold', transform=fig.transFigure)
-        fig.text(progress_circles_x + 0.10, 0.530, "Force", ha='center', va='bottom',
+        fig.text(progress_circles_x + 0.10, 0.595, "Force", ha='center', va='bottom',
                  fontsize=40, color='white', fontweight='bold', transform=fig.transFigure)
-        fig.text(progress_circles_x + 0.10, 0.410, "Velocity", ha='center', va='bottom',
+        fig.text(progress_circles_x + 0.10, 0.449, "Velocity", ha='center', va='bottom',
                  fontsize=40, color='white', fontweight='bold', transform=fig.transFigure)
 
     # Using Helvetica-BoldOblique font (same as pro sup test report)
