@@ -757,15 +757,29 @@ def main():
     if 'path/to' in default_dir or not os.path.exists(default_dir):
         default_dir = os.getenv('PRO_SUP_DATA_DIR', 'D:/Pro-Sup Test/Data/')
 
-    # Cloud/headless mode: use PRO_SUP_DATA_DIR directly if it points to an existing directory
+    # Headless mode: use PRO_SUP_DATA_DIR directly only when it points to a session folder
+    # (i.e. the folder name itself starts with a YYYY-MM-DD date).
+    # If it's the root data directory (e.g. "D:/Pro-Sup Test"), fall through to tkinter so the
+    # user can pick the specific session subfolder — passing the root as selected_folder would
+    # cause the folder name to be used as the date, crashing the SQL insert.
     env_folder = os.environ.get('PRO_SUP_DATA_DIR', '').strip()
+    _is_session_folder = False
     if env_folder and os.path.isdir(env_folder):
+        _folder_basename = os.path.basename(env_folder.rstrip('/\\'))
+        _candidate_date = _folder_basename.split('_', 1)[0]
+        try:
+            datetime.strptime(_candidate_date, "%Y-%m-%d")
+            _is_session_folder = True
+        except ValueError:
+            pass
+
+    if _is_session_folder:
         selected_folder = env_folder
         print(f"Using data directory from PRO_SUP_DATA_DIR: {selected_folder}")
     else:
-        # Interactive mode: open folder selection dialog
+        # Interactive mode: open folder selection dialog (start in env_folder / default_dir)
         print("Please select a folder containing Session.xml...")
-        selected_folder = select_folder_dialog(initial_dir=default_dir or env_folder or None)
+        selected_folder = select_folder_dialog(initial_dir=env_folder or default_dir or None)
         if not selected_folder:
             print("No folder selected. Exiting.")
             return

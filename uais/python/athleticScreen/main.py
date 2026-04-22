@@ -50,11 +50,11 @@ MOVEMENT_TO_PG_TABLE = {
 }
 
 
-def get_athletes_with_athletic_screen_data(conn, athlete_name_filter=None):
+def get_athletes_with_athletic_screen_data(conn, athlete_name_filter=None, athlete_uuid_filter=None):
     """
     Return list of (athlete_uuid, name, session_date) for athletes that have
     any athletic screen fact data, using their most recent session date.
-    Optionally filter by athlete name (ILIKE).
+    Optionally filter by athlete name (substring match) or exact athlete_uuid.
     """
     with conn.cursor() as cur:
         cur.execute("""
@@ -85,6 +85,8 @@ def get_athletes_with_athletic_screen_data(conn, athlete_name_filter=None):
             return d.strftime('%Y-%m-%d')
         return str(d)[:10]
     out = [(r[0], r[1], _date_str(r[2])) for r in rows if r[2]]
+    if athlete_uuid_filter:
+        out = [(u, n, d) for u, n, d in out if u == athlete_uuid_filter]
     if athlete_name_filter:
         needle = athlete_name_filter.strip().lower()
         out = [(u, n, d) for u, n, d in out if n and needle in n.lower()]
@@ -847,9 +849,14 @@ def main():
 
     if args.report_only:
         print("Athletic Screen – report only")
+        athlete_uuid_env = os.environ.get("ATHLETE_UUID", "").strip() or None
         try:
             pg_conn = get_warehouse_connection()
-            athletes = get_athletes_with_athletic_screen_data(pg_conn, athlete_name_filter=args.athlete)
+            athletes = get_athletes_with_athletic_screen_data(
+                pg_conn,
+                athlete_name_filter=args.athlete,
+                athlete_uuid_filter=athlete_uuid_env,
+            )
             pg_conn.close()
         except Exception as e:
             print(f"Failed to load athletes from DB: {e}")
