@@ -1846,17 +1846,17 @@ def slv_page(pdf, df, pop_df, athlete_name, report_date, logo_path, power_files_
     # Middle section: Radar chart and Power curve
     # Radar chart - left side
     # [left, bottom, width, height] in figure coordinates
-    ax_radar = fig.add_axes([0.11, 0.01, 0.29, 0.22], polar=True)
-    
+    ax_radar = fig.add_axes([0.11, 0.11, 0.29, 0.22], polar=True)
+
     # Power curve - right side
     # [left, bottom, width, height] in figure coordinates
-    ax_power = fig.add_axes([0.50, 0.12, 0.43, 0.13])
-    
+    ax_power = fig.add_axes([0.50, 0.22, 0.43, 0.13])
+
     # Performance table - positioned directly under power curve
     table_width = 0.57  # Increased from 0.542 to make table slightly larger
     table_height = 0.12  # Increased from 0.10 to make table slightly larger
     table_left = 0.43  # Moved left from 0.45 (lower value = more to the left)
-    table_bottom = 0.002  # Moved down from 0.37 (lower value = lower on page)
+    table_bottom = 0.102  # Shifted up by 0.1 from 0.002
     # [left, bottom, width, height] in figure coordinates
     ax_table = fig.add_axes([table_left, table_bottom, table_width, table_height])
     
@@ -1872,13 +1872,14 @@ def slv_page(pdf, df, pop_df, athlete_name, report_date, logo_path, power_files_
     circle_height = 0.12  # Reduced from 0.16 so both circles fit within the FV scatter's y range
 
     # Left leg circles - vertically stacked (force on top, velocity on bottom)
-    left_velocity_y = 0.30   # Velocity circle bottom = FV scatter bottom
-    left_force_y = 0.44      # Force circle bottom: 0.30 + 0.12 + 0.02 gap = 0.44 (top = 0.56)
+    # Shifted down slightly so labels can sit above each circle within the FV scatter range
+    left_velocity_y = 0.30   # Velocity circle bottom = FV scatter bottom, top = 0.42
+    left_force_y = 0.42      # Force circle bottom just above velocity top, top = 0.54
     left_circle_x = progress_circles_x - 0.10 - circle_width/2  # Offset left from center
 
     # Right leg circles - vertically stacked (force on top, velocity on bottom)
     right_velocity_y = 0.30
-    right_force_y = 0.44
+    right_force_y = 0.42
     right_circle_x = progress_circles_x + 0.10 - circle_width/2  # Offset right from center
     
     # Create charts - order matches page layout
@@ -1900,12 +1901,12 @@ def slv_page(pdf, df, pop_df, athlete_name, report_date, logo_path, power_files_
         ax_joint_left_vel.set_aspect('equal')
         joint_radial(ax_joint_left_vel, best_left, pop_df, metric="velocity")
         
-        # Labels for left leg — aligned with FV scatter y range (0.30–0.572)
-        fig.text(progress_circles_x - 0.10, 0.568, "Left Leg", ha='center', va='top',
+        # Labels for left leg — title above group, Force/Velocity above their circles (matches other pages)
+        fig.text(progress_circles_x - 0.10, 0.565, "Left Leg", ha='center', va='bottom',
                  fontsize=48, color='white', fontweight='bold', transform=fig.transFigure)
-        fig.text(progress_circles_x - 0.10, 0.437, "Force", ha='center', va='top',
+        fig.text(progress_circles_x - 0.10, 0.530, "Force", ha='center', va='bottom',
                  fontsize=40, color='white', fontweight='bold', transform=fig.transFigure)
-        fig.text(progress_circles_x - 0.10, 0.293, "Velocity", ha='center', va='top',
+        fig.text(progress_circles_x - 0.10, 0.410, "Velocity", ha='center', va='bottom',
                  fontsize=40, color='white', fontweight='bold', transform=fig.transFigure)
     
     if best_right is not None:
@@ -1921,12 +1922,12 @@ def slv_page(pdf, df, pop_df, athlete_name, report_date, logo_path, power_files_
         ax_joint_right_vel.set_aspect('equal')
         joint_radial(ax_joint_right_vel, best_right, pop_df, metric="velocity")
         
-        # Labels for right leg — aligned with FV scatter y range (0.30–0.572)
-        fig.text(progress_circles_x + 0.10, 0.568, "Right Leg", ha='center', va='top',
+        # Labels for right leg — title above group, Force/Velocity above their circles (matches other pages)
+        fig.text(progress_circles_x + 0.10, 0.565, "Right Leg", ha='center', va='bottom',
                  fontsize=48, color='white', fontweight='bold', transform=fig.transFigure)
-        fig.text(progress_circles_x + 0.10, 0.437, "Force", ha='center', va='top',
+        fig.text(progress_circles_x + 0.10, 0.530, "Force", ha='center', va='bottom',
                  fontsize=40, color='white', fontweight='bold', transform=fig.transFigure)
-        fig.text(progress_circles_x + 0.10, 0.293, "Velocity", ha='center', va='top',
+        fig.text(progress_circles_x + 0.10, 0.410, "Velocity", ha='center', va='bottom',
                  fontsize=40, color='white', fontweight='bold', transform=fig.transFigure)
 
     # Using Helvetica-BoldOblique font (same as pro sup test report)

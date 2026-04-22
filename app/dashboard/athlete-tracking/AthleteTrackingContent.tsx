@@ -13,7 +13,7 @@ import {
   Text,
   Stack,
 } from "@mantine/core";
-import MetricRadarChart, { type RadarDataSeries } from "./MetricRadarChart";
+import { MetricRadarChart, type RadarDataSeries } from "./MetricRadarChart";
 import { AthleteSelectionPanel } from "./components/AthleteSelectionPanel";
 import { HighlightsLowlightsCard } from "./components/HighlightsLowlightsCard";
 import { AthleticScreenDomain } from "./components/AthleticScreenDomain";
