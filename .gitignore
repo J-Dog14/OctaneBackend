@@ -56,3 +56,6 @@ next-env.d.ts
 # ai skills
 .claude
 .agents
+
+# biomech images
+/public/biomech/
