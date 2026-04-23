@@ -6,14 +6,10 @@ import { lookupOctaneUserByEmail } from "@/lib/octane/octaneUserLookup";
 import { requireRole } from "@/lib/auth/requireAuth";
 
 export async function POST(request: NextRequest) {
+  await requireRole("admin");  // ← moved outside try block, actually called
   try {
-    // Use the same auth guard as other /api/dashboard/ routes
-    // e.g.: await requireAdmin(request);
+    const { athleteUuid } = await request.json();
 
-    const { athleteUuid, domainIds } = await request.json() as {
-      athleteUuid: string;
-      domainIds?: string[];
-    };
     if (!athleteUuid || typeof athleteUuid !== "string") {
       return badRequest("athleteUuid is required");
     }
@@ -40,21 +36,22 @@ export async function POST(request: NextRequest) {
     }
 
     // If app_db_uuid is not cached, resolve it now via email lookup
+    // Fix: use discriminated union correctly
     let appDbUuid = athlete.app_db_uuid;
-    if (!appDbUuid) {
-      const octaneUserResult = await lookupOctaneUserByEmail(athlete.email);
-      if (!octaneUserResult.ok) {
-        return badRequest(
-          `No Octane account found for email "${athlete.email}". The athlete must create an Octane account first.`
-        );
+      if (!appDbUuid) {
+        const result = await lookupOctaneUserByEmail(athlete.email);
+        if (!result.ok) {
+          return badRequest(
+            `No Octane account found for email "${athlete.email}". The athlete must create an Octane account first.`
+          );
+        }
+        appDbUuid = result.user.uuid;  // ← result.user.uuid, not result.uuid
+        await prisma.d_athletes.update({
+          where: { athlete_uuid: athleteUuid },
+          data: { app_db_uuid: result.user.uuid, app_db_synced_at: new Date() },
+        });
       }
-      appDbUuid = octaneUserResult.user.uuid;
-      // Cache for future sends
-      await prisma.d_athletes.update({
-        where: { athlete_uuid: athleteUuid },
-        data: { app_db_uuid: octaneUserResult.user.uuid, app_db_synced_at: new Date() },
-      });
-    }
+
 
     // Build full tracking report (all domains with pre-computed percentiles)
     const report = await buildAthleteTrackingReport(athleteUuid);
@@ -65,20 +62,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const domainsToSend =
-      Array.isArray(domainIds) && domainIds.length > 0
-        ? report.domains.filter((d) => domainIds.includes(d.domainId))
-        : report.domains;
-
-    if (domainsToSend.length === 0) {
-      return badRequest(
-        `No data found for the requested domains (${domainIds?.join(", ") ?? "any"}) for "${athlete.name}".`
-      );
-    }
-
     // Validate env config
     const octaneUrl = process.env.OCTANE_APP_API_URL;
-    const apiKey = process.env.OCTANE_API_KEY;
+    const apiKey = process.env.BIOMECH_API_KEYS;
     if (!octaneUrl || !apiKey) {
       return internalError(
         "OCTANE_APP_API_URL or BIOMECH_API_KEYS environment variables are not set."
@@ -97,7 +83,7 @@ export async function POST(request: NextRequest) {
         athleteEmail: athlete.email,
         athleteName: report.athlete.name,
         generatedAt: report.generatedAt,
-        domains: domainsToSend,
+        domains: report.domains,
       }),
     });
 

@@ -167,7 +167,10 @@ function buildValueCTE(
   }
 
   // WHERE conditions (used for byTrial; aggregate modes drop the IS NOT NULL to HAVING)
-  const conditions: string[] = [`${rawValueExpr} IS NOT NULL`];
+  const conditions: string[] = [
+    `${rawValueExpr} IS NOT NULL`,
+    `${rawValueExpr} != 0`,
+  ];
   if (spec.movement && HAS_MOVEMENT.has(spec.tableKey)) {
     conditions.push(`t.movement ILIKE $${pIdx++}`);
     params.push(spec.movement);
@@ -211,7 +214,7 @@ ${alias} AS (
   SELECT
     NULL::integer         AS trial_id,
     t.athlete_uuid,
-    NULL::date            AS session_date,
+    MIN(sr.session_date)  AS session_date,
     sr.round_num,
     AVG(${rawValueExpr})  AS value
   FROM "${sqlTable}" t
@@ -227,7 +230,7 @@ ${alias} AS (
   JOIN analytics.d_athletes da ON da.athlete_uuid = t.athlete_uuid
   ${aggWhere}
   GROUP BY t.athlete_uuid, sr.round_num
-  HAVING AVG(${rawValueExpr}) IS NOT NULL
+  HAVING AVG(${rawValueExpr}) IS NOT NULL AND AVG(${rawValueExpr}) != 0
 )`;
   } else {
     // byAthlete or bySession
@@ -335,8 +338,8 @@ export async function GET(request: NextRequest) {
 
     const joinCondition =
       aggregation === "byTrial"   ? "x_cte.trial_id = y_cte.trial_id" :
-      aggregation === "bySession" ? "x_cte.athlete_uuid = y_cte.athlete_uuid AND x_cte.session_date = y_cte.session_date" :
-      aggregation === "byRound"   ? "x_cte.athlete_uuid = y_cte.athlete_uuid AND x_cte.round_num = y_cte.round_num" :
+      aggregation === "bySession" ? "x_cte.athlete_uuid = y_cte.athlete_uuid AND ABS(x_cte.session_date - y_cte.session_date) <= 7" :
+      aggregation === "byRound"   ? "x_cte.athlete_uuid = y_cte.athlete_uuid AND ABS(x_cte.session_date - y_cte.session_date) <= 30" :
                                     "x_cte.athlete_uuid = y_cte.athlete_uuid";
 
     const sql = `

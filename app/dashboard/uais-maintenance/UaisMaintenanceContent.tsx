@@ -239,7 +239,7 @@ export function UaisMaintenanceContent() {
     setStreaming(true);
     setLastRunDomainIds([...new Set(ordered.flatMap(r => RUNNER_DOMAIN_MAP[r.id] ?? []))]);
     setReportLinks([]);
-    setSendToAppStatus("idle"); setLastRunDomainIds([]);
+    setSendToAppStatus("idle");
     setSendToAppError(null);
     const athleteUuid = runMode === "existing" ? athleteSelected!.athlete_uuid : undefined;
     const total = ordered.length;

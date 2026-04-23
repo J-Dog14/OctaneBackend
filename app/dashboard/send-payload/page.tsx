@@ -1,39 +1,30 @@
 "use client";
 
-import { useCallback, useEffect, useState, Suspense } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from "react";
 import { AdminGuard } from "@/app/dashboard/AdminGuard";
-import { useSearchParams } from "next/navigation";
-import Link from "next/link";
+import { useAthleteSearch } from "@/hooks/useAthleteSearch";
+import { AthleteSearchDropdown } from "@/app/dashboard/reports/components/AthleteSearchDropdown";
+import { AgGridReact } from "ag-grid-react";
+import { ModuleRegistry, AllCommunityModule, type ColDef } from "ag-grid-community";
+import { octaneTheme } from "@/app/dashboard/ag-grid-theme";
 
-type AthleteItem = {
+ModuleRegistry.registerModules([AllCommunityModule]);
+
+type AthleteRow = {
   athlete_uuid: string;
   name: string;
+  gender: string | null;
+  age_group: string | null;
+  email?: string | null;
   pitching_session_count: number;
   athletic_screen_session_count: number;
   proteus_session_count: number;
+  mobility_session_count: number;
+  readiness_screen_session_count: number;
+  arm_action_session_count: number;
+  hitting_session_count: number;
+  curveball_test_session_count: number;
 };
-
-const PAYLOAD_TYPES = [
-  { id: "report", label: "Report (all tables)", api: "/api/dashboard/payloads/report" },
-  { id: "pitching", label: "Pitching", api: "/api/dashboard/payloads/pitching" },
-  { id: "hitting", label: "Hitting", api: "/api/dashboard/payloads/hitting" },
-  { id: "mobility", label: "Mobility", api: "/api/dashboard/payloads/mobility" },
-  { id: "athletic-screen", label: "Athletic Screen", api: "/api/dashboard/payloads/athletic-screen" },
-  { id: "arm-action", label: "Arm Action", api: "/api/dashboard/payloads/arm-action" },
-  { id: "proteus-hitters", label: "Proteus (Hitters)", api: "/api/dashboard/payloads/proteus-hitters" },
-  { id: "proteus-pitchers", label: "Proteus (Pitchers)", api: "/api/dashboard/payloads/proteus-pitchers" },
-] as const;
-
-type PayloadTypeId = (typeof PAYLOAD_TYPES)[number]["id"];
-const SINGLE_ATHLETE_PAYLOAD_IDS: PayloadTypeId[] = [
-  "pitching",
-  "hitting",
-  "mobility",
-  "athletic-screen",
-  "arm-action",
-  "proteus-hitters",
-  "proteus-pitchers",
-];
 
 type OctaneLookupUser = {
   uuid: string;
@@ -43,16 +34,38 @@ type OctaneLookupUser = {
   image: string | null;
 };
 
-function SendPayloadContent() {
-  const searchParams = useSearchParams();
-  const preselectedUuid = searchParams.get("athlete") ?? "";
+type DomainInfo = { domainId: string; dates: string[] };
 
-  const [athletes, setAthletes] = useState<AthleteItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [payloadType, setPayloadType] = useState<PayloadTypeId>("report");
-  const [running, setRunning] = useState(false);
-  const [result, setResult] = useState<{ ok: boolean; message: string; data?: unknown } | null>(null);
+const DOMAIN_LABELS: Record<string, string> = {
+  pitching: "Pitching",
+  hitting: "Hitting",
+  mobility: "Mobility",
+  athleticScreen: "Athletic Screen",
+  armAction: "Arm Action",
+  proteus: "Proteus",
+};
+
+function formatDate(iso: string): string {
+  const [year, month, day] = iso.split("-");
+  return new Date(Number(year), Number(month) - 1, Number(day)).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function SendPayloadContent() {
+  const {
+    athleteQuery, setAthleteQuery,
+    athleteOptions, athleteSelected, setAthleteSelected,
+    dropdownOpen, setDropdownOpen,
+  } = useAthleteSearch();
+
+  const [domains, setDomains] = useState<DomainInfo[]>([]);
+  const [domainsLoading, setDomainsLoading] = useState(false);
+
+  const [sendStatus, setSendStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
+  const [sendError, setSendError] = useState<string | null>(null);
 
   const [octaneLookupEmail, setOctaneLookupEmail] = useState("");
   const [octaneLookupLoading, setOctaneLookupLoading] = useState(false);
@@ -60,43 +73,54 @@ function SendPayloadContent() {
     { ok: true; user: OctaneLookupUser } | { ok: false; error: string } | null
   >(null);
 
-  const loadAthletes = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/dashboard/athletes?limit=200");
-      const data = await res.json();
-      if (data.items) setAthletes(data.items);
-    } finally {
-      setLoading(false);
-    }
+  const gridRef = useRef<AgGridReact<AthleteRow>>(null);
+  const [tableData, setTableData] = useState<AthleteRow[] | null>(null);
+  const [tableLoading, setTableLoading] = useState(true);
+  const [filterText, setFilterText] = useState("");
+
+  useEffect(() => {
+    fetch("/api/dashboard/athletes?limit=10000")
+      .then((r) => r.json())
+      .then((d) => setTableData((d.items as AthleteRow[]) ?? []))
+      .finally(() => setTableLoading(false));
   }, []);
 
   useEffect(() => {
-    loadAthletes();
-  }, [loadAthletes]);
-
-  useEffect(() => {
-    if (preselectedUuid && athletes.length > 0) {
-      setSelectedIds((prev) => new Set(prev).add(preselectedUuid));
+    if (!athleteSelected) {
+      setDomains([]);
+      setSendStatus("idle");
+      setSendError(null);
+      return;
     }
-  }, [preselectedUuid, athletes.length]);
+    setDomainsLoading(true);
+    fetch(`/api/dashboard/athlete-tracking/sessions?athleteUuid=${athleteSelected.athlete_uuid}`)
+      .then((r) => r.json())
+      .then((d) => setDomains((d.domains as DomainInfo[]) ?? []))
+      .finally(() => setDomainsLoading(false));
+  }, [athleteSelected]);
 
-  const toggleAthlete = (uuid: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(uuid)) next.delete(uuid);
-      else next.add(uuid);
-      return next;
-    });
-  };
-
-  const selectAll = () => {
-    setSelectedIds(new Set(athletes.map((a) => a.athlete_uuid)));
-  };
-
-  const clearSelection = () => {
-    setSelectedIds(new Set());
-  };
+  const handleSendToApp = useCallback(async () => {
+    if (!athleteSelected) return;
+    setSendStatus("sending");
+    setSendError(null);
+    try {
+      const res = await fetch("/api/dashboard/send-to-octane", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ athleteUuid: athleteSelected.athlete_uuid }),
+      });
+      const data = (await res.json()) as { ok?: boolean; error?: string };
+      if (!res.ok) {
+        setSendStatus("error");
+        setSendError(data.error ?? "Unknown error");
+      } else {
+        setSendStatus("success");
+      }
+    } catch (err) {
+      setSendStatus("error");
+      setSendError(err instanceof Error ? err.message : "Network error");
+    }
+  }, [athleteSelected]);
 
   const runOctaneLookup = async () => {
     const email = octaneLookupEmail.trim();
@@ -109,98 +133,139 @@ function SendPayloadContent() {
       );
       const data = await res.json();
       if (res.ok) {
-        setOctaneLookupResult({
-          ok: true,
-          user: data as OctaneLookupUser,
-        });
+        setOctaneLookupResult({ ok: true, user: data as OctaneLookupUser });
       } else {
-        setOctaneLookupResult({
-          ok: false,
-          error: data.error ?? "Lookup failed",
-        });
+        setOctaneLookupResult({ ok: false, error: (data as { error?: string }).error ?? "Lookup failed" });
       }
     } catch (e) {
-      setOctaneLookupResult({
-        ok: false,
-        error: e instanceof Error ? e.message : "Request failed",
-      });
+      setOctaneLookupResult({ ok: false, error: e instanceof Error ? e.message : "Request failed" });
     } finally {
       setOctaneLookupLoading(false);
     }
   };
 
-  const runPayloads = async () => {
-    const ids = Array.from(selectedIds);
-    if (ids.length === 0) {
-      setResult({ ok: false, message: "Select at least one athlete." });
-      return;
-    }
-    if (SINGLE_ATHLETE_PAYLOAD_IDS.includes(payloadType) && ids.length > 1) {
-      setResult({ ok: false, message: "This payload type supports one athlete at a time." });
-      return;
-    }
+  const columnDefs = useMemo<ColDef<AthleteRow>[]>(
+    () => [
+      {
+        headerName: "Name",
+        field: "name",
+        flex: 2,
+        minWidth: 150,
+        pinned: "left",
+        checkboxSelection: true,
+      },
+      { headerName: "Pitching",        field: "pitching_session_count",         flex: 1, minWidth: 90  },
+      { headerName: "Hitting",         field: "hitting_session_count",           flex: 1, minWidth: 80  },
+      { headerName: "Mobility",        field: "mobility_session_count",          flex: 1, minWidth: 90  },
+      { headerName: "Athletic Screen", field: "athletic_screen_session_count",   flex: 1, minWidth: 130 },
+      { headerName: "Arm Action",      field: "arm_action_session_count",        flex: 1, minWidth: 110 },
+      { headerName: "Proteus",         field: "proteus_session_count",           flex: 1, minWidth: 90  },
+      { headerName: "Readiness",       field: "readiness_screen_session_count",  flex: 1, minWidth: 100 },
+      { headerName: "Curveball",       field: "curveball_test_session_count",    flex: 1, minWidth: 100 },
+    ],
+    []
+  );
 
-    setRunning(true);
-    setResult(null);
-    try {
-      if (SINGLE_ATHLETE_PAYLOAD_IDS.includes(payloadType)) {
-        const apiPath = PAYLOAD_TYPES.find((t) => t.id === payloadType)?.api ?? "";
-        const res = await fetch(
-          `${apiPath}?athleteUuid=${encodeURIComponent(ids[0])}`
-        );
-        const data = await res.json();
-        if (!res.ok) {
-          setResult({ ok: false, message: data.error ?? `Failed to generate ${payloadType} payload.`, data });
-          return;
-        }
-        setResult({
-          ok: true,
-          message: `${PAYLOAD_TYPES.find((t) => t.id === payloadType)?.label ?? payloadType} payload generated.`,
-          data,
-        });
-      } else {
-        const results: unknown[] = [];
-        for (const uuid of ids) {
-          const res = await fetch(
-            `/api/dashboard/payloads/report?athleteUuid=${encodeURIComponent(uuid)}`
-          );
-          const data = await res.json();
-          if (!res.ok) {
-            setResult({ ok: false, message: data.error ?? "Failed for " + uuid, data });
-            return;
-          }
-          results.push(data);
-        }
-        setResult({
-          ok: true,
-          message: `Generated ${results.length} report payload(s).`,
-          data: results.length === 1 ? results[0] : { count: results.length, payloads: results },
-        });
-      }
-    } catch (e) {
-      setResult({
-        ok: false,
-        message: e instanceof Error ? e.message : "Request failed",
-      });
-    } finally {
-      setRunning(false);
-    }
-  };
+  const defaultColDef = useMemo<ColDef>(() => ({ sortable: true, resizable: true }), []);
+
+  const sendDisabled =
+    !athleteSelected ||
+    domainsLoading ||
+    domains.length === 0 ||
+    sendStatus === "sending";
 
   return (
     <div>
-      <h1 style={{ marginBottom: "0.5rem", fontSize: "1.75rem" }}>
-        Send payload
-      </h1>
+      <h1 style={{ marginBottom: "0.5rem", fontSize: "1.75rem" }}>Send to App</h1>
       <p className="text-muted" style={{ marginBottom: "1.5rem" }}>
-        Select athletes and payload type, then generate. You can run multiple report payloads at once; all other types are one athlete at a time.
-        Each payload uses the <strong>most recent session</strong> (or best by velocity for pitching) per test type—Run All sends only that.
+        Search for an athlete, review their available assessment data, then push all domains to
+        their Octane account. Always sends the most recent session per domain.
       </p>
 
+      {/* Athlete Search + Send */}
       <div className="card" style={{ marginBottom: "1.5rem" }}>
-        <h2 style={{ margin: "0 0 0.75rem", fontSize: "1rem" }}>
-          Octane user lookup
-        </h2>
+        <h2 style={{ margin: "0 0 0.75rem", fontSize: "1rem" }}>Select athlete</h2>
+        <AthleteSearchDropdown
+          athleteQuery={athleteQuery}
+          setAthleteQuery={setAthleteQuery}
+          athleteOptions={athleteOptions}
+          athleteSelected={athleteSelected}
+          setAthleteSelected={setAthleteSelected}
+          dropdownOpen={dropdownOpen}
+          setDropdownOpen={setDropdownOpen}
+        />
+
+        {athleteSelected && (
+          <div style={{ marginTop: "0.75rem" }}>
+            {domainsLoading ? (
+              <p className="text-muted" style={{ fontSize: "13px" }}>Loading session data…</p>
+            ) : domains.length === 0 ? (
+              <p className="text-muted" style={{ fontSize: "13px" }}>
+                No assessment data found for this athlete.
+              </p>
+            ) : (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                {domains.map((d) => (
+                  <div
+                    key={d.domainId}
+                    style={{
+                      padding: "4px 10px",
+                      borderRadius: 20,
+                      border: "1px solid var(--accent)",
+                      fontSize: "12px",
+                      color: "var(--accent)",
+                    }}
+                  >
+                    <strong>{DOMAIN_LABELS[d.domainId] ?? d.domainId}</strong>
+                    {" — "}
+                    {formatDate(d.dates[0])}
+                    {d.dates.length > 1 && (
+                      <span style={{ color: "var(--text-muted)", marginLeft: 4 }}>
+                        +{d.dates.length - 1} more
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        <div
+          style={{
+            marginTop: "1rem",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.75rem",
+            flexWrap: "wrap",
+          }}
+        >
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={() => void handleSendToApp()}
+            disabled={sendDisabled}
+            style={{ opacity: sendDisabled ? 0.5 : 1 }}
+          >
+            {sendStatus === "sending" ? "Sending…" : "Send to App"}
+          </button>
+          {sendStatus === "success" && (
+            <span style={{ color: "#40c057", fontSize: "13px" }}>✓ Sent successfully</span>
+          )}
+          {sendStatus === "error" && (
+            <span style={{ color: "#fa5252", fontSize: "13px" }}>✗ {sendError}</span>
+          )}
+          {!athleteSelected && (
+            <span className="text-muted" style={{ fontSize: "13px" }}>
+              Select an athlete to enable
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Octane user lookup */}
+      <div className="card" style={{ marginBottom: "1.5rem" }}>
+        <h2 style={{ margin: "0 0 0.75rem", fontSize: "1rem" }}>Octane user lookup</h2>
         <p className="text-muted" style={{ margin: "0 0 0.75rem", fontSize: "13px" }}>
           Look up a user in the Octane app by email to verify they exist or get their Octane UUID.
         </p>
@@ -211,12 +276,12 @@ function SendPayloadContent() {
             onChange={(e) => setOctaneLookupEmail(e.target.value)}
             placeholder="athlete@example.com"
             style={{ padding: "0.5rem 0.75rem", minWidth: "220px" }}
-            onKeyDown={(e) => e.key === "Enter" && runOctaneLookup()}
+            onKeyDown={(e) => { if (e.key === "Enter") void runOctaneLookup(); }}
           />
           <button
             type="button"
             className="btn-primary"
-            onClick={runOctaneLookup}
+            onClick={() => void runOctaneLookup()}
             disabled={octaneLookupLoading || !octaneLookupEmail.trim()}
           >
             {octaneLookupLoading ? "Looking up…" : "Look up"}
@@ -234,9 +299,7 @@ function SendPayloadContent() {
           >
             {octaneLookupResult.ok ? (
               <>
-                <p style={{ margin: "0 0 0.5rem", color: "var(--accent)" }}>
-                  User found
-                </p>
+                <p style={{ margin: "0 0 0.5rem", color: "var(--accent)" }}>User found</p>
                 <pre
                   style={{
                     margin: 0,
@@ -260,153 +323,57 @@ function SendPayloadContent() {
         )}
       </div>
 
-      <div className="card" style={{ marginBottom: "1.5rem" }}>
-        <h2 style={{ margin: "0 0 0.75rem", fontSize: "1rem" }}>
-          Payload type
-        </h2>
-        <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
-          {PAYLOAD_TYPES.map((t) => (
-            <label key={t.id} style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <input
-                type="radio"
-                name="payloadType"
-                checked={payloadType === t.id}
-                onChange={() => setPayloadType(t.id)}
-              />
-              {t.label}
-            </label>
-          ))}
-        </div>
-      </div>
-
-      <div className="card" style={{ marginBottom: "1.5rem" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
-          <h2 style={{ margin: 0, fontSize: "1rem" }}>
-            Select athletes
-          </h2>
-          <div style={{ display: "flex", gap: "0.5rem" }}>
-            <button type="button" className="btn-ghost" onClick={selectAll}>
-              Select all
-            </button>
-            <button type="button" className="btn-ghost" onClick={clearSelection}>
-              Clear
-            </button>
-          </div>
-        </div>
-        {loading ? (
-          <p className="text-muted">Loading athletes…</p>
-        ) : (
-          <div style={{ maxHeight: "320px", overflowY: "auto" }}>
-            <table>
-              <thead>
-                <tr>
-                  <th style={{ width: "40px" }}></th>
-                  <th>Name</th>
-                  <th>Pitching</th>
-                  <th>Athletic screen</th>
-                  <th>Proteus</th>
-                </tr>
-              </thead>
-              <tbody>
-                {athletes.map((a) => (
-                  <tr key={a.athlete_uuid}>
-                    <td>
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.has(a.athlete_uuid)}
-                        onChange={() => toggleAthlete(a.athlete_uuid)}
-                      />
-                    </td>
-                    <td>{a.name}</td>
-                    <td>{a.pitching_session_count}</td>
-                    <td>{a.athletic_screen_session_count}</td>
-                    <td>{a.proteus_session_count}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-        <p className="text-muted" style={{ marginTop: "0.5rem", fontSize: "13px" }}>
-          Date filter for tests can be added in a future update.
-        </p>
-      </div>
-
-      <div style={{ marginBottom: "1.5rem", display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
-        <button
-          type="button"
-          className="btn-primary"
-          onClick={runPayloads}
-          disabled={running || selectedIds.size === 0}
-        >
-          {running ? "Generating…" : selectedIds.size > 1 ? "Run All" : "Generate payload(s)"}
-        </button>
-        {selectedIds.size > 1 && (
-          <span className="text-muted" style={{ fontSize: "13px" }}>
-            Run All uses the most recent instance per test for each selected athlete.
-          </span>
-        )}
-      </div>
-
-      {result && (
+      {/* Athletes table */}
+      <div className="card">
         <div
-          className="card"
           style={{
-            borderColor: result.ok ? "var(--accent)" : "var(--accent-secondary)",
-            borderWidth: "1px",
-            borderStyle: "solid",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "0.5rem",
           }}
         >
-          <p style={{ margin: "0 0 0.5rem", color: result.ok ? "var(--accent)" : "var(--accent-secondary)" }}>
-            {result.message}
-          </p>
-          {result.ok && result.data !== undefined && payloadType === "report" && (() => {
-            const data = result.data as { athlete?: { name?: string; email?: string | null; octaneAppUuid?: string | null }; payloads?: { athlete?: { name?: string; email?: string | null; octaneAppUuid?: string | null } }[] };
-            const athletes = data.payloads
-              ? data.payloads.map((p) => p.athlete).filter(Boolean)
-              : data.athlete
-                ? [data.athlete]
-                : [];
-            return athletes.length > 0 ? (
-              <div style={{ marginBottom: "0.75rem", fontSize: "13px" }}>
-                {athletes.map((a, i) => {
-                  const name = a?.name ?? "Unknown";
-                  const email = a?.email ?? null;
-                  const matched = a?.octaneAppUuid != null && a.octaneAppUuid !== "";
-                  return (
-                    <p key={i} style={{ margin: "0.25rem 0" }}>
-                      {matched && email
-                        ? `Athlete ${name} matched with Octane via email: ${email}`
-                        : email
-                          ? `${name} — Octane not linked yet (update athlete email to resolve)`
-                          : `${name} — No email on profile (add email to link with Octane)`}
-                    </p>
-                  );
-                })}
-              </div>
-            ) : null;
-          })()}
-          {result.data !== undefined && (
-            <pre
-              style={{
-                margin: 0,
-                padding: "0.75rem",
-                background: "var(--bg-primary)",
-                borderRadius: "6px",
-                fontSize: "12px",
-                overflow: "auto",
-                maxHeight: "300px",
-              }}
-            >
-              {JSON.stringify(result.data, null, 2)}
-            </pre>
-          )}
+          <h2 style={{ margin: 0, fontSize: "1rem" }}>Athletes</h2>
+          <input
+            type="text"
+            placeholder="Search…"
+            value={filterText}
+            onChange={(e) => {
+              const val = e.target.value;
+              setFilterText(val);
+              gridRef.current?.api?.setGridOption("quickFilterText", val);
+            }}
+            style={{
+              padding: "6px 10px",
+              borderRadius: 6,
+              border: "1px solid var(--border)",
+              fontSize: "13px",
+            }}
+          />
         </div>
-      )}
-
-      <p className="text-muted" style={{ marginTop: "1.5rem", fontSize: "13px" }}>
-        <Link href="/dashboard/athletes">Browse athletes</Link> to see full session counts.
-      </p>
+        <p className="text-muted" style={{ marginBottom: "0.75rem", fontSize: "13px" }}>
+          Click a row to select that athlete above.
+        </p>
+        <div style={{ height: "calc(100vh - 420px)", minHeight: 350 }}>
+          <AgGridReact
+            theme={octaneTheme}
+            ref={gridRef}
+            rowData={tableData}
+            columnDefs={columnDefs}
+            defaultColDef={defaultColDef}
+            loading={tableLoading}
+            pagination
+            paginationPageSize={50}
+            rowSelection="single"
+            suppressCellFocus
+            onRowClicked={({ data }) => {
+              if (!data) return;
+              setAthleteSelected({ athlete_uuid: data.athlete_uuid, name: data.name });
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+          />
+        </div>
+      </div>
     </div>
   );
 }

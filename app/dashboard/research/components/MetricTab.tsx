@@ -93,12 +93,16 @@ export function MetricTab({ athleteOptions }: Props) {
       .finally(() => setLoadingYVars(false));
   }, [yVar.table]);
 
-  // Reset byTrial to byRound when tables differ
+  // Auto-select aggregation mode based on whether both variables are from the same table
   useEffect(() => {
-    if (aggregation === "byTrial" && !(xVar.table && yVar.table && xVar.table === yVar.table)) {
-      setAggregation("byRound");
+    if (xVar.table && yVar.table) {
+      if (xVar.table === yVar.table) {
+        setAggregation("byTrial");
+      } else {
+        setAggregation((prev) => (prev === "byTrial" ? "byRound" : prev));
+      }
     }
-  }, [xVar.table, yVar.table, aggregation]);
+  }, [xVar.table, yVar.table]);
 
   // ── Load metric data ─────────────────────────────────────────────────────
   const loadMetricData = useCallback(async () => {
@@ -230,9 +234,9 @@ export function MetricTab({ athleteOptions }: Props) {
               )}
               {aggregation === "byRound" && (
                 <Text size="xs" c="blue" mt={4}>
-                  Sessions within 14 days are grouped into one assessment round per athlete. Useful
-                  for comparing across tables (e.g. pitching vs mobility) without mixing separate
-                  years.
+                  Sessions are averaged per assessment block (within 14 days per table). Rounds
+                  from different tables are matched when their representative dates are within 30
+                  days — ideal for cross-table comparisons like pitching vs athletic screen.
                 </Text>
               )}
             </div>
