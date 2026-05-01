@@ -2247,10 +2247,22 @@ process_all_files <- function(data_root = NULL) {
               if (!nzchar(xml_path)) { n_json_missing <- n_json_missing + 1L; next }
               owner_stem <- tools::file_path_sans_ext(as.character(row$owner_filename))
               json_file <- file.path(dirname(xml_path), paste0(owner_stem, "-3d-data.json"))
-              if (!file.exists(json_file)) { n_json_missing <- n_json_missing + 1L; next }
-              json_data <- tryCatch(jsonlite::parse_json(json_file), error = function(e) NULL)
+              if (!file.exists(json_file)) {
+                log_progress("  [WARN] Expected JSON not found:", json_file)
+                existing_jsons <- tryCatch(
+                  list.files(dirname(xml_path), pattern = "\\.json$", full.names = FALSE),
+                  error = function(e) character(0)
+                )
+                if (length(existing_jsons) > 0)
+                  log_progress("  [INFO] JSON files present in dir:", paste(existing_jsons, collapse = ", "))
+                n_json_missing <- n_json_missing + 1L
+                next
+              }
+              parse_err <- NULL
+              json_data <- tryCatch(jsonlite::parse_json(json_file), error = function(e) { parse_err <<- conditionMessage(e); NULL })
               if (is.null(json_data)) {
-                log_progress("  [WARNING] Could not parse JSON:", json_file)
+                log_progress("  [WARNING] Could not parse JSON:", json_file,
+                             if (!is.null(parse_err)) paste0("-- Error: ", parse_err) else "")
                 n_json_missing <- n_json_missing + 1L
                 next
               }

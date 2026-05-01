@@ -738,9 +738,6 @@ def create_athlete_in_warehouse(
             calculated_age = age
         if calculated_age_group is None and calculated_age is not None and AGE_UTILS_AVAILABLE:
             calculated_age_group = calculate_age_group(calculated_age)
-        # Default age_group to YOUTH for arm_action/curveball_test when DOB is missing
-        if calculated_age_group is None and source_system in ("arm_action", "curveball_test"):
-            calculated_age_group = "YOUTH"
 
         email_norm = normalize_email(email)
         with conn.cursor() as cur:
@@ -1043,24 +1040,39 @@ def get_or_create_athlete(
                 )
             else:
                 logger.info(f"Found existing athlete: {existing['name']} ({existing['athlete_uuid']})")
-            
+
             # Check verceldb if not already synced (master source of truth)
             verceldb_uuid = None
             if check_app_db and not existing.get('app_db_uuid'):
                 verceldb_uuid = check_verceldb_for_uuid(normalized_name)
-            
+
             # Convert name to "First Last" format if provided
             display_name = normalize_name_for_display(name) if name else None
-            
-            # Default age_group to YOUTH for arm_action/curveball when DOB is missing (only fills if current is NULL)
-            default_age_group = "YOUTH" if (date_of_birth is None and source_system in ("arm_action", "curveball_test")) else None
+
+            # Detect height/weight discrepancies — signal frontend for confirmation
+            athlete_display = display_name or existing.get('name', 'Unknown')
+            athlete_uuid_str = existing['athlete_uuid']
+            if height is not None and existing.get('height') is not None:
+                try:
+                    stored_h = float(existing['height'])
+                    if abs(height - stored_h) > 0.5:
+                        print(f"HEIGHT_MISMATCH:{athlete_display}:{athlete_uuid_str}:stored={stored_h}:incoming={height}", flush=True)
+                except (TypeError, ValueError):
+                    pass
+            if weight is not None and existing.get('weight') is not None:
+                try:
+                    stored_w = float(existing['weight'])
+                    if abs(weight - stored_w) > 1.0:
+                        print(f"WEIGHT_MISMATCH:{athlete_display}:{athlete_uuid_str}:stored={stored_w}:incoming={weight}", flush=True)
+                except (TypeError, ValueError):
+                    pass
 
             update_athlete_in_warehouse(
                 existing['athlete_uuid'],
                 name=display_name,  # Store as "First Last" format
                 date_of_birth=date_of_birth,
                 age=age,
-                age_group=default_age_group,
+                age_group=None,
                 gender=gender,
                 height=height,
                 weight=weight,
@@ -1122,7 +1134,12 @@ def get_or_create_athlete(
                 add_source_mapping(conn, athlete_uuid, source_system, source_athlete_id)
             except Exception as e:
                 logger.warning(f"Failed to add source mapping: {e}")
-        
+
+        # Signal frontend: new athlete created
+        print(f"NEW_ATHLETE:{athlete_uuid}:{display_name}", flush=True)
+        if date_of_birth is None:
+            print(f"MISSING_DOB:{display_name}:{athlete_uuid}", flush=True)
+
         return (athlete_uuid, True)
         
     finally:

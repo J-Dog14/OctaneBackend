@@ -4,6 +4,7 @@ import { buildAthleteTrackingReport } from "@/lib/athlete-tracking/report";
 import { prisma } from "@/lib/db/prisma";
 import { lookupOctaneUserByEmail } from "@/lib/octane/octaneUserLookup";
 import { requireRole } from "@/lib/auth/requireAuth";
+import { deriveLevelFromAthlete } from "@/lib/octane/utils";
 
 export async function POST(request: NextRequest) {
   await requireRole("admin");  // ← moved outside try block, actually called
@@ -22,6 +23,7 @@ export async function POST(request: NextRequest) {
         name: true,
         email: true,
         app_db_uuid: true,
+        age_group: true,
       },
     });
 
@@ -83,6 +85,7 @@ export async function POST(request: NextRequest) {
         athleteEmail: athlete.email,
         athleteName: report.athlete.name,
         generatedAt: report.generatedAt,
+        athleteLevel: deriveLevelFromAthlete(athlete),
         domains: report.domains,
       }),
     });

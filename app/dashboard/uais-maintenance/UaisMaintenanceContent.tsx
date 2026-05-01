@@ -11,10 +11,16 @@ import { JobOutputPanel } from "./components/JobOutputPanel";
 import { DuplicateSessionModal } from "./components/DuplicateSessionModal";
 import { EmailCollectionModal } from "./components/EmailCollectionModal";
 import { UpdateEmailModal } from "./components/UpdateEmailModal";
+import { MissingDobModal } from "./components/MissingDobModal";
+import { AthleteInfoUpdateModal, type MismatchItem } from "./components/AthleteInfoUpdateModal";
 import type { AthleteOption, UploadedFile } from "./types";
 
 const DUPLICATE_SESSION_REGEX = /DUPLICATE_SESSION:(\d{4}-\d{2}-\d{2})/;
 const REPORT_LINE_REGEX = /\[REPORT\] ([^:]+)::([^\s]+)/g;
+const NEW_ATHLETE_REGEX = /NEW_ATHLETE:([a-f0-9-]+):([^\n]+)/;
+const MISSING_DOB_REGEX = /MISSING_DOB:([^:\n]+):([a-f0-9-]+)/g;
+const HEIGHT_MISMATCH_REGEX = /HEIGHT_MISMATCH:([^:]+):([a-f0-9-]+):stored=([\d.]+):incoming=([\d.]+)/g;
+const WEIGHT_MISMATCH_REGEX = /WEIGHT_MISMATCH:([^:]+):([a-f0-9-]+):stored=([\d.]+):incoming=([\d.]+)/g;
 
 // Maps runner IDs to the Octane domain IDs they produce data for.
 // Multiple runners can feed the same domain (e.g. pro-sup and readiness-screen → athleticScreen).
@@ -75,6 +81,30 @@ export function UaisMaintenanceContent() {
   const [athleteDropdownOpen, setAthleteDropdownOpen] = useState(false);
   const [filterNonApp, setFilterNonApp] = useState(false);
   const athleteSearchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── Signal collection refs (reset each run) ──────────────────────────────
+  const collectedNewAthleteRef = useRef<{ uuid: string; name: string } | null>(null);
+  const collectedMissingDobsRef = useRef<Array<{ uuid: string; name: string }>>([]);
+  const collectedMismatchesRef = useRef<Map<string, MismatchItem>>(new Map());
+
+  // ── Missing DOB queue (B.2) ───────────────────────────────────────────────
+  const [missingDobQueue, setMissingDobQueue] = useState<Array<{ uuid: string; name: string }>>([]);
+  const [dobValue, setDobValue] = useState("");
+  const [dobSaving, setDobSaving] = useState(false);
+
+  // ── Height/weight mismatch queue (B.3) ───────────────────────────────────
+  const [mismatchQueue, setMismatchQueue] = useState<MismatchItem[]>([]);
+  const [mismatchSaving, setMismatchSaving] = useState(false);
+
+  // ── New athlete completeness (B.5) ────────────────────────────────────────
+  const [newAthleteCompletion, setNewAthleteCompletion] = useState<{
+    uuid: string; name: string;
+    missingHeight: boolean; missingWeight: boolean; missingGender: boolean;
+  } | null>(null);
+  const [completionHeight, setCompletionHeight] = useState("");
+  const [completionWeight, setCompletionWeight] = useState("");
+  const [completionGender, setCompletionGender] = useState("");
+  const [completionSaving, setCompletionSaving] = useState(false);
 
   // ── Duplicate check (new mode) ────────────────────────────────────────────
   const [checkDuplicatesQuery, setCheckDuplicatesQuery] = useState("");
@@ -241,6 +271,10 @@ export function UaisMaintenanceContent() {
     setReportLinks([]);
     setSendToAppStatus("idle");
     setSendToAppError(null);
+    // Reset per-run signal collection
+    collectedNewAthleteRef.current = null;
+    collectedMissingDobsRef.current = [];
+    collectedMismatchesRef.current = new Map();
     const athleteUuid = runMode === "existing" ? athleteSelected!.athlete_uuid : undefined;
     const total = ordered.length;
     for (let i = 0; i < ordered.length; i++) {
@@ -324,6 +358,32 @@ export function UaisMaintenanceContent() {
                 });
                 duplicateSessionResponseResolverRef.current = null;
               }
+              // Collect signals from this chunk (not blocking)
+              if (!collectedNewAthleteRef.current) {
+                const naMatch = chunk.match(NEW_ATHLETE_REGEX);
+                if (naMatch) collectedNewAthleteRef.current = { uuid: naMatch[1], name: naMatch[2].trim() };
+              }
+              MISSING_DOB_REGEX.lastIndex = 0;
+              let dobMatch: RegExpExecArray | null;
+              while ((dobMatch = MISSING_DOB_REGEX.exec(chunk)) !== null) {
+                const dName = dobMatch[1].trim(), dUuid = dobMatch[2].trim();
+                if (!collectedMissingDobsRef.current.find(d => d.uuid === dUuid))
+                  collectedMissingDobsRef.current.push({ uuid: dUuid, name: dName });
+              }
+              HEIGHT_MISMATCH_REGEX.lastIndex = 0;
+              let hmMatch: RegExpExecArray | null;
+              while ((hmMatch = HEIGHT_MISMATCH_REGEX.exec(chunk)) !== null) {
+                const mUuid = hmMatch[2].trim();
+                const prev = collectedMismatchesRef.current.get(mUuid) ?? { uuid: mUuid, name: hmMatch[1].trim() };
+                collectedMismatchesRef.current.set(mUuid, { ...prev, heightStored: parseFloat(hmMatch[3]), heightIncoming: parseFloat(hmMatch[4]) });
+              }
+              WEIGHT_MISMATCH_REGEX.lastIndex = 0;
+              let wmMatch: RegExpExecArray | null;
+              while ((wmMatch = WEIGHT_MISMATCH_REGEX.exec(chunk)) !== null) {
+                const mUuid = wmMatch[2].trim();
+                const prev = collectedMismatchesRef.current.get(mUuid) ?? { uuid: mUuid, name: wmMatch[1].trim() };
+                collectedMismatchesRef.current.set(mUuid, { ...prev, weightStored: parseFloat(wmMatch[3]), weightIncoming: parseFloat(wmMatch[4]) });
+              }
             }
             resolve();
           };
@@ -340,14 +400,45 @@ export function UaisMaintenanceContent() {
     setRunSelectedProgress(null);
     setStreaming(false);
     setUploadedFiles([]);
+
+    // ── Post-job: process collected signals ───────────────────────────────
+    // Missing DOB queue
+    if (collectedMissingDobsRef.current.length > 0) {
+      setMissingDobQueue([...collectedMissingDobsRef.current]);
+      setDobValue("");
+    }
+    // Height/weight mismatch queue
+    const mismatches = Array.from(collectedMismatchesRef.current.values());
+    if (mismatches.length > 0) setMismatchQueue(mismatches);
+
     if (runMode === "new") {
       const latestRes = await fetch("/api/dashboard/athletes/latest?updated=1");
       const latestData = await latestRes.json();
       const athlete = latestData?.athlete_uuid ? latestData : null;
-      if (athlete && (athlete.email == null || athlete.email === "")) {
-        setEmailPopup({ athleteUuid: athlete.athlete_uuid, name: athlete.name ?? "This athlete" });
-        setEmailPopupValue("");
+      if (athlete) {
+        if (!athlete.email) {
+          setEmailPopup({ athleteUuid: athlete.athlete_uuid, name: athlete.name ?? "This athlete" });
+          setEmailPopupValue("");
+        }
+        // B.5: completeness check for new athletes
+        const mc = {
+          uuid: athlete.athlete_uuid as string,
+          name: (athlete.name ?? "This athlete") as string,
+          missingHeight: !athlete.height,
+          missingWeight: !athlete.weight,
+          missingGender: !athlete.gender,
+        };
+        if (mc.missingHeight || mc.missingWeight || mc.missingGender) {
+          setNewAthleteCompletion(mc);
+          setCompletionHeight("");
+          setCompletionWeight("");
+          setCompletionGender("");
+        }
       }
+    } else if (runMode === "existing" && athleteSelected && !athleteSelected.email) {
+      // B.4: email prompt for existing athletes with no email on file
+      setEmailPopup({ athleteUuid: athleteSelected.athlete_uuid, name: athleteSelected.name });
+      setEmailPopupValue("");
     }
   };
 
@@ -486,6 +577,79 @@ export function UaisMaintenanceContent() {
       setRunSelectedError("Failed to save email.");
     } finally {
       setUpdateEmailSaving(false);
+    }
+  };
+
+  // ── Missing DOB handlers (B.2) ───────────────────────────────────────────
+  const saveMissingDob = async () => {
+    const current = missingDobQueue[0];
+    if (!current || !dobValue) return;
+    setDobSaving(true);
+    try {
+      await fetch(`/api/dashboard/athletes/${current.uuid}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date_of_birth: dobValue }),
+      });
+    } catch { /* silently continue */ }
+    finally {
+      setDobSaving(false);
+      setMissingDobQueue((prev) => prev.slice(1));
+      setDobValue("");
+    }
+  };
+
+  const skipMissingDob = () => {
+    setMissingDobQueue((prev) => prev.slice(1));
+    setDobValue("");
+  };
+
+  // ── Mismatch handlers (B.3) ───────────────────────────────────────────────
+  const confirmMismatch = async () => {
+    const current = mismatchQueue[0];
+    if (!current) return;
+    setMismatchSaving(true);
+    try {
+      const body: Record<string, number> = {};
+      if (current.heightIncoming !== undefined) body.height = current.heightIncoming;
+      if (current.weightIncoming !== undefined) body.weight = current.weightIncoming;
+      await fetch(`/api/dashboard/athletes/${current.uuid}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    } catch { /* silently continue */ }
+    finally {
+      setMismatchSaving(false);
+      setMismatchQueue((prev) => prev.slice(1));
+    }
+  };
+
+  const skipMismatch = () => setMismatchQueue((prev) => prev.slice(1));
+
+  // ── New athlete completeness handler (B.5) ────────────────────────────────
+  const saveCompletion = async () => {
+    if (!newAthleteCompletion) return;
+    setCompletionSaving(true);
+    try {
+      const body: Record<string, unknown> = {};
+      if (newAthleteCompletion.missingHeight && completionHeight.trim())
+        body.height = parseFloat(completionHeight);
+      if (newAthleteCompletion.missingWeight && completionWeight.trim())
+        body.weight = parseFloat(completionWeight);
+      if (newAthleteCompletion.missingGender && completionGender.trim())
+        body.gender = completionGender.trim();
+      if (Object.keys(body).length > 0) {
+        await fetch(`/api/dashboard/athletes/${newAthleteCompletion.uuid}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+      }
+    } catch { /* silently continue */ }
+    finally {
+      setCompletionSaving(false);
+      setNewAthleteCompletion(null);
     }
   };
 
@@ -732,6 +896,84 @@ export function UaisMaintenanceContent() {
           setUpdateEmailValue("");
         }}
       />
+
+      <MissingDobModal
+        item={missingDobQueue[0] ?? null}
+        dobValue={dobValue}
+        setDobValue={setDobValue}
+        saving={dobSaving}
+        onSave={() => void saveMissingDob()}
+        onSkip={skipMissingDob}
+      />
+
+      <AthleteInfoUpdateModal
+        item={mismatchQueue[0] ?? null}
+        saving={mismatchSaving}
+        onConfirm={() => void confirmMismatch()}
+        onSkip={skipMismatch}
+      />
+
+      {newAthleteCompletion && (
+        <div
+          className="card"
+          style={{ marginBottom: "1rem", borderColor: "var(--accent)", borderWidth: "1px", borderStyle: "solid" }}
+        >
+          <h3 style={{ margin: "0 0 0.5rem" }}>Complete athlete profile</h3>
+          <p className="text-muted" style={{ marginBottom: "0.75rem" }}>
+            Some information is missing for <strong>{newAthleteCompletion.name}</strong>. Fill in
+            what you have (all fields optional).
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", maxWidth: "280px", marginBottom: "0.75rem" }}>
+            {newAthleteCompletion.missingHeight && (
+              <label style={{ fontSize: "14px" }}>
+                Height (inches)
+                <input
+                  type="number"
+                  value={completionHeight}
+                  onChange={(e) => setCompletionHeight(e.target.value)}
+                  placeholder="e.g. 72"
+                  style={{ display: "block", width: "100%", marginTop: "2px" }}
+                />
+              </label>
+            )}
+            {newAthleteCompletion.missingWeight && (
+              <label style={{ fontSize: "14px" }}>
+                Weight (lbs)
+                <input
+                  type="number"
+                  value={completionWeight}
+                  onChange={(e) => setCompletionWeight(e.target.value)}
+                  placeholder="e.g. 185"
+                  style={{ display: "block", width: "100%", marginTop: "2px" }}
+                />
+              </label>
+            )}
+            {newAthleteCompletion.missingGender && (
+              <label style={{ fontSize: "14px" }}>
+                Gender
+                <select
+                  value={completionGender}
+                  onChange={(e) => setCompletionGender(e.target.value)}
+                  style={{ display: "block", width: "100%", marginTop: "2px" }}
+                >
+                  <option value="">— select —</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
+              </label>
+            )}
+          </div>
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <button type="button" className="btn-primary" onClick={() => void saveCompletion()} disabled={completionSaving}>
+              {completionSaving ? "Saving…" : "Save"}
+            </button>
+            <button type="button" className="btn-ghost" onClick={() => setNewAthleteCompletion(null)}>
+              Skip
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

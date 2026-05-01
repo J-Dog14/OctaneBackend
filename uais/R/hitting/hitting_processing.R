@@ -2150,9 +2150,26 @@ process_all_files <- function(data_root = NULL) {
         n_3d_skipped  <- 0L
         for (i in seq_len(nrow(json_df))) {
           r <- json_df[i, ]
-          json_data <- tryCatch(jsonlite::parse_json(as.character(r$json_path)), error = function(e) NULL)
+          parse_err <- NULL
+          json_data <- tryCatch({
+            jsonlite::parse_json(as.character(r$json_path))
+          }, error = function(e) {
+            parse_err <<- conditionMessage(e)
+            tryCatch({
+              raw_bytes <- readBin(as.character(r$json_path), "raw", file.info(as.character(r$json_path))$size)
+              if (length(raw_bytes) >= 2 && raw_bytes[1] == as.raw(0xFF) && raw_bytes[2] == as.raw(0xFE)) {
+                txt <- iconv(rawToChar(raw_bytes[-c(1, 2)]), from = "UTF-16LE", to = "UTF-8")
+              } else if (length(raw_bytes) >= 3 && raw_bytes[1] == as.raw(0xEF) && raw_bytes[2] == as.raw(0xBB) && raw_bytes[3] == as.raw(0xBF)) {
+                txt <- rawToChar(raw_bytes[-c(1, 2, 3)])
+              } else {
+                txt <- rawToChar(raw_bytes)
+              }
+              jsonlite::parse_json(txt)
+            }, error = function(e2) NULL)
+          })
           if (is.null(json_data)) {
-            log_progress("  [WARNING] Could not parse JSON:", as.character(r$json_path))
+            log_progress("  [WARNING] Could not parse JSON:", as.character(r$json_path),
+                         if (!is.null(parse_err)) paste0("-- Error: ", parse_err) else "")
             n_3d_skipped <- n_3d_skipped + 1L
             next
           }

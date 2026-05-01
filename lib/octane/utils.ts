@@ -24,5 +24,6 @@ export function deriveLevelFromAthlete(athlete: { age_group: string | null }): s
   const raw = athlete.age_group?.trim();
   if (!raw) return "PRO";
   const upper = raw.toUpperCase().replace(/\s+/g, "_");
+  if (upper === "YOUTH") return "BASEBALL_CLUB";
   return upper;
 }

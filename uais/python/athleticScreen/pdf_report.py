@@ -49,6 +49,53 @@ METRIC_LABELS = {
 }
 
 # ------------------------------------------------
+# Per-movement ideal/typical ranges (shared across performance tables and radar)
+# ------------------------------------------------
+# Ideal kurtosis range (low, high) per movement. Used for:
+#   - "Ideal Values" column on the performance table
+#   - per-athlete kurtosis cell coloring (green if inside, red if outside)
+#   - radar chart kurtosis axis (deviation-from-ideal transform)
+KURTOSIS_IDEAL_RANGE = {
+    "DJ":  (-1.45, -1.10),
+    "CMJ": (-1.30, -0.40),
+    "PPU": (-1.55, -1.25),
+    "SLV": (-1.00, -0.20),
+}
+
+# Elite-floor reference values for Max RPD (W/s) per movement, shown in the
+# "Ideal Values" column. Tier (Low/Below Avg/Avg/High/Elite) is computed
+# dynamically from population percentiles when population data is available.
+ELITE_RPD_REFERENCE = {
+    "DJ":  32700,
+    "CMJ": 25200,
+    "PPU": 8000,
+    "SLV": 18200,
+}
+
+# Elite-floor reference values for Work AUC (J) per movement.
+ELITE_AUC_REFERENCE = {
+    "DJ":  570,
+    "CMJ": 1260,
+    "PPU": 700,
+    "SLV": 1030,
+}
+
+# Percentile-based tier mapping for Max RPD and Work AUC (athlete percentile
+# vs. population for the current movement).
+def percentile_to_tier(pct):
+    """Map an athlete's percentile (0-100) to a performance tier label."""
+    if pct < 20:
+        return 'Low'
+    elif pct < 40:
+        return 'Below Average'
+    elif pct < 60:
+        return 'Average'
+    elif pct < 80:
+        return 'High'
+    else:
+        return 'Elite'
+
+# ------------------------------------------------
 # Database Pull - PostgreSQL
 # ------------------------------------------------
 from pathlib import Path
@@ -294,18 +341,56 @@ def add_logo(fig, logo_path, position='top-right'):
 # ------------------------------------------------
 # Radar Plot (Spider/Radial Chart) - Percentile-based
 # ------------------------------------------------
-def radar_chart(ax, row, title, population=None):
+def _kurtosis_deviation(value, ideal_range):
+    """Compute deviation from a per-movement ideal kurtosis range.
+
+    Returns 0 if `value` is inside [low, high]; otherwise the minimum distance to
+    either edge. Athletes inside ideal score the lowest deviation (best on the radar).
+    """
+    if value is None or ideal_range is None:
+        return None
+    low, high = ideal_range
+    if low <= value <= high:
+        return 0.0
+    return min(abs(value - low), abs(value - high))
+
+
+def _kurtosis_radar_value(value, pop_kurtosis_series, ideal_range):
+    """Convert raw kurtosis to a 0-1 radar value via deviation-from-ideal.
+
+    Athlete deviation is percentiled against the population's deviation distribution,
+    then inverted so low deviation (close to ideal) → high radar value.
+    """
+    athlete_dev = _kurtosis_deviation(value, ideal_range)
+    if athlete_dev is None or pop_kurtosis_series is None or len(pop_kurtosis_series) == 0:
+        return 0
+    pop_devs = pop_kurtosis_series.apply(lambda v: _kurtosis_deviation(v, ideal_range)).dropna()
+    if len(pop_devs) == 0:
+        return 0
+    pct = percentileofscore(pop_devs, athlete_dev)
+    # Lower deviation = better, so invert.
+    return max(0.0, min(1.0, 1.0 - pct / 100.0))
+
+
+def radar_chart(ax, row, title, population=None, movement_name=None):
     labels = RADAR_METRICS
     values = [row.get(m, None) for m in labels]
 
     N = len(labels)
     angles = np.linspace(0, 2 * np.pi, N, endpoint=False)
-    
-    # Convert values to percentiles if population data is provided
+
+    # Convert values to percentiles if population data is provided.
+    # Special handling for kurtosis: use deviation-from-ideal-range transform so that
+    # both spike-side and flat-side outliers pull the axis inward (instead of letting
+    # raw spiky kurtosis read as a "high percentile" win).
+    ideal_kurt = KURTOSIS_IDEAL_RANGE.get(movement_name) if movement_name else None
     if population is not None:
         percentile_values = []
         for i, metric in enumerate(labels):
-            if metric in population.columns:
+            if metric == 'kurtosis' and ideal_kurt is not None and 'kurtosis' in population.columns:
+                pop_kurt = population['kurtosis'].dropna()
+                percentile_values.append(_kurtosis_radar_value(values[i], pop_kurt, ideal_kurt))
+            elif metric in population.columns:
                 pop_values = population[metric].dropna()
                 if len(pop_values) > 0 and values[i] is not None:
                     pct = percentileofscore(pop_values, values[i])
@@ -318,7 +403,7 @@ def radar_chart(ax, row, title, population=None):
         # Fallback to normalization if no population data
         max_val = max(values) if max(values) > 0 else 1
         percentile_values = [v / max_val for v in values]
-    
+
     percentile_values += [percentile_values[0]]
     angles = np.append(angles, angles[0])
 
@@ -346,24 +431,30 @@ def radar_chart(ax, row, title, population=None):
 # ------------------------------------------------
 # SLV Radar Chart (consolidated - shows both left and right)
 # ------------------------------------------------
-def slv_radar_chart(ax, left_row, right_row, population=None):
+def slv_radar_chart(ax, left_row, right_row, population=None, movement_name="SLV"):
     """Create a consolidated radar chart for SLV showing both left (dark blue) and right (red) legs"""
     labels = RADAR_METRICS
-    
+
     # Process left leg
     left_values = [left_row.get(m, None) for m in labels] if left_row is not None else None
     # Process right leg
     right_values = [right_row.get(m, None) for m in labels] if right_row is not None else None
-    
+
     N = len(labels)
     angles = np.linspace(0, 2 * np.pi, N, endpoint=False)
-    
+
+    # Pre-compute per-movement ideal kurtosis range (used for the deviation transform).
+    ideal_kurt = KURTOSIS_IDEAL_RANGE.get(movement_name)
+
     def get_percentile_values(values, population):
-        """Convert values to percentiles"""
+        """Convert values to percentiles. Kurtosis axis uses the deviation-from-ideal transform."""
         if population is not None and values is not None:
             percentile_values = []
             for i, metric in enumerate(labels):
-                if metric in population.columns:
+                if metric == 'kurtosis' and ideal_kurt is not None and 'kurtosis' in population.columns:
+                    pop_kurt = population['kurtosis'].dropna()
+                    percentile_values.append(_kurtosis_radar_value(values[i], pop_kurt, ideal_kurt))
+                elif metric in population.columns:
                     pop_values = population[metric].dropna()
                     if len(pop_values) > 0 and values[i] is not None:
                         pct = percentileofscore(pop_values, values[i])
@@ -423,33 +514,43 @@ def slv_radar_chart(ax, left_row, right_row, population=None):
 # ------------------------------------------------
 # Performance Table (for all movements)
 # ------------------------------------------------
-def performance_table(ax, row, movement_name=None):
-    """Create a table showing CMJ variables with performance tiers"""
-    
-    # Define thresholds and tier names
-    rpd_thresholds = {
+def performance_table(ax, row, movement_name=None, population=None):
+    """Create a table showing CMJ variables with performance tiers.
+
+    Tier logic:
+      - Max RPD and Work AUC: percentile-based against `population` for the current
+        movement (Low <20th, Below Average 20-40, Average 40-60, High 60-80, Elite >=80).
+        Falls back to legacy static thresholds if `population` is None or empty.
+      - Kurtosis: descriptive shape label (Very Flat / Moderately Flat / Typical / Sharp).
+        Cell color is computed per-athlete based on whether the athlete's kurtosis sits
+        inside the per-movement ideal range (KURTOSIS_IDEAL_RANGE), independent of label.
+    """
+
+    # Static fallback thresholds for Max RPD and Work AUC (used when no population provided).
+    rpd_thresholds_static = {
         'Low': (float('-inf'), 8400),
         'Below Average': (8400, 12280),
         'Average': (12280, 17846),
         'High': (17846, 25000),
         'Elite': (25000, float('inf'))
     }
-    
-    kurtosis_thresholds = {
-        'Very Flat': (float('-inf'), -1.3),
-        'Moderately Flat': (-1.3, -0.4),
-        'Typical': (-0.4, 0.5),
-        'Spiky': (0.5, float('inf'))
-    }
-    
-    auc_thresholds = {
+
+    auc_thresholds_static = {
         'Low': (float('-inf'), 366),
         'Below Average': (366, 513),
         'Average': (513, 773),
         'High': (773, 1100),
         'Elite': (1100, float('inf'))
     }
-    
+
+    # Kurtosis shape labels (descriptive only — color is computed separately below).
+    kurtosis_thresholds = {
+        'Very Flat':       (float('-inf'), -1.3),
+        'Moderately Flat': (-1.3, -0.4),
+        'Typical':         (-0.4, 0.5),
+        'Sharp':           (0.5, float('inf')),
+    }
+
     # Color mapping - pastel colors with reduced opacity for boxes, text stays white
     # Convert hex to RGB and make pastel (lighter) versions with opacity
     def hex_to_pastel_rgba(hex_color, alpha=0.3):
@@ -464,35 +565,69 @@ def performance_table(ax, row, movement_name=None):
         g = g * 0.5 + white * 0.5
         b = b * 0.5 + white * 0.5
         return (r, g, b, alpha)
-    
+
+    # Tier color map (used for Max RPD and Work AUC tier cells).
     color_map = {
-        'Elite': hex_to_pastel_rgba('#00ff00', 0.5),  # pastel green with opacity
-        'High': hex_to_pastel_rgba('#90ee90', 0.5),   # pastel light green with opacity
-        'Average': hex_to_pastel_rgba('#808080', 0.5), # pastel gray with opacity
-        'Below Average': hex_to_pastel_rgba('#ffff00', 0.5), # pastel yellow with opacity
-        'Low': hex_to_pastel_rgba('#d62728', 0.5),    # pastel red with opacity
-        'Very Flat': hex_to_pastel_rgba('#d62728', 0.5),
-        'Moderately Flat': hex_to_pastel_rgba('#ffff00', 0.5),
-        'Typical': hex_to_pastel_rgba('#808080', 0.5),
-        'Spiky': hex_to_pastel_rgba('#90ee90', 0.5)
+        'Elite':         hex_to_pastel_rgba('#00ff00', 0.5),  # green
+        'High':          hex_to_pastel_rgba('#90ee90', 0.5),  # light green
+        'Average':       hex_to_pastel_rgba('#808080', 0.5),  # gray
+        'Below Average': hex_to_pastel_rgba('#ffff00', 0.5),  # yellow
+        'Low':           hex_to_pastel_rgba('#d62728', 0.5),  # red
     }
-    
-    def get_tier(value, thresholds):
-        """Determine tier based on value and thresholds"""
+    # Kurtosis cell colors are decided per-athlete (in/out of ideal range), not by tier.
+    KURT_COLOR_INSIDE_IDEAL = hex_to_pastel_rgba('#00ff00', 0.5)  # green
+    KURT_COLOR_OUTSIDE_IDEAL = hex_to_pastel_rgba('#d62728', 0.5)  # red
+
+    def get_tier_static(value, thresholds):
+        """Determine tier from static (low,high) bucket dict."""
         for tier, (min_val, max_val) in thresholds.items():
             if min_val <= value < max_val:
                 return tier
         return 'Unknown'
-    
+
+    def get_tier_percentile(value, pop_series):
+        """Determine tier from athlete percentile vs. population for this metric.
+
+        Returns the (tier_label, pct) pair, or (None, None) if population is unusable.
+        """
+        if pop_series is None or len(pop_series) == 0 or value is None:
+            return None, None
+        pct = percentileofscore(pop_series, value)
+        return percentile_to_tier(pct), pct
+
+    def get_kurtosis_label(value):
+        """Descriptive shape label for kurtosis (independent of color)."""
+        return get_tier_static(value, kurtosis_thresholds)
+
+    def get_kurtosis_color(value, movement):
+        """Green if athlete kurtosis is inside per-movement ideal range, else red."""
+        ideal = KURTOSIS_IDEAL_RANGE.get(movement)
+        if ideal is None or value is None:
+            return color_map.get('Average')  # neutral fallback
+        low, high = ideal
+        return KURT_COLOR_INSIDE_IDEAL if low <= value <= high else KURT_COLOR_OUTSIDE_IDEAL
+
     # Get values from row
     rpd_value = row.get('rpd_max_w_per_s', 0)
     kurtosis_value = row.get('kurtosis', 0)
     auc_value = row.get('auc_j', 0)
-    
-    # Determine tiers
-    rpd_tier = get_tier(rpd_value, rpd_thresholds)
-    kurtosis_tier = get_tier(kurtosis_value, kurtosis_thresholds)
-    auc_tier = get_tier(auc_value, auc_thresholds)
+
+    # Determine RPD and AUC tiers — population-percentile-based when possible.
+    rpd_tier = None
+    auc_tier = None
+    if population is not None and not population.empty:
+        if 'rpd_max_w_per_s' in population.columns:
+            rpd_tier, _ = get_tier_percentile(rpd_value, population['rpd_max_w_per_s'].dropna())
+        if 'auc_j' in population.columns:
+            auc_tier, _ = get_tier_percentile(auc_value, population['auc_j'].dropna())
+    if rpd_tier is None:
+        rpd_tier = get_tier_static(rpd_value, rpd_thresholds_static)
+    if auc_tier is None:
+        auc_tier = get_tier_static(auc_value, auc_thresholds_static)
+
+    # Kurtosis: descriptive label for the cell text, per-athlete color decision.
+    kurtosis_tier = get_kurtosis_label(kurtosis_value)
+    kurtosis_cell_color = get_kurtosis_color(kurtosis_value, movement_name)
     
     # Helper function to format numbers with significant figures
     def format_sigfig(value, sigfigs):
@@ -519,51 +654,30 @@ def performance_table(ax, row, movement_name=None):
             format_str = "{:." + str(decimal_places) + "f}"
             return format_str.format(rounded).rstrip('0').rstrip('.')
     
-    # Get threshold values - just the values, no labels, based on movement type
-    def get_threshold_text(thresholds, var_type, movement_name):
-        """Get elite/typical threshold values only, based on movement type"""
+    # Get threshold values - just the values, no labels, based on movement type.
+    # Values come from module-level constants ELITE_RPD_REFERENCE / KURTOSIS_IDEAL_RANGE / ELITE_AUC_REFERENCE.
+    def get_threshold_text(var_type, movement_name):
+        """Get elite/typical threshold display string for the Ideal Values column."""
         if var_type == 'rpd':
-            # Elite RPD Max values by movement
-            elite_rpd = {
-                "DJ": 32708,
-                "CMJ": 25189,
-                "PPU": 7980,
-                "SLV": 18212
-            }
-            elite_min = elite_rpd.get(movement_name, 25000)
-            return f">{format_sigfig(elite_min, 4)}"  # 4 significant figures
+            elite_min = ELITE_RPD_REFERENCE.get(movement_name, 25000)
+            return f">{format_sigfig(elite_min, 4)}"
         elif var_type == 'kurtosis':
-            # Typical Kurtosis ranges by movement - format with 3 significant figures
-            typical_ranges_raw = {
-                "DJ": (-1.43, -1.12),
-                "CMJ": (-1.30, -0.40),
-                "PPU": (-1.58, -1.25),
-                "SLV": (-1.02, -0.19)
-            }
-            if movement_name in typical_ranges_raw:
-                low, high = typical_ranges_raw[movement_name]
-                low_str = format_sigfig(low, 3)
-                high_str = format_sigfig(high, 3)
-                return f"{low_str} to {high_str}"
+            ideal = KURTOSIS_IDEAL_RANGE.get(movement_name)
+            if ideal is not None:
+                low, high = ideal
+                return f"{format_sigfig(low, 3)} to {format_sigfig(high, 3)}"
             return "-0.4 to 0.5"
         elif var_type == 'auc':
-            # Elite AUC values by movement
-            elite_auc = {
-                "DJ": 571.55,
-                "CMJ": 1261.33,
-                "PPU": 701.51,
-                "SLV": 1027.56
-            }
-            elite_min = elite_auc.get(movement_name, 1100)
-            return f">{format_sigfig(elite_min, 4)}"  # 4 significant figures
+            elite_min = ELITE_AUC_REFERENCE.get(movement_name, 1100)
+            return f">{format_sigfig(elite_min, 4)}"
         return ""
-    
+
     # Create table data with significant figures formatting
     table_data = [
         ['Variable', 'Athlete Value', 'Tier / Threshold', 'Ideal Values'],
-        ['Max RPD (W/s)', format_sigfig(rpd_value, 4), rpd_tier, get_threshold_text(rpd_thresholds, 'rpd', movement_name)],  # 4 significant figures
-        ['Kurtosis', format_sigfig(kurtosis_value, 3), kurtosis_tier, get_threshold_text(kurtosis_thresholds, 'kurtosis', movement_name)],  # 3 significant figures
-        ['Work (AUC)', format_sigfig(auc_value, 4), auc_tier, get_threshold_text(auc_thresholds, 'auc', movement_name)]  # 4 significant figures
+        ['Max RPD (W/s)', format_sigfig(rpd_value, 4), rpd_tier, get_threshold_text('rpd', movement_name)],
+        ['Kurtosis', format_sigfig(kurtosis_value, 3), kurtosis_tier, get_threshold_text('kurtosis', movement_name)],
+        ['Work (AUC)', format_sigfig(auc_value, 4), auc_tier, get_threshold_text('auc', movement_name)],
     ]
     
     # Create table
@@ -595,28 +709,32 @@ def performance_table(ax, row, movement_name=None):
         cell.set_edgecolor('white')
         cell.set_linewidth(1.5)
     
-    # Data rows
+    # Data rows. Row order in table_data[1:]: 0=Max RPD, 1=Kurtosis, 2=Work AUC.
+    # Kurtosis row uses per-athlete in/out-of-ideal coloring; the other two use tier color.
     for i, (var, value, tier, thresholds) in enumerate(table_data[1:], 1):
         # Variable name
         cell = table[(i, 0)]
         cell.set_facecolor('#373e43')
         cell.set_text_props(color='white')
         cell.set_edgecolor('white')
-        
+
         # Athlete value
         cell = table[(i, 1)]
         cell.set_facecolor('#373e43')
         cell.set_text_props(color='white')
         cell.set_edgecolor('white')
-        
+
         # Tier cell with color (pastel with opacity, text stays white)
         cell = table[(i, 2)]
-        tier_color = color_map.get(tier, (0.22, 0.24, 0.27, 0.3))  # Default to pastel #373e43 with opacity
+        if i == 2:  # Kurtosis row — color by per-athlete deviation from per-movement ideal
+            tier_color = kurtosis_cell_color
+        else:       # Max RPD or Work AUC row — color by performance tier
+            tier_color = color_map.get(tier, (0.22, 0.24, 0.27, 0.3))
         cell.set_facecolor(tier_color)
         # Text always white at full opacity
         cell.set_text_props(color='white', weight='bold')
         cell.set_edgecolor('white')
-        
+
         # Elite/Average thresholds column
         cell = table[(i, 3)]
         cell.set_facecolor('#373e43')
@@ -639,9 +757,17 @@ def performance_table(ax, row, movement_name=None):
 # ------------------------------------------------
 # SLV Performance Table (shows L: and R: values)
 # ------------------------------------------------
-def slv_performance_table(ax, left_df, right_df, movement_name):
-    """Create a table showing SLV variables with L: and R: values"""
-    
+def slv_performance_table(ax, left_df, right_df, movement_name, population=None):
+    """Create a table showing SLV variables with L: and R: values.
+
+    Same tier logic as performance_table:
+      - Max RPD / Work AUC: percentile-based against `population` (falls back to legacy
+        static thresholds if population is missing).
+      - Kurtosis: descriptive shape label; cell color = green if athlete kurtosis is
+        inside per-movement ideal range, red otherwise. Cell color reflects the LEFT
+        leg's status (consistent with the existing simplification for L/R color mixing).
+    """
+
     # Get best trials
     if not left_df.empty:
         left_best = left_df.iloc[left_df["PP_FORCEPLATE"].argmax()]
@@ -651,7 +777,7 @@ def slv_performance_table(ax, left_df, right_df, movement_name):
         right_best = right_df.iloc[right_df["PP_FORCEPLATE"].argmax()]
     else:
         right_best = None
-    
+
     # Helper function to format numbers with significant figures
     def format_sigfig(value, sigfigs):
         """Format a number with specified significant figures"""
@@ -676,53 +802,46 @@ def slv_performance_table(ax, left_df, right_df, movement_name):
             decimal_places = sigfigs - 1 - order
             format_str = "{:." + str(decimal_places) + "f}"
             return format_str.format(rounded).rstrip('0').rstrip('.')
-    
-    # Get threshold values function (same as regular performance table)
+
+    # Get threshold display text — pulls from module-level constants.
     def get_threshold_text(var_type, movement_name):
-        """Get elite/typical threshold values only, based on movement type"""
         if var_type == 'rpd':
-            elite_rpd = {"SLV": 18212}
-            elite_min = elite_rpd.get(movement_name, 25000)
-            return f">{format_sigfig(elite_min, 4)}"  # 4 significant figures
+            elite_min = ELITE_RPD_REFERENCE.get(movement_name, 25000)
+            return f">{format_sigfig(elite_min, 4)}"
         elif var_type == 'kurtosis':
-            # Format with 3 significant figures
-            typical_ranges_raw = {"SLV": (-1.02, -0.19)}
-            if movement_name in typical_ranges_raw:
-                low, high = typical_ranges_raw[movement_name]
-                low_str = format_sigfig(low, 3)
-                high_str = format_sigfig(high, 3)
-                return f"{low_str} to {high_str}"
+            ideal = KURTOSIS_IDEAL_RANGE.get(movement_name)
+            if ideal is not None:
+                low, high = ideal
+                return f"{format_sigfig(low, 3)} to {format_sigfig(high, 3)}"
             return "-0.4 to 0.5"
         elif var_type == 'auc':
-            elite_auc = {"SLV": 1027.56}
-            elite_min = elite_auc.get(movement_name, 1100)
-            return f">{format_sigfig(elite_min, 4)}"  # 4 significant figures
+            elite_min = ELITE_AUC_REFERENCE.get(movement_name, 1100)
+            return f">{format_sigfig(elite_min, 4)}"
         return ""
-    
-    # Define thresholds and tier names (same as regular performance table)
-    rpd_thresholds = {
+
+    # Static fallback thresholds (only used if population is missing).
+    rpd_thresholds_static = {
         'Low': (float('-inf'), 8400),
         'Below Average': (8400, 12280),
         'Average': (12280, 17846),
         'High': (17846, 25000),
         'Elite': (25000, float('inf'))
     }
-    
-    kurtosis_thresholds = {
-        'Very Flat': (float('-inf'), -1.3),
-        'Moderately Flat': (-1.3, -0.4),
-        'Typical': (-0.4, 0.5),
-        'Spiky': (0.5, float('inf'))
-    }
-    
-    auc_thresholds = {
+    auc_thresholds_static = {
         'Low': (float('-inf'), 366),
         'Below Average': (366, 513),
         'Average': (513, 773),
         'High': (773, 1100),
         'Elite': (1100, float('inf'))
     }
-    
+    # Kurtosis shape labels (descriptive only — color is per-athlete in/out-of-ideal).
+    kurtosis_thresholds = {
+        'Very Flat':       (float('-inf'), -1.3),
+        'Moderately Flat': (-1.3, -0.4),
+        'Typical':         (-0.4, 0.5),
+        'Sharp':           (0.5, float('inf')),
+    }
+
     # Color mapping - pastel colors with reduced opacity for boxes, text stays white
     # Convert hex to RGB and make pastel (lighter) versions with opacity
     def hex_to_pastel_rgba(hex_color, alpha=0.3):
@@ -737,26 +856,53 @@ def slv_performance_table(ax, left_df, right_df, movement_name):
         g = g * 0.5 + white * 0.5
         b = b * 0.5 + white * 0.5
         return (r, g, b, alpha)
-    
+
+    # Tier color map (used for Max RPD and Work AUC tier cells).
     color_map = {
-        'Elite': hex_to_pastel_rgba('#00ff00', 0.3),  # pastel green with opacity
-        'High': hex_to_pastel_rgba('#90ee90', 0.3),   # pastel light green with opacity
-        'Average': hex_to_pastel_rgba('#808080', 0.3), # pastel gray with opacity
-        'Below Average': hex_to_pastel_rgba('#ffff00', 0.3), # pastel yellow with opacity
-        'Low': hex_to_pastel_rgba('#d62728', 0.3),    # pastel red with opacity
-        'Very Flat': hex_to_pastel_rgba('#d62728', 0.3),
-        'Moderately Flat': hex_to_pastel_rgba('#ffff00', 0.3),
-        'Typical': hex_to_pastel_rgba('#808080', 0.3),
-        'Spiky': hex_to_pastel_rgba('#90ee90', 0.3)
+        'Elite':         hex_to_pastel_rgba('#00ff00', 0.3),
+        'High':          hex_to_pastel_rgba('#90ee90', 0.3),
+        'Average':       hex_to_pastel_rgba('#808080', 0.3),
+        'Below Average': hex_to_pastel_rgba('#ffff00', 0.3),
+        'Low':           hex_to_pastel_rgba('#d62728', 0.3),
     }
-    
-    def get_tier(value, thresholds):
-        """Determine tier based on value and thresholds"""
+    # Kurtosis cell colors — per-athlete in/out-of-ideal.
+    KURT_COLOR_INSIDE_IDEAL = hex_to_pastel_rgba('#00ff00', 0.3)
+    KURT_COLOR_OUTSIDE_IDEAL = hex_to_pastel_rgba('#d62728', 0.3)
+
+    def get_tier_static(value, thresholds):
         for tier, (min_val, max_val) in thresholds.items():
             if min_val <= value < max_val:
                 return tier
         return 'Unknown'
-    
+
+    def get_tier_for_metric(value, metric_col, fallback_thresholds, present):
+        """Percentile-based tier when population is available, else static fallback.
+
+        `present` is False for a missing leg and yields 'N/A'.
+        """
+        if not present:
+            return 'N/A'
+        if (population is not None and not population.empty
+                and metric_col in population.columns):
+            pop_series = population[metric_col].dropna()
+            if len(pop_series) > 0 and value is not None:
+                return percentile_to_tier(percentileofscore(pop_series, value))
+        return get_tier_static(value, fallback_thresholds)
+
+    def get_kurtosis_label(value, present):
+        if not present:
+            return 'N/A'
+        return get_tier_static(value, kurtosis_thresholds)
+
+    def get_kurtosis_color(value, present):
+        if not present:
+            return color_map.get('Average')
+        ideal = KURTOSIS_IDEAL_RANGE.get(movement_name)
+        if ideal is None or value is None:
+            return color_map.get('Average')
+        low, high = ideal
+        return KURT_COLOR_INSIDE_IDEAL if low <= value <= high else KURT_COLOR_OUTSIDE_IDEAL
+
     # Get values from left and right
     rpd_left = left_best.get('rpd_max_w_per_s', 0) if left_best is not None else 0
     rpd_right = right_best.get('rpd_max_w_per_s', 0) if right_best is not None else 0
@@ -764,14 +910,19 @@ def slv_performance_table(ax, left_df, right_df, movement_name):
     kurtosis_right = right_best.get('kurtosis', 0) if right_best is not None else 0
     auc_left = left_best.get('auc_j', 0) if left_best is not None else 0
     auc_right = right_best.get('auc_j', 0) if right_best is not None else 0
-    
+
     # Determine tiers for left and right
-    rpd_tier_left = get_tier(rpd_left, rpd_thresholds) if left_best is not None else 'N/A'
-    rpd_tier_right = get_tier(rpd_right, rpd_thresholds) if right_best is not None else 'N/A'
-    kurtosis_tier_left = get_tier(kurtosis_left, kurtosis_thresholds) if left_best is not None else 'N/A'
-    kurtosis_tier_right = get_tier(kurtosis_right, kurtosis_thresholds) if right_best is not None else 'N/A'
-    auc_tier_left = get_tier(auc_left, auc_thresholds) if left_best is not None else 'N/A'
-    auc_tier_right = get_tier(auc_right, auc_thresholds) if right_best is not None else 'N/A'
+    left_present = left_best is not None
+    right_present = right_best is not None
+    rpd_tier_left = get_tier_for_metric(rpd_left, 'rpd_max_w_per_s', rpd_thresholds_static, left_present)
+    rpd_tier_right = get_tier_for_metric(rpd_right, 'rpd_max_w_per_s', rpd_thresholds_static, right_present)
+    kurtosis_tier_left = get_kurtosis_label(kurtosis_left, left_present)
+    kurtosis_tier_right = get_kurtosis_label(kurtosis_right, right_present)
+    auc_tier_left = get_tier_for_metric(auc_left, 'auc_j', auc_thresholds_static, left_present)
+    auc_tier_right = get_tier_for_metric(auc_right, 'auc_j', auc_thresholds_static, right_present)
+
+    # Kurtosis cell color reflects the left leg's in/out-of-ideal status (existing convention).
+    kurtosis_cell_color = get_kurtosis_color(kurtosis_left, left_present)
     
     # Create table data with L: and R: values vertically aligned - using significant figures
     table_data = [
@@ -804,26 +955,27 @@ def slv_performance_table(ax, left_df, right_df, movement_name):
         cell.set_edgecolor('white')
         cell.set_linewidth(1.5)
     
-    # Data rows - apply tier colors to tier column
+    # Data rows - apply tier colors to tier column.
+    # In the rendered table: row 1=Max RPD, row 2=Kurtosis, row 3=Work AUC.
+    # Kurtosis row uses per-athlete in/out-of-ideal coloring (left leg's status).
+    # Other rows use the LEFT leg's tier color (consistent with existing convention).
     for i in range(1, len(table_data)):
         for j in range(len(table_data[0])):
             cell = table[(i, j)]
             cell.set_facecolor('#373e43')
-            
+
             # For tier column (j == 2), apply colors based on tiers
             if j == 2:
-                # Extract left and right tiers from the cell text
                 cell_text = table_data[i][j]
-                if 'L:' in cell_text and 'R:' in cell_text:
-                    # Get left tier (first tier after "L: ")
-                    left_tier = cell_text.split('L: ')[1].split('\n')[0] if 'L:' in cell_text else ''
-                    # Get right tier (after "R: ")
-                    right_tier = cell_text.split('R: ')[1] if 'R:' in cell_text else ''
-                    
-                    # For now, use the left tier color (or we could use a gradient)
-                    tier_color = color_map.get(left_tier, (0.22, 0.24, 0.27, 0.3))  # Default to pastel #373e43 with opacity
+                if i == 2:
+                    # Kurtosis row — color by per-athlete in/out-of-ideal (left leg).
+                    cell.set_facecolor(kurtosis_cell_color)
+                    cell.set_text_props(color='white', weight='bold', fontsize=35)
+                elif 'L:' in cell_text and 'R:' in cell_text:
+                    # Max RPD or Work AUC row — color by LEFT leg's tier.
+                    left_tier = cell_text.split('L: ')[1].split('\n')[0]
+                    tier_color = color_map.get(left_tier, (0.22, 0.24, 0.27, 0.3))
                     cell.set_facecolor(tier_color)
-                    # Text always white at full opacity
                     cell.set_text_props(color='white', weight='bold', fontsize=35)
                 else:
                     cell.set_text_props(color='white', fontsize=35)
@@ -1765,8 +1917,8 @@ def movement_page(pdf, movement_name, df, pop_df, athlete_name, report_date, log
     best = df_ath.loc[df_ath["PP_FORCEPLATE"].idxmax()]
 
     # Create charts
-    radar_chart(ax_radar, best, f"{movement_name} Radar", pop_df)
-    performance_table(ax_table, best, movement_name)
+    radar_chart(ax_radar, best, f"{movement_name} Radar", pop_df, movement_name=movement_name)
+    performance_table(ax_table, best, movement_name, population=pop_df)
     
     power_curve(ax_power, df_ath, pop_df, power_files_dir=power_files_dir)
     fv_scatter(ax_fv, df_ath, pop_df)
@@ -1895,8 +2047,8 @@ def slv_page(pdf, df, pop_df, athlete_name, report_date, logo_path, power_files_
     right_circle_x = progress_circles_x + 0.10 - circle_width/2  # Offset right from center
     
     # Create charts - order matches page layout
-    slv_radar_chart(ax_radar, left_best_row, right_best_row, pop_df)
-    slv_performance_table(ax_table, left, right, "SLV")
+    slv_radar_chart(ax_radar, left_best_row, right_best_row, pop_df, movement_name="SLV")
+    slv_performance_table(ax_table, left, right, "SLV", population=pop_df)
     slv_power_curve(ax_power, left, right, pop_df, power_files_dir=power_files_dir)
     slv_fv_scatter(ax_fv, left, right, pop_df)
     
