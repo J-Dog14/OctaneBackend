@@ -167,6 +167,24 @@ const getCachedAthleticScreenPopulation = unstable_cache(
   { revalidate: 3600 }
 );
 
+const getCachedAthleticScreenPopulationFemale = unstable_cache(
+  async () => {
+    const rows = await prisma.f_athletic_screen_cmj.findMany({
+      where: { d_athletes: { gender: "Female" } },
+      select: { athlete_uuid: true },
+      distinct: ["athlete_uuid"],
+      take: POPULATION_LIMIT,
+    });
+    const uuids = rows.map((r) => r.athlete_uuid);
+    return getPopulationPayloads(uuids, async (uuid) => {
+      const p = await buildAthleticScreenPayload(uuid);
+      return { athleteUuid: p.athleteUuid, metrics: p.metrics };
+    });
+  },
+  ["population-athletic-screen-female"],
+  { revalidate: 3600 }
+);
+
 const getCachedArmActionPopulation = unstable_cache(
   async () => {
     const uuids = await getAthleteUuidsWithArmAction();
@@ -325,10 +343,17 @@ export async function getAthleticScreenWithPercentiles(
   sessionDate?: string
 ): Promise<DomainResult | null> {
   try {
-    const [payload, population] = await Promise.all([
+    const [payload, athlete] = await Promise.all([
       buildAthleticScreenPayload(athleteUuid, sessionDate),
-      getCachedAthleticScreenPopulation(),
+      prisma.d_athletes.findUnique({
+        where: { athlete_uuid: athleteUuid },
+        select: { gender: true },
+      }),
     ]);
+    const isFemale = athlete?.gender === "Female";
+    const population = await (isFemale
+      ? getCachedAthleticScreenPopulationFemale()
+      : getCachedAthleticScreenPopulation());
     const metrics = attachPercentiles(payload.metrics, population, athleteUuid);
     return { metrics, sessionDate: payload.sessionDate ?? null };
   } catch {
@@ -488,6 +513,7 @@ export async function warmPopulationCaches(): Promise<void> {
     getCachedHittingPopulation(),
     getCachedMobilityPopulation(),
     getCachedAthleticScreenPopulation(),
+    getCachedAthleticScreenPopulationFemale(),
     getCachedArmActionPopulation(),
     getCachedProteusPitcherPopulation(),
     getCachedProteusHitterPopulation(),

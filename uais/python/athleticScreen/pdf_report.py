@@ -186,27 +186,37 @@ def query_athlete_data(engine, athlete_uuid, session_date, movement_type):
         traceback.print_exc()
         return pd.DataFrame()
 
-def query_population_data(engine, movement_type):
-    """Query all population data from PostgreSQL for percentile calculations."""
+def query_population_data(engine, movement_type, gender=None):
+    """Query population data from PostgreSQL for percentile calculations.
+    If gender is 'Female', restricts to female athletes only."""
     pg_table = MOVEMENT_TO_PG_TABLE.get(movement_type)
     if not pg_table:
         return pd.DataFrame()
-    
+
     try:
         columns = ['jh_in', 'pp_w_per_kg', 'pp_forceplate', 'force_at_pp', 'vel_at_pp',
                   'auc_j', 'kurtosis', 'rpd_max_w_per_s', 'time_to_rpd_max_s']
-        
+
         if movement_type == 'DJ':
             columns.extend(['ct', 'rsi'])
         elif movement_type == 'SLV':
             columns.append('side')
-        
-        query = f"""
-            SELECT {', '.join(columns)}
-            FROM public.{pg_table}
-            WHERE jh_in IS NOT NULL
-        """
-        
+
+        if gender and gender.lower() == 'female':
+            gender_join = (
+                f" JOIN analytics.d_athletes da"
+                f" ON da.athlete_uuid = public.{pg_table}.athlete_uuid"
+                f" AND da.gender = 'Female'"
+            )
+        else:
+            gender_join = ""
+
+        query = (
+            f"SELECT {', '.join(columns)}"
+            f" FROM public.{pg_table}{gender_join}"
+            f" WHERE jh_in IS NOT NULL"
+        )
+
         df = pd.read_sql_query(query, engine)
         
         if not df.empty:
@@ -768,15 +778,9 @@ def slv_performance_table(ax, left_df, right_df, movement_name, population=None)
         leg's status (consistent with the existing simplification for L/R color mixing).
     """
 
-    # Get best trials
-    if not left_df.empty:
-        left_best = left_df.iloc[left_df["PP_FORCEPLATE"].argmax()]
-    else:
-        left_best = None
-    if not right_df.empty:
-        right_best = right_df.iloc[right_df["PP_FORCEPLATE"].argmax()]
-    else:
-        right_best = None
+    # Average all trials per leg
+    left_best = left_df.mean(numeric_only=True) if not left_df.empty else None
+    right_best = right_df.mean(numeric_only=True) if not right_df.empty else None
 
     # Helper function to format numbers with significant figures
     def format_sigfig(value, sigfigs):
@@ -1913,8 +1917,8 @@ def movement_page(pdf, movement_name, df, pop_df, athlete_name, report_date, log
         ax_vel = fig.add_axes([velocity_x, velocity_y, circle_width, circle_height])
         ax_vel.set_aspect('equal')
 
-    # pick best trial
-    best = df_ath.loc[df_ath["PP_FORCEPLATE"].idxmax()]
+    # average all trials in the session
+    best = df_ath.mean(numeric_only=True)
 
     # Create charts
     radar_chart(ax_radar, best, f"{movement_name} Radar", pop_df, movement_name=movement_name)
@@ -1987,11 +1991,11 @@ def slv_page(pdf, df, pop_df, athlete_name, report_date, logo_path, power_files_
     fig = plt.figure(figsize=(54, 65), facecolor='black')
     fig.patch.set_facecolor('black')
     
-    # Get best left and right trials separately for progress circles
-    best_left = left.iloc[left["PP_FORCEPLATE"].argmax()] if not left.empty and len(left) > 0 else None
-    best_right = right.iloc[right["PP_FORCEPLATE"].argmax()] if not right.empty and len(right) > 0 else None
-    left_best_row = left.iloc[left["PP_FORCEPLATE"].argmax()] if not left.empty else None
-    right_best_row = right.iloc[right["PP_FORCEPLATE"].argmax()] if not right.empty else None
+    # Average all trials per leg for progress circles and radar
+    best_left = left.mean(numeric_only=True) if not left.empty else None
+    best_right = right.mean(numeric_only=True) if not right.empty else None
+    left_best_row = best_left
+    right_best_row = best_right
     
     # Top section: Bar graphs
     graph_width = 0.38
@@ -2116,16 +2120,18 @@ def slv_page(pdf, df, pop_df, athlete_name, report_date, logo_path, power_files_
 # ------------------------------------------------
 # Main PDF Generation Function
 # ------------------------------------------------
-def generate_pdf_report(athlete_uuid, athlete_name, session_date, output_dir, logo_path=None, power_files_dir=None):
+def generate_pdf_report(athlete_uuid, athlete_name, session_date, output_dir, logo_path=None, power_files_dir=None, filename_suffix="", skip_gender_filter=False):
     """
     Generate PDF report for an athlete.
-    
+
     Args:
         athlete_uuid: UUID of the athlete
         athlete_name: Name of the athlete
         session_date: Session date (YYYY-MM-DD)
         output_dir: Directory to save the PDF
         logo_path: Optional path to logo image
+        filename_suffix: String appended to the filename before .pdf (e.g. "_all_comparison")
+        skip_gender_filter: If True, compare against full population regardless of gender
     """
     import os
     from pathlib import Path
@@ -2141,28 +2147,40 @@ def generate_pdf_report(athlete_uuid, athlete_name, session_date, output_dir, lo
     
     # Build output filename
     clean_name = athlete_name.replace(' ', '_').replace(',', '')
-    output_pdf = os.path.join(output_dir, f"{clean_name}_{session_date}_report.pdf")
+    output_pdf = os.path.join(output_dir, f"{clean_name}_{session_date}_report{filename_suffix}.pdf")
     
     # Do not delete the old PDF here. Build the new report first; we only replace
     # the destination file after successful generation (see temp write + move below).
     
     # Connect to database
     engine = get_warehouse_engine()
-    
+
     try:
+        # Fetch athlete gender to use the correct comparison population (unless full population is requested)
+        athlete_gender = None
+        if not skip_gender_filter:
+            with engine.connect() as _gc:
+                _gr = _gc.execute(
+                    text("SELECT gender FROM analytics.d_athletes WHERE athlete_uuid = :uuid"),
+                    {"uuid": athlete_uuid}
+                )
+                _row = _gr.fetchone()
+                if _row:
+                    athlete_gender = _row[0]
+
         # Pull athlete data and population data for each movement
         all_data = {}
         all_pop_data = {}
-        
+
         for movement_type in ["DJ", "CMJ", "PPU", "SLV"]:
             # Get athlete data
             athlete_df = query_athlete_data(engine, athlete_uuid, session_date, movement_type)
             if not athlete_df.empty:
                 athlete_df['name'] = athlete_name  # Set name for filtering
                 all_data[movement_type] = athlete_df
-            
-            # Get population data
-            pop_df = query_population_data(engine, movement_type)
+
+            # Get population data (female athletes compare only to females)
+            pop_df = query_population_data(engine, movement_type, gender=athlete_gender)
             if not pop_df.empty:
                 all_pop_data[movement_type] = pop_df
         

@@ -116,6 +116,22 @@ def get_athletes_with_athletic_screen_data(conn, athlete_name_filter=None, athle
     return out
 
 
+def _get_athlete_gender(athlete_uuid):
+    """Fetch the gender field for an athlete from the warehouse DB. Returns None on any error."""
+    try:
+        conn = get_warehouse_connection()
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT gender FROM analytics.d_athletes WHERE athlete_uuid = %s",
+                (athlete_uuid,)
+            )
+            row = cur.fetchone()
+        conn.close()
+        return row[0] if row else None
+    except Exception:
+        return None
+
+
 def run_report_generation(athletes_to_report, folder_path):
     """
     Generate PDF reports for the given athletes.
@@ -150,6 +166,32 @@ def run_report_generation(athletes_to_report, folder_path):
                     print(f"Warning: Could not copy report to second location: {copy_error}")
             else:
                 print(f"Warning: Failed to generate PDF report for {name}")
+
+            # Female athletes also get an all-population comparison report
+            gender = _get_athlete_gender(athlete_uuid)
+            if gender and gender.lower() == 'female':
+                try:
+                    all_comp_path = generate_pdf_report(
+                        athlete_uuid=athlete_uuid,
+                        athlete_name=name,
+                        session_date=date_str,
+                        output_dir=reports_dir_1,
+                        logo_path=logo_path,
+                        power_files_dir=folder_path,
+                        filename_suffix="_all_comparison",
+                        skip_gender_filter=True,
+                    )
+                    if all_comp_path:
+                        try:
+                            clean_name = name.replace(' ', '_').replace(',', '')
+                            all_comp_filename = f"{clean_name}_{date_str}_report_all_comparison.pdf"
+                            shutil.copy2(all_comp_path, os.path.join(reports_dir_2, all_comp_filename))
+                        except Exception as copy_error:
+                            print(f"Warning: Could not copy all_comparison report to second location: {copy_error}")
+                except Exception as e:
+                    print(f"Warning: Could not generate all_comparison PDF report for {name}: {e}")
+                    import traceback
+                    traceback.print_exc()
         except Exception as e:
             print(f"Warning: Could not generate PDF report for {name}: {e}")
             import traceback

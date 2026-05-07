@@ -15,14 +15,12 @@ except ImportError:
     from python.common.units import meters_to_inches, kg_to_lbs
 
 
-# ASCII file mapping
+# ASCII file mapping for isometric movements (single file per movement, unchanged)
 ASCII_FILES = {
     "I": "i_data.txt",
     "Y": "y_data.txt",
     "T": "t_data.txt",
     "IR90": "ir90_data.txt",
-    "CMJ": "cmj_data.txt",
-    "PPU": "ppu_data.txt"
 }
 
 # ---------- Helper functions (like Athletic Screen) ----------
@@ -122,14 +120,38 @@ def read_first_numeric_row_values(fobj) -> list:
 
 # Headers for different file types
 CMJ_PPU_HEADERS = [
-    "JH_IN", "LEWIS_PEAK_POWER", "Max_Force",
-    "PP_W_per_kg", "PP_FORCEPLATE", "Force_at_PP", "Vel_at_PP"
+    "JH_IN", "PP_FORCEPLATE", "Force_at_PP", "Vel_at_PP", "PP_W_per_kg"
 ]
 
 FORCE_HEADERS = [
     "Max_Force", "Max_Force_Norm",
     "Avg_Force", "Avg_Force_Norm", "Time_to_Max"
 ]
+
+
+def find_cmj_ppu_trial_files(folder_path: str) -> Dict:
+    """
+    Find all CMJ and PPU trial txt files in a folder (one file per trial, like Athletic Screen).
+    Excludes *_Power.txt files.
+
+    Returns:
+        Dict with keys 'CMJ' and 'PPU', each a sorted list of file paths.
+    """
+    result = {'CMJ': [], 'PPU': []}
+    try:
+        for fname in sorted(os.listdir(folder_path)):
+            if not fname.lower().endswith('.txt'):
+                continue
+            if '_power' in fname.lower():
+                continue
+            upper = fname.upper()
+            if upper.startswith('CMJ'):
+                result['CMJ'].append(os.path.join(folder_path, fname))
+            elif upper.startswith('PPU'):
+                result['PPU'].append(os.path.join(folder_path, fname))
+    except Exception:
+        pass
+    return result
 
 
 def find_session_xml(folder_path: str) -> Optional[str]:
@@ -289,21 +311,23 @@ def parse_txt_file(file_path: str, movement_type: str) -> Optional[Dict]:
             
             # Build data dictionary based on movement type
             if movement_type in {"CMJ", "PPU"}:
-                if len(v) < 7:
+                if len(v) < 5:
                     print(f"Unexpected column count for {os.path.basename(file_path)}: {len(v)}; skipping.")
                     return None
-                
+
+                # trial_name is the filename without extension (e.g. "CMJ1.txt" -> "CMJ1")
+                trial_name = os.path.splitext(os.path.basename(file_path))[0]
+
                 data = {
                     'name': name,
                     'date': date,
                     'movement_type': movement_type,
+                    'trial_name': trial_name,
                     'JH_IN': v[0] if len(v) > 0 else None,
-                    'LEWIS_PEAK_POWER': v[1] if len(v) > 1 else None,
-                    'Max_Force': v[2] if len(v) > 2 else None,
-                    'PP_W_per_kg': v[3] if len(v) > 3 else None,
-                    'PP_FORCEPLATE': v[4] if len(v) > 4 else None,
-                    'Force_at_PP': v[5] if len(v) > 5 else None,
-                    'Vel_at_PP': v[6] if len(v) > 6 else None
+                    'PP_FORCEPLATE': v[1] if len(v) > 1 else None,
+                    'Force_at_PP': v[2] if len(v) > 2 else None,
+                    'Vel_at_PP': v[3] if len(v) > 3 else None,
+                    'PP_W_per_kg': v[4] if len(v) > 4 else None,
                 }
             else:
                 # I, Y, T, IR90

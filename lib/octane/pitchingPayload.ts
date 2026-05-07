@@ -698,7 +698,7 @@ export function buildPitchingPayloadWithDebug(
 
 /**
  * Builds the pitching payload from f_pitching_trials (one row per trial, metrics in JSON).
- * Picks the single best trial by velocity_mph, then parses metrics from that row.
+ * Averages all trials from the most recent (or specified) session.
  */
 export async function buildPitchingPayloadFromTrials(
   athleteUuid: string,
@@ -713,41 +713,64 @@ export async function buildPitchingPayloadFromTrials(
     throw notFound("Athlete not found");
   }
 
-  // Best trial by velocity (one row = one trial with all metrics in JSON).
-  const bestTrial = await prisma.f_pitching_trials.findFirst({
-    where: {
-      athlete_uuid: athleteUuid,
-      ...(sessionDate ? { session_date: new Date(sessionDate) } : {}),
-    },
-    orderBy: [{ velocity_mph: "desc" }, { session_date: "desc" }, { trial_index: "asc" }],
+  // Resolve session date: use provided date or find the most recent.
+  let resolvedDate: Date;
+  if (sessionDate) {
+    resolvedDate = new Date(sessionDate);
+  } else {
+    const recent = await prisma.f_pitching_trials.findFirst({
+      where: { athlete_uuid: athleteUuid },
+      orderBy: { session_date: "desc" },
+      select: { session_date: true },
+    });
+    if (!recent) throw notFound("No pitching trial data found for athlete");
+    resolvedDate = recent.session_date;
+  }
+
+  // Get all trials from that session and average their metrics.
+  const allTrials = await prisma.f_pitching_trials.findMany({
+    where: { athlete_uuid: athleteUuid, session_date: resolvedDate },
     select: { metrics: true, velocity_mph: true, weight: true, session_date: true },
   });
 
-  if (!bestTrial) {
+  if (allTrials.length === 0) {
     throw notFound("No pitching trial data found for athlete");
   }
 
-  const valueByMetricName = parseTrialMetricsJson(bestTrial.metrics);
+  const allMaps = allTrials.map((t) => parseTrialMetricsJson(t.metrics));
+  const allKeys = new Set<string>();
+  for (const m of allMaps) for (const k of m.keys()) allKeys.add(k);
 
-  // Always use row velocity_mph as the source of truth for TRACKMAN_METRICS|VELOCITY in trials.
-  const velocityFromRow = decimalToNumber(bestTrial.velocity_mph);
-  if (velocityFromRow !== null) {
-    valueByMetricName.set("BALLSPEED.BALL_RELEASE_SPEED", velocityFromRow);
+  const avgValueMap = new Map<string, number | null>();
+  for (const key of allKeys) {
+    const vals = allMaps
+      .map((m) => m.get(key))
+      .filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+    avgValueMap.set(key, vals.length > 0 ? vals.reduce((a, b) => a + b) / vals.length : null);
   }
 
-  // Prefer trial weight for WEIGHT metric if present.
+  // Average velocity_mph across all trials and override the ball speed metric.
+  const velocities = allTrials
+    .map((t) => decimalToNumber(t.velocity_mph))
+    .filter((v): v is number => v !== null);
+  const avgVelocity = velocities.length > 0 ? velocities.reduce((a, b) => a + b) / velocities.length : null;
+  if (avgVelocity !== null) {
+    avgValueMap.set("BALLSPEED.BALL_RELEASE_SPEED", avgVelocity);
+  }
+
+  const firstTrialWeight = allTrials[0].weight;
   const athleteForBuild =
-    bestTrial.weight != null && decimalToNumber(bestTrial.weight) !== null
-      ? { ...athlete, weight: bestTrial.weight }
+    firstTrialWeight != null && decimalToNumber(firstTrialWeight) !== null
+      ? { ...athlete, weight: firstTrialWeight }
       : athlete;
 
-  const payload = buildMetricsFromValueMap(valueByMetricName, athleteForBuild);
-  const sessionDateStr = bestTrial.session_date.toISOString().split("T")[0];
+  const payload = buildMetricsFromValueMap(avgValueMap, athleteForBuild);
+  const sessionDateStr = resolvedDate.toISOString().split("T")[0];
   return { ...payload, sessionDate: sessionDateStr };
 }
 
 /**
- * Returns the value map and athlete for the best pitching trial (by velocity).
+ * Returns the averaged value map and athlete for the most recent pitching session.
  * Used by the payload debug endpoint so we can show resolved key and component per metric.
  */
 export async function getPitchingTrialValueMapAndAthlete(athleteUuid: string): Promise<{
@@ -761,25 +784,47 @@ export async function getPitchingTrialValueMapAndAthlete(athleteUuid: string): P
   });
   if (!athlete) return null;
 
-  const bestTrial = await prisma.f_pitching_trials.findFirst({
+  const recentSession = await prisma.f_pitching_trials.findFirst({
     where: { athlete_uuid: athleteUuid },
-    orderBy: [{ velocity_mph: "desc" }, { session_date: "desc" }, { trial_index: "asc" }],
+    orderBy: { session_date: "desc" },
+    select: { session_date: true },
+  });
+  if (!recentSession) return null;
+
+  const allTrials = await prisma.f_pitching_trials.findMany({
+    where: { athlete_uuid: athleteUuid, session_date: recentSession.session_date },
     select: { metrics: true, velocity_mph: true, weight: true, session_date: true },
   });
-  if (!bestTrial) return null;
+  if (allTrials.length === 0) return null;
 
-  const valueByMetricName = parseTrialMetricsJson(bestTrial.metrics);
-  const velocityFromRow = decimalToNumber(bestTrial.velocity_mph);
-  if (velocityFromRow !== null) {
-    valueByMetricName.set("BALLSPEED.BALL_RELEASE_SPEED", velocityFromRow);
+  const allMaps = allTrials.map((t) => parseTrialMetricsJson(t.metrics));
+  const allKeys = new Set<string>();
+  for (const m of allMaps) for (const k of m.keys()) allKeys.add(k);
+
+  const avgValueMap = new Map<string, number | null>();
+  for (const key of allKeys) {
+    const vals = allMaps
+      .map((m) => m.get(key))
+      .filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+    avgValueMap.set(key, vals.length > 0 ? vals.reduce((a, b) => a + b) / vals.length : null);
   }
+
+  const velocities = allTrials
+    .map((t) => decimalToNumber(t.velocity_mph))
+    .filter((v): v is number => v !== null);
+  const avgVelocity = velocities.length > 0 ? velocities.reduce((a, b) => a + b) / velocities.length : null;
+  if (avgVelocity !== null) {
+    avgValueMap.set("BALLSPEED.BALL_RELEASE_SPEED", avgVelocity);
+  }
+
+  const firstTrialWeight = allTrials[0].weight;
   const athleteForBuild =
-    bestTrial.weight != null && decimalToNumber(bestTrial.weight) !== null
-      ? { ...athlete, weight: bestTrial.weight }
+    firstTrialWeight != null && decimalToNumber(firstTrialWeight) !== null
+      ? { ...athlete, weight: firstTrialWeight }
       : athlete;
 
-  const sessionDate = bestTrial.session_date.toISOString().split("T")[0];
-  return { valueByMetricName, athlete: athleteForBuild, sessionDate };
+  const sessionDate = recentSession.session_date.toISOString().split("T")[0];
+  return { valueByMetricName: avgValueMap, athlete: athleteForBuild, sessionDate };
 }
 
 /**

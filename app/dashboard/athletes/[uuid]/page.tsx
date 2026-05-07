@@ -3,7 +3,8 @@ export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { buildAthleteReportPayload } from "@/lib/octane/reportPayload";
-import { AthleteUpdateEmailButton } from "../AthleteUpdateEmailButton";
+import { AthleteUpdateNameButton } from "../AthleteUpdateNameButton";
+import { AthleteEditDemographicsButton } from "../AthleteEditDemographicsButton";
 
 const COUNT_LABELS: Record<string, string> = {
   armAction: "Arm action",
@@ -43,34 +44,42 @@ export default async function AthleteDetailPage({
           ← Back to athletes
         </Link>
       </div>
-      <h1 style={{ marginBottom: "0.25rem", fontSize: "1.75rem" }}>
-        {athlete.name}
-      </h1>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.25rem" }}>
+        <h1 style={{ margin: 0, fontSize: "1.75rem" }}>
+          {athlete.name}
+        </h1>
+        <AthleteUpdateNameButton athleteUuid={athlete.athleteUuid} currentName={athlete.name} />
+      </div>
       <p className="text-muted" style={{ marginBottom: "1.5rem", fontSize: "14px" }}>
         {athlete.athleteUuid}
       </p>
 
       <div className="card" style={{ marginBottom: "1.5rem" }}>
-        <h2 style={{ margin: "0 0 0.75rem", fontSize: "1rem" }}>
-          Demographics
-        </h2>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.75rem" }}>
+          <h2 style={{ margin: 0, fontSize: "1rem" }}>Demographics</h2>
+          <AthleteEditDemographicsButton
+            athleteUuid={athlete.athleteUuid}
+            current={{
+              dateOfBirth: athlete.dateOfBirth ? String(athlete.dateOfBirth) : null,
+              gender: athlete.gender,
+              email: athlete.email,
+              height: athlete.height,
+              weight: athlete.weight,
+            }}
+          />
+        </div>
         <dl style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "0.5rem 1.5rem", margin: 0 }}>
           <dt className="text-muted">DOB</dt>
           <dd>{athlete.dateOfBirth ? new Date(athlete.dateOfBirth).toLocaleDateString() : "—"}</dd>
           <dt className="text-muted">Gender</dt>
           <dd>{athlete.gender ?? "—"}</dd>
           <dt className="text-muted">Email</dt>
-          <dd>{athlete.email ?? <span className="text-muted">no email</span>}</dd>
+          <dd>{athlete.email ?? <span className="text-muted">—</span>}</dd>
           <dt className="text-muted">Height</dt>
-          <dd>{athlete.height ?? "—"}</dd>
+          <dd>{athlete.height != null ? `${athlete.height} in` : "—"}</dd>
           <dt className="text-muted">Weight</dt>
-          <dd>{athlete.weight ?? "—"}</dd>
+          <dd>{athlete.weight != null ? `${athlete.weight} lbs` : "—"}</dd>
         </dl>
-        {(!athlete.email || athlete.email === "") && (
-          <div style={{ marginTop: "0.75rem" }}>
-            <AthleteUpdateEmailButton athleteUuid={athlete.athleteUuid} name={athlete.name} />
-          </div>
-        )}
       </div>
 
       <div className="card" style={{ marginBottom: "1.5rem" }}>

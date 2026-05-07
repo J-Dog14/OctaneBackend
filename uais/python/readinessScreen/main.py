@@ -31,8 +31,9 @@ from database import initialize_database, insert_participant, insert_trial_data,
 from file_parsers import (
     find_session_xml, parse_xml_file, parse_ascii_file, parse_txt_file,
     extract_name, extract_date, read_first_numeric_row_values,
-    select_folder_dialog, ASCII_FILES
+    select_folder_dialog, ASCII_FILES, find_cmj_ppu_trial_files
 )
+from athleticScreen.power_analysis import load_power_txt, analyze_power_curve_advanced
 from common.session_duplicate_prompt import prompt_duplicate_session
 from common.session_xml import normalize_gender
 from database_utils import reorder_all_tables
@@ -47,6 +48,23 @@ MOVEMENT_TO_PG_TABLE = {
     "CMJ": "f_readiness_screen_cmj",
     "PPU": "f_readiness_screen_ppu"
 }
+
+
+def _safe_convert(v):
+    """Convert numpy scalar types to Python native types for psycopg2 compatibility."""
+    if v is None:
+        return None
+    try:
+        import numpy as np
+        if isinstance(v, np.integer):
+            return int(v)
+        if isinstance(v, np.floating):
+            return float(v)
+        if isinstance(v, np.ndarray):
+            return v.tolist()
+    except ImportError:
+        pass
+    return v
 
 
 def process_xml_and_ascii(folder_path: str, db_path: str,
@@ -162,14 +180,21 @@ def process_txt_files(output_path: str, athlete_uuid: str = None, profile: dict 
     
     pg_conn = get_warehouse_connection()
     
-    # Find all txt files matching our movement types
-    txt_files = {}
+    # Build ordered list of (movement_type, file_path, trial_id) for all movements.
+    # Isometric movements use a single fixed-name file; CMJ/PPU use one file per trial.
+    files_to_process = []
+
     for movement_type, filename in ASCII_FILES.items():
         file_path = os.path.join(output_path, filename)
         if os.path.exists(file_path):
-            txt_files[movement_type] = file_path
-    
-    if not txt_files:
+            files_to_process.append((movement_type, file_path, None))
+
+    cmj_ppu = find_cmj_ppu_trial_files(output_path)
+    for movement_type, trial_files in cmj_ppu.items():
+        for trial_id, file_path in enumerate(trial_files, start=1):
+            files_to_process.append((movement_type, file_path, trial_id))
+
+    if not files_to_process:
         print("No txt files found in Output Files directory.")
         pg_conn.close()
         return []
@@ -184,8 +209,8 @@ def process_txt_files(output_path: str, athlete_uuid: str = None, profile: dict 
         except Exception:
             pass
     
-    print(f"Processing {len(txt_files)} files")
-    
+    print(f"Processing {len(files_to_process)} files")
+
     # Process each txt file - extract name and date from first line
     processed_athletes = {}  # Track athletes by (name, date) -> athlete_uuid
     duplicate_session_prompted = set()
@@ -194,8 +219,8 @@ def process_txt_files(output_path: str, athlete_uuid: str = None, profile: dict 
     errors = []
     inserted_count = 0
     updated_count = 0
-    
-    for movement_type, file_path in txt_files.items():
+
+    for movement_type, file_path, trial_id in files_to_process:
         try:
             # Parse txt file - extracts name and date from first line
             parsed_data = parse_txt_file(file_path, movement_type)
@@ -271,21 +296,19 @@ def process_txt_files(output_path: str, athlete_uuid: str = None, profile: dict 
             
             # Prepare data for insertion
             if movement_type in {"CMJ", "PPU"}:
-                # CMJ/PPU columns
                 insert_data = {
                     'athlete_uuid': athlete_uuid,
                     'session_date': date_str,
                     'source_system': 'readiness_screen',
                     'source_athlete_id': extract_source_athlete_id(name),
+                    'trial_id': trial_id,
                     'age_at_collection': age_at_collection,
                     'age_group': age_group,
-                    'jump_height': parsed_data.get('JH_IN'),
-                    'peak_power': parsed_data.get('LEWIS_PEAK_POWER'),
-                    'peak_force': parsed_data.get('Max_Force'),
-                    'pp_w_per_kg': parsed_data.get('PP_W_per_kg'),
-                    'pp_forceplate': parsed_data.get('PP_FORCEPLATE'),
-                    'force_at_pp': parsed_data.get('Force_at_PP'),
-                    'vel_at_pp': parsed_data.get('Vel_at_PP')
+                    'jump_height': _safe_convert(parsed_data.get('JH_IN')),
+                    'pp_w_per_kg': _safe_convert(parsed_data.get('PP_W_per_kg')),
+                    'pp_forceplate': _safe_convert(parsed_data.get('PP_FORCEPLATE')),
+                    'force_at_pp': _safe_convert(parsed_data.get('Force_at_PP')),
+                    'vel_at_pp': _safe_convert(parsed_data.get('Vel_at_PP')),
                 }
             else:
                 # I, Y, T, IR90 columns
@@ -303,7 +326,19 @@ def process_txt_files(output_path: str, athlete_uuid: str = None, profile: dict 
                     'time_to_max': parsed_data.get('Time_to_Max')
                 }
             
-            # Safeguard 4 (Existing Athlete only): prompt before overwriting an existing row
+            # Build WHERE clause — CMJ/PPU key includes trial_id; ISO uses (athlete, date) only
+            if movement_type in {"CMJ", "PPU"}:
+                where_clause = "athlete_uuid = %s AND session_date = %s AND trial_id = %s"
+                where_params = (athlete_uuid, date_str, trial_id)
+                update_cols = ['jump_height', 'pp_w_per_kg', 'pp_forceplate', 'force_at_pp',
+                               'vel_at_pp', 'age_at_collection', 'age_group']
+            else:
+                where_clause = "athlete_uuid = %s AND session_date = %s"
+                where_params = (athlete_uuid, date_str)
+                update_cols = ['avg_force', 'avg_force_norm', 'max_force', 'max_force_norm',
+                               'time_to_max', 'age_at_collection', 'age_group']
+
+            # Safeguard (Existing Athlete only): prompt before overwriting an existing row
             if existing_athlete_flow:
                 key = (athlete_uuid, date_str)
                 if key in duplicate_session_skip:
@@ -312,9 +347,9 @@ def process_txt_files(output_path: str, athlete_uuid: str = None, profile: dict 
                     with pg_conn.cursor() as cur:
                         cur.execute(f"""
                             SELECT 1 FROM public.{pg_table}
-                            WHERE athlete_uuid = %s AND session_date = %s
+                            WHERE {where_clause}
                             LIMIT 1
-                        """, (athlete_uuid, date_str))
+                        """, where_params)
                         row_exists = cur.fetchone() is not None
                     if row_exists:
                         if not prompt_duplicate_session(date_str):
@@ -322,52 +357,108 @@ def process_txt_files(output_path: str, athlete_uuid: str = None, profile: dict 
                             errors.append(f"{file_path}: User chose not to overwrite existing session {date_str}")
                             continue
                         duplicate_session_prompted.add(key)
-            
+
             # UPSERT: Check if row exists, then update or insert
             with pg_conn.cursor() as cur:
-                # Check if row exists
                 cur.execute(f"""
                     SELECT COUNT(*) FROM public.{pg_table}
-                    WHERE athlete_uuid = %s AND session_date = %s
-                """, (athlete_uuid, date_str))
-                
+                    WHERE {where_clause}
+                """, where_params)
+
                 exists = cur.fetchone()[0] > 0
-                
+
                 if exists:
-                    # Update existing row
-                    if movement_type in {"CMJ", "PPU"}:
-                        update_cols = ['jump_height', 'peak_power', 'peak_force', 'pp_w_per_kg', 
-                                      'pp_forceplate', 'force_at_pp', 'vel_at_pp', 'age_at_collection', 'age_group']
-                    else:
-                        update_cols = ['avg_force', 'avg_force_norm', 'max_force', 'max_force_norm', 
-                                      'time_to_max', 'age_at_collection', 'age_group']
-                    
                     set_parts = [f"{col} = %s" for col in update_cols]
                     update_values = [insert_data[col] for col in update_cols]
-                    update_values.extend([athlete_uuid, date_str])
-                    
+                    update_values.extend(list(where_params))
+
                     cur.execute(f"""
                         UPDATE public.{pg_table}
                         SET {', '.join(set_parts)}
-                        WHERE athlete_uuid = %s AND session_date = %s
+                        WHERE {where_clause}
                     """, update_values)
                     updated_count += 1
                     update_athlete_age_group_from_insert(athlete_uuid, age_group, conn=pg_conn)
                 else:
-                    # Insert new row
                     cols = list(insert_data.keys())
                     placeholders = ', '.join(['%s'] * len(cols))
                     col_names = ', '.join(cols)
                     values = [insert_data[col] for col in cols]
-                    
+
                     cur.execute(f"""
                         INSERT INTO public.{pg_table} ({col_names})
                         VALUES ({placeholders})
                     """, values)
                     inserted_count += 1
                     update_athlete_age_group_from_insert(athlete_uuid, age_group, conn=pg_conn)
-                
+
                 pg_conn.commit()
+
+            # Power curve analysis for CMJ/PPU trials
+            if movement_type in {"CMJ", "PPU"}:
+                trial_name = parsed_data.get('trial_name', '')
+                power_file = os.path.join(output_path, f"{trial_name}_Power.txt")
+                if os.path.exists(power_file):
+                    try:
+                        power_data = load_power_txt(power_file)
+                        pa = analyze_power_curve_advanced(power_data, fs_hz=1000.0)
+                        pc_data = {
+                            'athlete_uuid': athlete_uuid,
+                            'session_date': date_str,
+                            'movement_type': movement_type,
+                            'trial_id': trial_id,
+                            'source_file': power_file,
+                            'fs_hz': 1000,
+                            'n_samples': len(power_data),
+                            'peak_power_w': _safe_convert(pa.get('peak_power_w')),
+                            'time_to_peak_s': _safe_convert(pa.get('time_to_peak_s')),
+                            'rise_time_10_90_s': _safe_convert(pa.get('rise_time_10_90_s')),
+                            'rise_slope_w_per_s': _safe_convert(pa.get('rise_slope_w_per_s')),
+                            'fwhm_s': _safe_convert(pa.get('fwhm_s')),
+                            'auc_j': _safe_convert(pa.get('auc_j')),
+                            't_com_s': _safe_convert(pa.get('t_com_s')),
+                            't_com_norm_0to1': _safe_convert(pa.get('t_com_norm_0to1')),
+                            'cv_local_peak': _safe_convert(pa.get('cv_local_peak')),
+                            'rpd_max_w_per_s': _safe_convert(pa.get('rpd_max_w_per_s')),
+                            'time_to_rpd_max_s': _safe_convert(pa.get('time_to_rpd_max_s')),
+                            'auc_pre_j': _safe_convert(pa.get('auc_pre_j')),
+                            'auc_post_j': _safe_convert(pa.get('auc_post_j')),
+                            'work_early_pct': _safe_convert(pa.get('work_early_pct')),
+                            'decay_90_10_s': _safe_convert(pa.get('decay_90_10_s')),
+                            'skewness': _safe_convert(pa.get('skewness')),
+                            'kurtosis': _safe_convert(pa.get('kurtosis')),
+                            'spectral_centroid_hz': _safe_convert(pa.get('spectral_centroid_hz')),
+                        }
+                        with pg_conn.cursor() as cur:
+                            cur.execute("""
+                                SELECT COUNT(*) FROM public.f_readiness_screen_power_curve
+                                WHERE athlete_uuid = %s AND session_date = %s
+                                  AND movement_type = %s AND trial_id = %s
+                            """, (athlete_uuid, date_str, movement_type, trial_id))
+                            pc_exists = cur.fetchone()[0] > 0
+
+                            if pc_exists:
+                                pc_update_cols = [c for c in pc_data if c not in
+                                                  ('athlete_uuid', 'session_date', 'movement_type', 'trial_id')]
+                                set_parts = [f"{c} = %s" for c in pc_update_cols]
+                                vals = [pc_data[c] for c in pc_update_cols]
+                                vals.extend([athlete_uuid, date_str, movement_type, trial_id])
+                                cur.execute(f"""
+                                    UPDATE public.f_readiness_screen_power_curve
+                                    SET {', '.join(set_parts)}
+                                    WHERE athlete_uuid = %s AND session_date = %s
+                                      AND movement_type = %s AND trial_id = %s
+                                """, vals)
+                            else:
+                                pc_cols = list(pc_data.keys())
+                                cur.execute(f"""
+                                    INSERT INTO public.f_readiness_screen_power_curve ({', '.join(pc_cols)})
+                                    VALUES ({', '.join(['%s'] * len(pc_cols))})
+                                """, [pc_data[c] for c in pc_cols])
+
+                            pg_conn.commit()
+                    except Exception as e:
+                        print(f"Warning: Could not analyze power file {os.path.basename(power_file)}: {e}")
             
             if athlete_key not in [p[0:2] for p in processed]:
                 processed.append((name, athlete_uuid, date_str))

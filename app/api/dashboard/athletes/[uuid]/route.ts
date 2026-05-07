@@ -32,6 +32,10 @@ function normalizeEmail(raw: string): string {
   return raw.trim().toLowerCase();
 }
 
+function normalizeName(raw: string): string {
+  return raw.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
 function calculateAgeGroup(dob: Date): string {
   const today = new Date();
   let age = today.getFullYear() - dob.getFullYear();
@@ -57,7 +61,7 @@ export async function PATCH(
     const { uuid } = await params;
     if (!uuid) return notFound("Athlete not found");
 
-    let body: { email?: string; date_of_birth?: string; height?: number; weight?: number; gender?: string };
+    let body: { name?: string; email?: string; date_of_birth?: string; height?: number; weight?: number; gender?: string };
     try {
       body = await request.json();
     } catch {
@@ -72,6 +76,11 @@ export async function PATCH(
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data: Record<string, any> = { updated_at: new Date() };
+
+    if (typeof body.name === "string" && body.name.trim()) {
+      data.name = body.name.trim();
+      data.normalized_name = normalizeName(body.name);
+    }
 
     if (typeof body.email === "string") {
       const email = normalizeEmail(body.email) || null;

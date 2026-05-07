@@ -2239,6 +2239,12 @@ process_all_files <- function(data_root = NULL) {
             ")
             log_progress("  [SUCCESS] Ensured typed 3D tables exist")
 
+            log_progress("  [DEBUG] trials_df has", nrow(trials_df), "rows; session_xml_path values:")
+            for (.di in seq_len(nrow(trials_df))) {
+              .v <- trials_df$session_xml_path[.di]
+              log_progress("    row", .di, ": owner=", as.character(trials_df$owner_filename[.di]),
+                           "| xml=", if (is.na(.v)) "NA" else paste0("'", .v, "'"))
+            }
             n_json_inserted <- 0L
             n_json_missing  <- 0L
             for (r in seq_len(nrow(trials_df))) {

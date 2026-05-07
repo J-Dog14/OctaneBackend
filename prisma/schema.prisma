@@ -10,46 +10,46 @@ datasource db {
 }
 
 model d_athletes {
-  athlete_uuid                   String                    @id @db.VarChar(36)
+  athlete_uuid                   String                        @id @db.VarChar(36)
   name                           String
-  normalized_name                String                    @unique
-  date_of_birth                  DateTime?                 @db.Date
-  age                            Decimal?                  @db.Decimal
-  age_at_collection              Decimal?                  @db.Decimal
+  normalized_name                String                        @unique
+  date_of_birth                  DateTime?                     @db.Date
+  age                            Decimal?                      @db.Decimal
   gender                         String?
-  height                         Decimal?                  @db.Decimal
-  weight                         Decimal?                  @db.Decimal
+  height                         Decimal?                      @db.Decimal
+  weight                         Decimal?                      @db.Decimal
   notes                          String?
   source_system                  String?
   source_athlete_id              String?
   app_db_uuid                    String?
-  app_db_synced_at               DateTime?                 @db.Timestamptz(6)
-  email                          String?
-  has_pitching_data              Boolean                   @default(false)
-  has_athletic_screen_data       Boolean                   @default(false)
-  has_pro_sup_data               Boolean                   @default(false)
-  has_readiness_screen_data      Boolean                   @default(false)
-  has_mobility_data              Boolean                   @default(false)
-  has_proteus_data               Boolean                   @default(false)
-  has_hitting_data               Boolean                   @default(false)
-  pitching_session_count         Int                       @default(0)
-  athletic_screen_session_count  Int                       @default(0)
-  pro_sup_session_count          Int                       @default(0)
-  readiness_screen_session_count Int                       @default(0)
-  mobility_session_count         Int                       @default(0)
-  proteus_session_count          Int                       @default(0)
-  hitting_session_count          Int                       @default(0)
-  created_at                     DateTime                  @default(now()) @db.Timestamptz(6)
-  updated_at                     DateTime                  @default(now()) @db.Timestamptz(6)
+  app_db_synced_at               DateTime?                     @db.Timestamptz(6)
+  has_pitching_data              Boolean                       @default(false)
+  has_athletic_screen_data       Boolean                       @default(false)
+  has_pro_sup_data               Boolean                       @default(false)
+  has_readiness_screen_data      Boolean                       @default(false)
+  has_mobility_data              Boolean                       @default(false)
+  has_proteus_data               Boolean                       @default(false)
+  has_hitting_data               Boolean                       @default(false)
+  pitching_session_count         Int                           @default(0)
+  athletic_screen_session_count  Int                           @default(0)
+  pro_sup_session_count          Int                           @default(0)
+  readiness_screen_session_count Int                           @default(0)
+  mobility_session_count         Int                           @default(0)
+  proteus_session_count          Int                           @default(0)
+  hitting_session_count          Int                           @default(0)
+  created_at                     DateTime                      @default(now()) @db.Timestamptz(6)
+  updated_at                     DateTime                      @default(now()) @db.Timestamptz(6)
   age_group                      String?
-  has_arm_action_data            Boolean                   @default(false)
-  arm_action_session_count       Int                       @default(0)
-  has_curveball_test_data        Boolean                   @default(false)
-  curveball_test_session_count   Int                       @default(0)
-  has_pitching_trial_data        Boolean?                  @default(false)
-  pitching_trial_count           Int?                      @default(0)
-  has_hitting_trial_data         Boolean?                  @default(false)
-  hitting_trial_count            Int?                      @default(0)
+  has_arm_action_data            Boolean                       @default(false)
+  arm_action_session_count       Int                           @default(0)
+  has_curveball_test_data        Boolean                       @default(false)
+  curveball_test_session_count   Int                           @default(0)
+  has_pitching_trial_data        Boolean?                      @default(false)
+  pitching_trial_count           Int?                          @default(0)
+  email                          String?
+  age_at_collection              Decimal?                      @db.Decimal
+  has_hitting_trial_data         Boolean?                      @default(false)
+  hitting_trial_count            Int?                          @default(0)
   source_athlete_map             source_athlete_map[]
   f_arm_action                   f_arm_action[]
   f_athletic_screen              f_athletic_screen[]
@@ -59,10 +59,20 @@ model d_athletes {
   f_athletic_screen_ppu          f_athletic_screen_ppu[]
   f_athletic_screen_slv          f_athletic_screen_slv[]
   f_curveball_test               f_curveball_test[]
+  f_hitting_3d_trials            f_hitting_3d_trials[]
+  f_hitting_force_data           f_hitting_force_data[]
+  f_hitting_marker_data          f_hitting_marker_data[]
+  f_hitting_segment_pos_data     f_hitting_segment_pos_data[]
+  f_hitting_segment_rot_data     f_hitting_segment_rot_data[]
   f_hitting_trials               f_hitting_trials[]
   f_kinematics_hitting           f_kinematics_hitting[]
   f_kinematics_pitching          f_kinematics_pitching[]
   f_mobility                     f_mobility[]
+  f_pitching_force_data          f_pitching_force_data[]
+  f_pitching_marker_data         f_pitching_marker_data[]
+  f_pitching_segment_pos_data    f_pitching_segment_pos_data[]
+  f_pitching_segment_rot_data    f_pitching_segment_rot_data[]
+  f_pitching_time_data           f_pitching_time_data[]
   f_pitching_trials              f_pitching_trials[]
   f_pro_sup                      f_pro_sup[]
   f_proteus                      f_proteus[]
@@ -73,6 +83,8 @@ model d_athletes {
   f_readiness_screen_ppu         f_readiness_screen_ppu[]
   f_readiness_screen_t           f_readiness_screen_t[]
   f_readiness_screen_y           f_readiness_screen_y[]
+  f_readiness_screen_score        f_readiness_screen_score[]
+  f_readiness_screen_power_curve  f_readiness_screen_power_curve[]
 
   @@index([app_db_uuid], map: "idx_d_athletes_app_db_uuid")
   @@index([normalized_name], map: "idx_d_athletes_normalized_name")
@@ -921,6 +933,7 @@ model f_readiness_screen_cmj {
   vel_at_pp         Decimal?   @db.Decimal
   d_athletes        d_athletes @relation(fields: [athlete_uuid], references: [athlete_uuid], onDelete: Cascade)
 
+  @@unique([athlete_uuid, session_date, trial_id], map: "uq_readiness_cmj_session_trial")
   @@index([session_date], map: "idx_f_readiness_screen_cmj_date")
   @@index([athlete_uuid], map: "idx_f_readiness_screen_cmj_uuid")
   @@schema("public")
@@ -989,6 +1002,7 @@ model f_readiness_screen_ppu {
   vel_at_pp         Decimal?   @db.Decimal
   d_athletes        d_athletes @relation(fields: [athlete_uuid], references: [athlete_uuid], onDelete: Cascade)
 
+  @@unique([athlete_uuid, session_date, trial_id], map: "uq_readiness_ppu_session_trial")
   @@index([session_date], map: "idx_f_readiness_screen_ppu_date")
   @@index([athlete_uuid], map: "idx_f_readiness_screen_ppu_uuid")
   @@schema("public")
@@ -1046,7 +1060,6 @@ model f_hitting_trials {
   source_athlete_id     String?    @db.VarChar(100)
   owner_filename        String?
   trial_index           Int
-  name                  String?
   age_at_collection     Decimal?   @db.Decimal
   age_group             String?
   height                Decimal?   @db.Decimal
@@ -1055,6 +1068,7 @@ model f_hitting_trials {
   session_xml_path      String?
   session_data_xml_path String?
   created_at            DateTime   @default(now()) @db.Timestamptz(6)
+  name                  String?
   d_athletes            d_athletes @relation(fields: [athlete_uuid], references: [athlete_uuid], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([athlete_uuid, session_date, trial_index], map: "idx_f_hitting_trials_unique")
@@ -1071,8 +1085,6 @@ model f_pitching_trials {
   source_athlete_id     String?    @db.VarChar(100)
   owner_filename        String?
   trial_index           Int
-  name                  String?
-  handedness            String?
   velocity_mph          Decimal?   @db.Decimal
   score                 Decimal?   @db.Decimal
   metrics               Json
@@ -1083,6 +1095,8 @@ model f_pitching_trials {
   age_group             String?
   height                Decimal?   @db.Decimal
   weight                Decimal?   @db.Decimal
+  handedness            String?
+  name                  String?
   d_athletes            d_athletes @relation(fields: [athlete_uuid], references: [athlete_uuid], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([athlete_uuid, session_date, trial_index], map: "idx_f_pitching_trials_unique")
@@ -1110,14 +1124,264 @@ model SyncRequest {
   runnerId    String
   athleteUuid String?
   reportOnly  Boolean  @default(false)
-  dataPath    String?  // Per-run folder override sent from the browser; agent uses this instead of the configured path
-  status      String   @default("pending") // pending | fulfilled | error
+  status      String   @default("pending")
   fileKeys    String[] @default([])
   errorMsg    String?
   createdAt   DateTime @default(now())
   expiresAt   DateTime
+  dataPath    String?
 
   @@map("sync_requests")
   @@schema("public")
 }
 
+model f_hitting_3d_trials {
+  id                Int        @id @default(autoincrement())
+  athlete_uuid      String     @db.VarChar(36)
+  name              String?    @db.VarChar(255)
+  session_date      DateTime   @db.Date
+  source_system     String     @default("hitting") @db.VarChar(50)
+  source_athlete_id String?    @db.VarChar(100)
+  owner_filename    String?
+  trial_index       Int
+  age_at_collection Decimal?   @db.Decimal
+  age_group         String?
+  height            Decimal?   @db.Decimal
+  weight            Decimal?   @db.Decimal
+  frame_rate        Decimal?   @db.Decimal
+  start_time        Decimal?   @db.Decimal
+  end_time          Decimal?   @db.Decimal
+  session_xml_path  String?
+  created_at        DateTime   @default(now()) @db.Timestamptz(6)
+  d_athletes        d_athletes @relation(fields: [athlete_uuid], references: [athlete_uuid], onDelete: Cascade, onUpdate: NoAction, map: "f_hitting_3d_trials_fkey")
+
+  @@unique([athlete_uuid, session_date, trial_index], map: "f_hitting_3d_trials_unique")
+  @@index([session_date], map: "idx_f_hitting_3d_trials_date")
+  @@index([owner_filename], map: "idx_f_hitting_3d_trials_owner")
+  @@schema("public")
+}
+
+model f_hitting_force_data {
+  id                Int        @id @default(autoincrement())
+  athlete_uuid      String     @db.VarChar(36)
+  session_date      DateTime   @db.Date
+  source_system     String     @default("hitting") @db.VarChar(50)
+  source_athlete_id String?    @db.VarChar(100)
+  owner_filename    String?
+  trial_index       Int
+  data              Json?
+  created_at        DateTime   @default(now()) @db.Timestamptz(6)
+  d_athletes        d_athletes @relation(fields: [athlete_uuid], references: [athlete_uuid], onDelete: Cascade, onUpdate: NoAction, map: "f_hitting_force_data_fkey")
+
+  @@unique([athlete_uuid, session_date, trial_index], map: "f_hitting_force_data_unique")
+  @@schema("public")
+}
+
+model f_hitting_marker_data {
+  id                Int        @id @default(autoincrement())
+  athlete_uuid      String     @db.VarChar(36)
+  session_date      DateTime   @db.Date
+  source_system     String     @default("hitting") @db.VarChar(50)
+  source_athlete_id String?    @db.VarChar(100)
+  owner_filename    String?
+  trial_index       Int
+  label_names       Json?
+  data              Json?
+  created_at        DateTime   @default(now()) @db.Timestamptz(6)
+  d_athletes        d_athletes @relation(fields: [athlete_uuid], references: [athlete_uuid], onDelete: Cascade, onUpdate: NoAction, map: "f_hitting_marker_data_fkey")
+
+  @@unique([athlete_uuid, session_date, trial_index], map: "f_hitting_marker_data_unique")
+  @@schema("public")
+}
+
+model f_hitting_segment_pos_data {
+  id                Int        @id @default(autoincrement())
+  athlete_uuid      String     @db.VarChar(36)
+  session_date      DateTime   @db.Date
+  source_system     String     @default("hitting") @db.VarChar(50)
+  source_athlete_id String?    @db.VarChar(100)
+  owner_filename    String?
+  trial_index       Int
+  segment_names     Json?
+  data              Json?
+  created_at        DateTime   @default(now()) @db.Timestamptz(6)
+  d_athletes        d_athletes @relation(fields: [athlete_uuid], references: [athlete_uuid], onDelete: Cascade, onUpdate: NoAction, map: "f_hitting_segment_pos_data_fkey")
+
+  @@unique([athlete_uuid, session_date, trial_index], map: "f_hitting_segment_pos_data_unique")
+  @@schema("public")
+}
+
+model f_hitting_segment_rot_data {
+  id                Int        @id @default(autoincrement())
+  athlete_uuid      String     @db.VarChar(36)
+  session_date      DateTime   @db.Date
+  source_system     String     @default("hitting") @db.VarChar(50)
+  source_athlete_id String?    @db.VarChar(100)
+  owner_filename    String?
+  trial_index       Int
+  segment_names     Json?
+  data              Json?
+  created_at        DateTime   @default(now()) @db.Timestamptz(6)
+  d_athletes        d_athletes @relation(fields: [athlete_uuid], references: [athlete_uuid], onDelete: Cascade, onUpdate: NoAction, map: "f_hitting_segment_rot_data_fkey")
+
+  @@unique([athlete_uuid, session_date, trial_index], map: "f_hitting_segment_rot_data_unique")
+  @@schema("public")
+}
+
+model f_pitching_force_data {
+  id                Int        @id @default(autoincrement())
+  athlete_uuid      String     @db.VarChar(36)
+  session_date      DateTime   @db.Date
+  source_system     String     @default("pitching") @db.VarChar(50)
+  source_athlete_id String?    @db.VarChar(100)
+  owner_filename    String?
+  trial_index       Int
+  data              Json?
+  created_at        DateTime   @default(now()) @db.Timestamptz(6)
+  d_athletes        d_athletes @relation(fields: [athlete_uuid], references: [athlete_uuid], onDelete: Cascade, onUpdate: NoAction, map: "f_pitching_force_data_fkey")
+
+  @@unique([athlete_uuid, session_date, trial_index], map: "f_pitching_force_data_unique")
+  @@schema("public")
+}
+
+model f_pitching_marker_data {
+  id                Int        @id @default(autoincrement())
+  athlete_uuid      String     @db.VarChar(36)
+  session_date      DateTime   @db.Date
+  source_system     String     @default("pitching") @db.VarChar(50)
+  source_athlete_id String?    @db.VarChar(100)
+  owner_filename    String?
+  trial_index       Int
+  label_names       Json?
+  data              Json?
+  created_at        DateTime   @default(now()) @db.Timestamptz(6)
+  d_athletes        d_athletes @relation(fields: [athlete_uuid], references: [athlete_uuid], onDelete: Cascade, onUpdate: NoAction, map: "f_pitching_marker_data_fkey")
+
+  @@unique([athlete_uuid, session_date, trial_index], map: "f_pitching_marker_data_unique")
+  @@schema("public")
+}
+
+model f_pitching_segment_pos_data {
+  id                Int        @id @default(autoincrement())
+  athlete_uuid      String     @db.VarChar(36)
+  session_date      DateTime   @db.Date
+  source_system     String     @default("pitching") @db.VarChar(50)
+  source_athlete_id String?    @db.VarChar(100)
+  owner_filename    String?
+  trial_index       Int
+  segment_names     Json?
+  data              Json?
+  created_at        DateTime   @default(now()) @db.Timestamptz(6)
+  d_athletes        d_athletes @relation(fields: [athlete_uuid], references: [athlete_uuid], onDelete: Cascade, onUpdate: NoAction, map: "f_pitching_segment_pos_data_fkey")
+
+  @@unique([athlete_uuid, session_date, trial_index], map: "f_pitching_segment_pos_data_unique")
+  @@schema("public")
+}
+
+model f_pitching_segment_rot_data {
+  id                Int        @id @default(autoincrement())
+  athlete_uuid      String     @db.VarChar(36)
+  session_date      DateTime   @db.Date
+  source_system     String     @default("pitching") @db.VarChar(50)
+  source_athlete_id String?    @db.VarChar(100)
+  owner_filename    String?
+  trial_index       Int
+  segment_names     Json?
+  data              Json?
+  created_at        DateTime   @default(now()) @db.Timestamptz(6)
+  d_athletes        d_athletes @relation(fields: [athlete_uuid], references: [athlete_uuid], onDelete: Cascade, onUpdate: NoAction, map: "f_pitching_segment_rot_data_fkey")
+
+  @@unique([athlete_uuid, session_date, trial_index], map: "f_pitching_segment_rot_data_unique")
+  @@schema("public")
+}
+
+model f_readiness_screen_score {
+  id                   Int        @id @default(autoincrement())
+  athlete_uuid         String     @db.VarChar(36)
+  session_date         DateTime   @db.Date
+  composite_score      Decimal?   @db.Decimal
+  composite_z          Decimal?   @db.Decimal
+  band                 String?    @db.VarChar(16)
+  cmj_z                Decimal?   @db.Decimal
+  ppu_z                Decimal?   @db.Decimal
+  iso_z                Decimal?   @db.Decimal
+  power_curve_z        Decimal?   @db.Decimal
+  metrics_used         Int?
+  baseline_window_days Int?       @default(28)
+  flags_json           Json?
+  created_at           DateTime   @default(now()) @db.Timestamp(6)
+  d_athletes           d_athletes @relation(fields: [athlete_uuid], references: [athlete_uuid], onDelete: Cascade)
+
+  @@unique([athlete_uuid, session_date], map: "uq_readiness_score_athlete_date")
+  @@index([athlete_uuid], map: "idx_f_readiness_score_uuid")
+  @@index([session_date], map: "idx_f_readiness_score_date")
+  @@schema("public")
+}
+
+model f_readiness_screen_power_curve {
+  id                   Int        @id @default(autoincrement())
+  athlete_uuid         String     @db.VarChar(36)
+  session_date         DateTime   @db.Date
+  movement_type        String     @db.VarChar(8)
+  trial_id             Int?
+  source_file          String?
+  fs_hz                Decimal?   @db.Decimal
+  n_samples            Int?
+  peak_power_w         Decimal?   @db.Decimal
+  time_to_peak_s       Decimal?   @db.Decimal
+  rise_time_10_90_s    Decimal?   @db.Decimal
+  rise_slope_w_per_s   Decimal?   @db.Decimal
+  fwhm_s               Decimal?   @db.Decimal
+  auc_j                Decimal?   @db.Decimal
+  t_com_s              Decimal?   @db.Decimal
+  t_com_norm_0to1      Decimal?   @db.Decimal
+  cv_local_peak        Decimal?   @db.Decimal
+  rpd_max_w_per_s      Decimal?   @db.Decimal
+  time_to_rpd_max_s    Decimal?   @db.Decimal
+  auc_pre_j            Decimal?   @db.Decimal
+  auc_post_j           Decimal?   @db.Decimal
+  work_early_pct       Decimal?   @db.Decimal
+  decay_90_10_s        Decimal?   @db.Decimal
+  skewness             Decimal?   @db.Decimal
+  kurtosis             Decimal?   @db.Decimal
+  spectral_centroid_hz Decimal?   @db.Decimal
+  created_at           DateTime   @default(now()) @db.Timestamp(6)
+  d_athletes           d_athletes @relation(fields: [athlete_uuid], references: [athlete_uuid], onDelete: Cascade)
+
+  @@unique([athlete_uuid, session_date, movement_type, trial_id], map: "uq_power_curve_session")
+  @@index([athlete_uuid], map: "idx_f_readiness_pc_uuid")
+  @@index([session_date], map: "idx_f_readiness_pc_date")
+  @@index([movement_type], map: "idx_f_readiness_pc_movement")
+  @@schema("public")
+}
+
+model f_pitching_time_data {
+  id                    Int        @id @default(autoincrement())
+  athlete_uuid          String     @db.VarChar(36)
+  name                  String?    @db.VarChar(255)
+  session_date          DateTime   @db.Date
+  source_system         String     @default("pitching") @db.VarChar(50)
+  source_athlete_id     String?    @db.VarChar(100)
+  owner_filename        String?
+  handedness            String?    @db.VarChar(20)
+  trial_index           Int
+  velocity_mph          Decimal?   @db.Decimal
+  score                 Decimal?   @db.Decimal
+  age_at_collection     Decimal?   @db.Decimal
+  age_group             String?
+  height                Decimal?   @db.Decimal
+  weight                Decimal?   @db.Decimal
+  frame_rate            Decimal?   @db.Decimal
+  start_time            Decimal?   @db.Decimal
+  end_time              Decimal?   @db.Decimal
+  uncropped_length      Decimal?   @db.Decimal
+  session_xml_path      String?
+  session_data_xml_path String?
+  created_at            DateTime   @default(now()) @db.Timestamptz(6)
+  d_athletes            d_athletes @relation(fields: [athlete_uuid], references: [athlete_uuid], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([athlete_uuid, session_date, trial_index], map: "idx_f_pitching_time_data_unique")
+  @@index([session_date], map: "idx_f_pitching_time_data_date")
+  @@index([owner_filename], map: "idx_f_pitching_time_data_owner")
+  @@schema("public")
+}

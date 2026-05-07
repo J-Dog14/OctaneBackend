@@ -51,7 +51,7 @@ uais/**/__pycache__/
 next-env.d.ts
 
 # prisma
-/prisma/migrations
+# (migrations intentionally tracked — do not re-add to .gitignore)
 
 # ai skills
 .claude
