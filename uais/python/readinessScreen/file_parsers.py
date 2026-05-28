@@ -15,11 +15,9 @@ except ImportError:
     from python.common.units import meters_to_inches, kg_to_lbs
 
 
-# ASCII file mapping for isometric movements (single file per movement, unchanged)
+# ASCII file mapping for active isometric movements (I and T retired in v2)
 ASCII_FILES = {
-    "I": "i_data.txt",
-    "Y": "y_data.txt",
-    "T": "t_data.txt",
+    "Y":    "y_data.txt",
     "IR90": "ir90_data.txt",
 }
 

@@ -126,6 +126,32 @@ if (!athlete_manager_loaded) {
   warning("Could not find athlete_manager.R - warehouse integration will be limited")
 }
 
+# Load force_processing.R (GRF metrics layer) — optional, gated by PROCESS_FORCE_METRICS flag
+.fp_candidates <- c(
+  file.path(getwd(), "force_processing.R"),
+  file.path(getwd(), "R", "pitching", "force_processing.R"),
+  file.path("force_processing.R"),
+  file.path(dirname(getwd()), "R", "pitching", "force_processing.R")
+)
+.fp_loaded <- FALSE
+for (.fpp in .fp_candidates) {
+  if (file.exists(.fpp)) {
+    tryCatch({
+      source(.fpp)
+      .fp_loaded <- TRUE
+      if (PITCHING_VERBOSE) cat("Loaded force_processing.R from:", .fpp, "\n", sep = "")
+    }, error = function(e) {
+      warning("force_processing.R found but failed to source: ", conditionMessage(e))
+    })
+    break
+  }
+}
+if (!.fp_loaded) {
+  if (exists("PROCESS_FORCE_METRICS") && isTRUE(PROCESS_FORCE_METRICS))
+    warning("force_processing.R not found — GRF force metrics will be skipped")
+}
+rm(.fp_candidates, .fp_loaded)
+
 # ---------- SQL helper (avoids prepared statements for Neon/pgBouncer compatibility) ----------
 # Use DBI::dbQuoteLiteral so values are safely escaped and inlined into the SQL string,
 # avoiding the extended query protocol (prepared statements) that pgBouncer rejects.
@@ -139,6 +165,7 @@ DATA_ROOT <- Sys.getenv("PITCHING_DATA_DIR", unset = "H:/Pitching/Data")  # Set 
 USE_WAREHOUSE <- TRUE  # Set to TRUE to write to PostgreSQL warehouse, FALSE for local SQLite
 DB_FILE <- "pitching_data.db"  # Only used if USE_WAREHOUSE = FALSE
 TRUNCATE_BEFORE_INSERT <- FALSE  # Set to TRUE to clear table before inserting (prevents duplicates on re-run)
+PROCESS_FORCE_METRICS <- TRUE   # Set to FALSE to skip GRF force-metrics processing
 
 # ---------- Age group calculation ----------
 #' Calculate age group from age_at_collection (vectorized)
@@ -2069,6 +2096,13 @@ process_all_files <- function(data_root = NULL) {
           #   f_pitching_force_data     - frame x force_index x (fx,fy,fz)
           # -------------------------------------------------------------------
           tryCatch({
+            # Suppress PostgreSQL NOTICE messages (e.g. "relation already exists, skipping")
+            # for the rest of this connection. Must run BEFORE any CREATE TABLE IF NOT EXISTS.
+            tryCatch(DBI::dbExecute(con, "SET client_min_messages = WARNING"), error = function(e) NULL)
+            # Ensure force_metrics table exists once per session (not once per trial).
+            if (exists("ensure_force_metrics_table"))
+              tryCatch(ensure_force_metrics_table(con), error = function(e) NULL)
+
             # Auto-migrate: drop old f_pitching_time_data if it has any JSONB columns
             time_data_cols_check <- tryCatch(
               DBI::dbGetQuery(con, "
@@ -2245,33 +2279,84 @@ process_all_files <- function(data_root = NULL) {
               log_progress("    row", .di, ": owner=", as.character(trials_df$owner_filename[.di]),
                            "| xml=", if (is.na(.v)) "NA" else paste0("'", .v, "'"))
             }
+            # Pre-scan root_dir for all 3D-data JSON files so the loop can find
+            # them even when they are not at the exact derived path (mirrors the
+            # hitting pipeline approach at hitting_processing.R line 718).
+            json_scan_results <- tryCatch(
+              list.files(root_dir, pattern = "-3d-data\\.json$", recursive = TRUE,
+                         full.names = TRUE, ignore.case = TRUE),
+              error = function(e) {
+                log_progress("  [WARNING] Could not pre-scan for JSON files:", conditionMessage(e))
+                character(0)
+              }
+            )
+            json_stem_lookup <- list()
+            for (.jsf in json_scan_results) {
+              .stem_raw <- tools::file_path_sans_ext(basename(.jsf))   # "Fastball RH 13-3d-data"
+              .stem_key <- tolower(sub("-3d-data$", "", .stem_raw))    # "fastball rh 13"
+              if (!.stem_key %in% names(json_stem_lookup))             # first match wins
+                json_stem_lookup[[.stem_key]] <- .jsf
+            }
+
+            # Build owner_stem -> json_path lookup from pre-scan (already done above)
+            # Key change: iterate over FOUND json files and match to trials, not the reverse.
+            # This avoids all path-derivation and file.exists issues.
+            owner_stems_trials <- tolower(tools::file_path_sans_ext(as.character(trials_df$owner_filename)))
+
             n_json_inserted <- 0L
             n_json_missing  <- 0L
-            for (r in seq_len(nrow(trials_df))) {
-              row      <- trials_df[r, ]
-              xml_path <- if (!is.na(row$session_xml_path)) as.character(row$session_xml_path) else ""
-              if (!nzchar(xml_path)) { n_json_missing <- n_json_missing + 1L; next }
-              owner_stem <- tools::file_path_sans_ext(as.character(row$owner_filename))
-              json_file <- file.path(dirname(xml_path), paste0(owner_stem, "-3d-data.json"))
-              if (!file.exists(json_file)) {
-                log_progress("  [WARN] Expected JSON not found:", json_file)
-                existing_jsons <- tryCatch(
-                  list.files(dirname(xml_path), pattern = "\\.json$", full.names = FALSE),
-                  error = function(e) character(0)
-                )
-                if (length(existing_jsons) > 0)
-                  log_progress("  [INFO] JSON files present in dir:", paste(existing_jsons, collapse = ", "))
+            n_markers       <- 0L
+            n_seg_pos       <- 0L
+            n_seg_rot       <- 0L
+            n_force         <- 0L
+            n_metrics       <- 0L
+            inserted_stems  <- character(0)
+
+            .jlog <- file.path(tempdir(), "pitching_json_debug.log")
+            writeLines(paste0("--- JSON loop: ", length(json_scan_results), " files, ", length(owner_stems_trials), " trials ---"), .jlog)
+
+            cat(sprintf("  Found %d JSON file(s) for %d trial(s)\n",
+                        length(json_scan_results), length(owner_stems_trials))); flush.console()
+
+            for (json_file in json_scan_results) {
+              write(paste0("[J1] ", json_file), .jlog, append = TRUE)
+              tryCatch({
+              stem_from_file <- tolower(sub("-3d-data$", "", tools::file_path_sans_ext(basename(json_file))))
+              match_idx <- which(owner_stems_trials == stem_from_file)
+              write(paste0("  stem='", stem_from_file, "' nchar=", nchar(stem_from_file), " matches=", length(match_idx)), .jlog, append = TRUE)
+              if (length(match_idx) == 0) {
+                cat("  [NO MATCH]", stem_from_file, "\n"); flush.console()
+                write(paste0("  [J2] NO MATCH: '", stem_from_file, "'"), .jlog, append = TRUE)
+                next
+              }
+              row <- trials_df[match_idx[1], ]
+              write("[J3] matched", .jlog, append = TRUE)
+              inserted_stems <- c(inserted_stems, stem_from_file)
+
+              # Read file content explicitly (avoids jsonlite file.exists() check failing on network drives)
+              parse_err   <- NULL
+              read_err    <- NULL
+              json_text <- tryCatch(
+                paste(readLines(json_file, warn = FALSE, encoding = "UTF-8"), collapse = "\n"),
+                error = function(e) { read_err <<- conditionMessage(e); NULL }
+              )
+              if (is.null(json_text)) {
+                cat("  [J-READFAIL]", basename(json_file), "-", read_err, "\n"); flush.console()
+                write(paste0("[J-READFAIL] ", read_err), .jlog, append = TRUE)
                 n_json_missing <- n_json_missing + 1L
                 next
               }
-              parse_err <- NULL
-              json_data <- tryCatch(jsonlite::parse_json(json_file), error = function(e) { parse_err <<- conditionMessage(e); NULL })
+              json_data <- tryCatch(
+                jsonlite::parse_json(json_text, simplifyVector = FALSE),
+                error = function(e) { parse_err <<- conditionMessage(e); NULL }
+              )
               if (is.null(json_data)) {
-                log_progress("  [WARNING] Could not parse JSON:", json_file,
-                             if (!is.null(parse_err)) paste0("-- Error: ", parse_err) else "")
+                cat("  [J-PARSEFAIL]", basename(json_file), "-", if (!is.null(parse_err)) parse_err else "returned NULL", "\n"); flush.console()
+                write(paste0("[J-PARSEFAIL] ", if (!is.null(parse_err)) parse_err else "returned NULL"), .jlog, append = TRUE)
                 n_json_missing <- n_json_missing + 1L
                 next
               }
+              write("[J-PARSED OK]", .jlog, append = TRUE)
 
               frame_rate_val       <- json_data$frameRate %||% NA_real_
               start_time_val       <- json_data$startTime %||% NA_real_
@@ -2333,6 +2418,10 @@ process_all_files <- function(data_root = NULL) {
               label_names_vec   <- tryCatch(sapply(json_data$labels,   function(l) l$name), error = function(e) character(0))
               segment_names_vec <- tryCatch(sapply(json_data$segments, function(s) s$name), error = function(e) character(0))
 
+              # Per-trial status flags: "OK", "ERR", or "--" (not attempted)
+              .mk_st <- "--"; .sp_st <- "--"; .sr_st <- "--"
+              .fd_st <- "--"; .fm_st <- "--"
+
               if (length(frames_list) > 0) {
                 uuid_str  <- as.character(row$athlete_uuid)
                 date_str  <- format(row$session_date, "%Y-%m-%d")
@@ -2352,57 +2441,164 @@ process_all_files <- function(data_root = NULL) {
                 seg_rot_json  <- as.character(jsonlite::toJSON(seg_rot_data,   auto_unbox = TRUE, null = "null"))
                 force_json    <- as.character(jsonlite::toJSON(force_data,     auto_unbox = TRUE, null = "null"))
 
-                tryCatch(DBI::dbExecute(con,
-                  "INSERT INTO public.f_pitching_marker_data
-                     (athlete_uuid, session_date, source_system, source_athlete_id,
-                      owner_filename, trial_index, label_names, data)
-                   VALUES ($1, $2::date, $3, $4, $5, $6, $7::jsonb, $8::jsonb)
-                   ON CONFLICT (athlete_uuid, session_date, trial_index) DO UPDATE SET
-                     label_names = EXCLUDED.label_names, data = EXCLUDED.data, created_at = NOW()",
-                  params = list(uuid_str, date_str, "pitching", sa_id, fn_str, trial_idx,
-                                label_json, marker_json)
-                ), error = function(e) log_progress("  [WARNING] marker_data insert:", conditionMessage(e)))
+                # Each tryCatch returns "OK" on success or "ERR" on failure.
+                # Errors are logged to file and printed to terminal.
+                .mk_st <- tryCatch({
+                  DBI::dbExecute(con, paste0("
+                    INSERT INTO public.f_pitching_marker_data
+                       (athlete_uuid, session_date, source_system, source_athlete_id,
+                        owner_filename, trial_index, label_names, data)
+                     VALUES (
+                       ", .sql_lit(con, uuid_str), ",
+                       ", .sql_lit(con, date_str), "::date,
+                       'pitching',
+                       ", .sql_lit(con, sa_id), ",
+                       ", .sql_lit(con, fn_str), ",
+                       ", .sql_lit(con, trial_idx), ",
+                       ", .sql_lit(con, label_json), "::jsonb,
+                       ", .sql_lit(con, marker_json), "::jsonb
+                     )
+                     ON CONFLICT (athlete_uuid, session_date, trial_index) DO UPDATE SET
+                       label_names = EXCLUDED.label_names, data = EXCLUDED.data, created_at = NOW()
+                  ")); "OK"
+                }, error = function(e) {
+                  log_progress("  [WARNING] marker_data insert:", conditionMessage(e))
+                  cat("  [WARNING] marker_data insert:", conditionMessage(e), "\n"); flush.console()
+                  "ERR"
+                })
 
-                tryCatch(DBI::dbExecute(con,
-                  "INSERT INTO public.f_pitching_segment_pos_data
-                     (athlete_uuid, session_date, source_system, source_athlete_id,
-                      owner_filename, trial_index, segment_names, data)
-                   VALUES ($1, $2::date, $3, $4, $5, $6, $7::jsonb, $8::jsonb)
-                   ON CONFLICT (athlete_uuid, session_date, trial_index) DO UPDATE SET
-                     segment_names = EXCLUDED.segment_names, data = EXCLUDED.data, created_at = NOW()",
-                  params = list(uuid_str, date_str, "pitching", sa_id, fn_str, trial_idx,
-                                seg_name_json, seg_pos_json)
-                ), error = function(e) log_progress("  [WARNING] seg_pos_data insert:", conditionMessage(e)))
+                .sp_st <- tryCatch({
+                  DBI::dbExecute(con, paste0("
+                    INSERT INTO public.f_pitching_segment_pos_data
+                       (athlete_uuid, session_date, source_system, source_athlete_id,
+                        owner_filename, trial_index, segment_names, data)
+                     VALUES (
+                       ", .sql_lit(con, uuid_str), ",
+                       ", .sql_lit(con, date_str), "::date,
+                       'pitching',
+                       ", .sql_lit(con, sa_id), ",
+                       ", .sql_lit(con, fn_str), ",
+                       ", .sql_lit(con, trial_idx), ",
+                       ", .sql_lit(con, seg_name_json), "::jsonb,
+                       ", .sql_lit(con, seg_pos_json), "::jsonb
+                     )
+                     ON CONFLICT (athlete_uuid, session_date, trial_index) DO UPDATE SET
+                       segment_names = EXCLUDED.segment_names, data = EXCLUDED.data, created_at = NOW()
+                  ")); "OK"
+                }, error = function(e) {
+                  log_progress("  [WARNING] seg_pos_data insert:", conditionMessage(e))
+                  cat("  [WARNING] seg_pos_data insert:", conditionMessage(e), "\n"); flush.console()
+                  "ERR"
+                })
 
-                tryCatch(DBI::dbExecute(con,
-                  "INSERT INTO public.f_pitching_segment_rot_data
-                     (athlete_uuid, session_date, source_system, source_athlete_id,
-                      owner_filename, trial_index, segment_names, data)
-                   VALUES ($1, $2::date, $3, $4, $5, $6, $7::jsonb, $8::jsonb)
-                   ON CONFLICT (athlete_uuid, session_date, trial_index) DO UPDATE SET
-                     segment_names = EXCLUDED.segment_names, data = EXCLUDED.data, created_at = NOW()",
-                  params = list(uuid_str, date_str, "pitching", sa_id, fn_str, trial_idx,
-                                seg_name_json, seg_rot_json)
-                ), error = function(e) log_progress("  [WARNING] seg_rot_data insert:", conditionMessage(e)))
+                .sr_st <- tryCatch({
+                  DBI::dbExecute(con, paste0("
+                    INSERT INTO public.f_pitching_segment_rot_data
+                       (athlete_uuid, session_date, source_system, source_athlete_id,
+                        owner_filename, trial_index, segment_names, data)
+                     VALUES (
+                       ", .sql_lit(con, uuid_str), ",
+                       ", .sql_lit(con, date_str), "::date,
+                       'pitching',
+                       ", .sql_lit(con, sa_id), ",
+                       ", .sql_lit(con, fn_str), ",
+                       ", .sql_lit(con, trial_idx), ",
+                       ", .sql_lit(con, seg_name_json), "::jsonb,
+                       ", .sql_lit(con, seg_rot_json), "::jsonb
+                     )
+                     ON CONFLICT (athlete_uuid, session_date, trial_index) DO UPDATE SET
+                       segment_names = EXCLUDED.segment_names, data = EXCLUDED.data, created_at = NOW()
+                  ")); "OK"
+                }, error = function(e) {
+                  log_progress("  [WARNING] seg_rot_data insert:", conditionMessage(e))
+                  cat("  [WARNING] seg_rot_data insert:", conditionMessage(e), "\n"); flush.console()
+                  "ERR"
+                })
 
                 if (any(sapply(force_data, length) > 0)) {
-                  tryCatch(DBI::dbExecute(con,
-                    "INSERT INTO public.f_pitching_force_data
-                       (athlete_uuid, session_date, source_system, source_athlete_id,
-                        owner_filename, trial_index, data)
-                     VALUES ($1, $2::date, $3, $4, $5, $6, $7::jsonb)
-                     ON CONFLICT (athlete_uuid, session_date, trial_index) DO UPDATE SET
-                       data = EXCLUDED.data, created_at = NOW()",
-                    params = list(uuid_str, date_str, "pitching", sa_id, fn_str, trial_idx, force_json)
-                  ), error = function(e) log_progress("  [WARNING] force_data insert:", conditionMessage(e)))
+                  .fd_st <- tryCatch({
+                    DBI::dbExecute(con, paste0("
+                      INSERT INTO public.f_pitching_force_data
+                         (athlete_uuid, session_date, source_system, source_athlete_id,
+                          owner_filename, trial_index, data)
+                       VALUES (
+                         ", .sql_lit(con, uuid_str), ",
+                         ", .sql_lit(con, date_str), "::date,
+                         'pitching',
+                         ", .sql_lit(con, sa_id), ",
+                         ", .sql_lit(con, fn_str), ",
+                         ", .sql_lit(con, trial_idx), ",
+                         ", .sql_lit(con, force_json), "::jsonb
+                       )
+                       ON CONFLICT (athlete_uuid, session_date, trial_index) DO UPDATE SET
+                         data = EXCLUDED.data, created_at = NOW()
+                    ")); "OK"
+                  }, error = function(e) {
+                    log_progress("  [WARNING] force_data insert:", conditionMessage(e))
+                    cat("  [WARNING] force_data insert:", conditionMessage(e), "\n"); flush.console()
+                    "ERR"
+                  })
+
+                  # GRF force-metrics processing (runs after raw insert, uses pre-parsed json_data)
+                  if (isTRUE(PROCESS_FORCE_METRICS) && exists("process_force_metrics_for_trial")) {
+                    .fm_st <- tryCatch({
+                      process_force_metrics_for_trial(
+                        con               = con,
+                        athlete_uuid      = uuid_str,
+                        session_date      = date_str,
+                        trial_index       = trial_idx,
+                        json_data         = json_data,
+                        handedness        = as.character(row$handedness %||% NA),
+                        weight_lbs        = row$weight,
+                        frame_rate        = frame_rate_val,
+                        start_time        = start_time_val,
+                        source_athlete_id = sa_id,
+                        owner_filename    = fn_str
+                      ); "OK"
+                    }, error = function(e) {
+                      log_progress("  [WARNING] force_metrics (", fn_str, "): ", conditionMessage(e))
+                      cat("  [WARNING] force_metrics (", fn_str, "):", conditionMessage(e), "\n"); flush.console()
+                      "ERR"
+                    })
+                  }
                 }
               }
 
+              # Per-trial summary line
+              trial_num <- match_idx[1]
+              n_trials_total <- length(owner_stems_trials)
+              cat(sprintf("  [trial %d/%d] %s\n             time=OK  markers=%s  seg_pos=%s  seg_rot=%s  force=%s  metrics=%s\n",
+                trial_num, n_trials_total, stem_from_file,
+                .mk_st, .sp_st, .sr_st, .fd_st, .fm_st))
+              flush.console()
+              write(paste0("[trial ", trial_num, "/", n_trials_total, "] ", stem_from_file,
+                           " mk=", .mk_st, " sp=", .sp_st, " sr=", .sr_st,
+                           " fd=", .fd_st, " fm=", .fm_st), .jlog, append = TRUE)
+
+              # Accumulate per-table counters
+              if (.mk_st == "OK") n_markers <- n_markers + 1L
+              if (.sp_st == "OK") n_seg_pos <- n_seg_pos + 1L
+              if (.sr_st == "OK") n_seg_rot <- n_seg_rot + 1L
+              if (.fd_st == "OK") n_force   <- n_force   + 1L
+              if (.fm_st == "OK") n_metrics <- n_metrics + 1L
+
               n_json_inserted <- n_json_inserted + 1L
+              }, error = function(e) {
+                msg <- conditionMessage(e)
+                cat("  [ERR]", stem_from_file %||% basename(json_file), "-", msg, "\n"); flush.console()
+                write(paste0("[JERR] ", msg), .jlog, append = TRUE)
+              })
+            }
+            write(paste0("--- Loop done: inserted=", n_json_inserted, " stems=", length(inserted_stems), " ---"), .jlog, append = TRUE)
+            # Count trials that had no matching JSON file
+            for (.stem in owner_stems_trials) {
+              if (!.stem %in% inserted_stems) n_json_missing <- n_json_missing + 1L
             }
             log_progress("  [SUCCESS] Wrote", n_json_inserted, "trials to f_pitching_time_data + typed 3D tables;",
                          n_json_missing, "JSON file(s) not found/skipped")
-            cat("  [SUCCESS] f_pitching_time_data:", n_json_inserted, "inserted,", n_json_missing, "JSON files not found\n")
+            cat(sprintf("  [DONE] %d trial(s) | time=%d markers=%d seg_pos=%d seg_rot=%d force=%d metrics=%d | skipped=%d\n",
+                        n_json_inserted, n_json_inserted, n_markers, n_seg_pos, n_seg_rot,
+                        n_force, n_metrics, n_json_missing))
             flush.console()
           }, error = function(e) {
             log_progress("  [WARNING] f_pitching_time_data insert failed:", conditionMessage(e))

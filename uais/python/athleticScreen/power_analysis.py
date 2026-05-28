@@ -136,7 +136,105 @@ def analyze_power_curve(power: Union[np.ndarray, list], fs_hz: float = 1000.0) -
     }
 
 
-def analyze_power_curve_advanced(power: Union[np.ndarray, list], fs_hz: float = 1000.0) -> dict:
+def detect_phases(power_array: np.ndarray, fs_hz: float, movement_type: str) -> tuple:
+    """
+    Identify onset, eccentric→concentric bottom, peak, and takeoff indices.
+    For PPU (still-start), bottom == onset (no meaningful eccentric phase).
+    Returns (onset_idx, bottom_idx, peak_idx, takeoff_idx).
+    """
+    p = np.asarray(power_array, dtype=float)
+    n = len(p)
+    pk_idx = int(np.nanargmax(p))
+    pk_val = float(p[pk_idx])
+    threshold = max(0.05 * abs(pk_val), 10.0)
+
+    above = np.where(np.abs(p) > threshold)[0]
+    onset_idx = int(above[0]) if len(above) > 0 else 0
+
+    if movement_type == "PPU":
+        bottom_idx = onset_idx
+    else:
+        pre_peak = p[:pk_idx]
+        signs = np.sign(pre_peak)
+        signs[signs == 0] = 1
+        crossings = np.where(np.diff(signs) > 0)[0]
+        bottom_idx = int(crossings[-1]) + 1 if len(crossings) > 0 else onset_idx
+
+    post_peak = p[pk_idx:]
+    near_zero = np.where(np.abs(post_peak) < threshold)[0]
+    takeoff_idx = pk_idx + int(near_zero[0]) if len(near_zero) > 0 else n - 1
+
+    return onset_idx, bottom_idx, pk_idx, takeoff_idx
+
+
+def analyze_phase_metrics(power_array: np.ndarray, fs_hz: float,
+                           jump_height_m, movement_type: str) -> dict:
+    """
+    Compute the 9 phase-analysis metrics written to the new DB columns.
+    Returns None for any metric that cannot be computed (degenerate signal, PPU eccentric, etc.).
+    """
+    null_result = {k: None for k in [
+        "contraction_time_s", "eccentric_duration_s", "concentric_duration_s",
+        "ecc_con_duration_ratio", "eccentric_mean_power_w", "eccentric_peak_power_w",
+        "eccentric_auc_j", "concentric_auc_j", "mrsi",
+    ]}
+    try:
+        p = np.asarray(power_array, dtype=float)
+        onset_idx, bottom_idx, _pk_idx, takeoff_idx = detect_phases(p, fs_hz, movement_type)
+    except Exception:
+        return null_result
+
+    result = {}
+
+    ct = (takeoff_idx - onset_idx) / fs_hz if takeoff_idx > onset_idx else None
+    result["contraction_time_s"] = ct
+
+    if movement_type == "CMJ" and bottom_idx > onset_idx:
+        ecc = p[onset_idx:bottom_idx]
+        ecc_dur = (bottom_idx - onset_idx) / fs_hz
+        con_start = bottom_idx
+    else:
+        ecc = None
+        ecc_dur = None
+        con_start = onset_idx
+
+    result["eccentric_duration_s"] = ecc_dur
+
+    con_end = takeoff_idx
+    if con_end > con_start:
+        con = p[con_start:con_end]
+        con_dur = (con_end - con_start) / fs_hz
+    else:
+        con = None
+        con_dur = None
+    result["concentric_duration_s"] = con_dur
+
+    result["ecc_con_duration_ratio"] = (
+        ecc_dur / con_dur if (ecc_dur is not None and con_dur and con_dur > 0) else None
+    )
+
+    if ecc is not None and len(ecc) > 0:
+        result["eccentric_mean_power_w"] = float(np.mean(ecc))
+        result["eccentric_peak_power_w"] = float(np.min(ecc))
+        result["eccentric_auc_j"] = float(abs(np.trapezoid(ecc, dx=1.0 / fs_hz)))
+    else:
+        result["eccentric_mean_power_w"] = None
+        result["eccentric_peak_power_w"] = None
+        result["eccentric_auc_j"] = None
+
+    result["concentric_auc_j"] = (
+        float(np.trapezoid(con, dx=1.0 / fs_hz)) if con is not None and len(con) > 0 else None
+    )
+
+    result["mrsi"] = (
+        jump_height_m / ct if (jump_height_m is not None and ct is not None and ct > 0) else None
+    )
+
+    return result
+
+
+def analyze_power_curve_advanced(power: Union[np.ndarray, list], fs_hz: float = 1000.0,
+                                 jump_height_m=None, movement_type: str = "CMJ") -> dict:
     """
     Compute advanced power curve metrics including RPD, work distribution, and shape statistics.
     
@@ -183,6 +281,10 @@ def analyze_power_curve_advanced(power: Union[np.ndarray, list], fs_hz: float = 
     X = np.abs(np.fft.rfft(np.nan_to_num(x)))
     freqs = np.fft.rfftfreq(x.size, d=1.0/fs_hz)
     base["spectral_centroid_hz"] = float(np.sum(freqs * X) / max(1e-12, np.sum(X)))
+
+    # Phase metrics (eccentric / concentric split + mRSI)
+    phase = analyze_phase_metrics(p, fs_hz, jump_height_m, movement_type)
+    base.update(phase)
 
     return base
 

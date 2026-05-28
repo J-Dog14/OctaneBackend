@@ -69,6 +69,7 @@ model d_athletes {
   f_kinematics_pitching          f_kinematics_pitching[]
   f_mobility                     f_mobility[]
   f_pitching_force_data          f_pitching_force_data[]
+  f_pitching_force_metrics       f_pitching_force_metrics[]
   f_pitching_marker_data         f_pitching_marker_data[]
   f_pitching_segment_pos_data    f_pitching_segment_pos_data[]
   f_pitching_segment_rot_data    f_pitching_segment_rot_data[]
@@ -85,6 +86,7 @@ model d_athletes {
   f_readiness_screen_y           f_readiness_screen_y[]
   f_readiness_screen_score        f_readiness_screen_score[]
   f_readiness_screen_power_curve  f_readiness_screen_power_curve[]
+  f_readiness_screen_grip         f_readiness_screen_grip[]
 
   @@index([app_db_uuid], map: "idx_d_athletes_app_db_uuid")
   @@index([normalized_name], map: "idx_d_athletes_normalized_name")
@@ -924,14 +926,37 @@ model f_readiness_screen_cmj {
   age_at_collection Decimal?   @db.Decimal
   age_group         String?
   created_at        DateTime   @default(now()) @db.Timestamp(6)
-  jump_height       Decimal?   @db.Decimal
-  peak_power        Decimal?   @db.Decimal
-  peak_force        Decimal?   @db.Decimal
-  pp_w_per_kg       Decimal?   @db.Decimal
-  pp_forceplate     Decimal?   @db.Decimal
-  force_at_pp       Decimal?   @db.Decimal
-  vel_at_pp         Decimal?   @db.Decimal
-  d_athletes        d_athletes @relation(fields: [athlete_uuid], references: [athlete_uuid], onDelete: Cascade)
+  jump_height           Decimal?   @db.Decimal
+  peak_power            Decimal?   @db.Decimal
+  peak_force            Decimal?   @db.Decimal
+  pp_w_per_kg           Decimal?   @db.Decimal
+  pp_forceplate         Decimal?   @db.Decimal
+  force_at_pp           Decimal?   @db.Decimal
+  vel_at_pp             Decimal?   @db.Decimal
+  trial_name            String?
+  peak_power_w          Decimal?   @db.Decimal
+  time_to_peak_s        Decimal?   @db.Decimal
+  rpd_max_w_per_s       Decimal?   @db.Decimal
+  time_to_rpd_max_s     Decimal?   @db.Decimal
+  rise_time_10_90_s     Decimal?   @db.Decimal
+  fwhm_s                Decimal?   @db.Decimal
+  auc_j                 Decimal?   @db.Decimal
+  work_early_pct        Decimal?   @db.Decimal
+  decay_90_10_s         Decimal?   @db.Decimal
+  t_com_norm_0to1       Decimal?   @db.Decimal
+  skewness              Decimal?   @db.Decimal
+  kurtosis              Decimal?   @db.Decimal
+  spectral_centroid_hz  Decimal?   @db.Decimal
+  contraction_time_s    Decimal?
+  eccentric_duration_s  Decimal?
+  concentric_duration_s Decimal?
+  ecc_con_duration_ratio Decimal?
+  eccentric_mean_power_w Decimal?
+  eccentric_peak_power_w Decimal?
+  eccentric_auc_j       Decimal?
+  concentric_auc_j      Decimal?
+  mrsi                  Decimal?
+  d_athletes            d_athletes @relation(fields: [athlete_uuid], references: [athlete_uuid], onDelete: Cascade)
 
   @@unique([athlete_uuid, session_date, trial_id], map: "uq_readiness_cmj_session_trial")
   @@index([session_date], map: "idx_f_readiness_screen_cmj_date")
@@ -984,23 +1009,46 @@ model f_readiness_screen_ir90 {
 }
 
 model f_readiness_screen_ppu {
-  id                Int        @id @default(autoincrement())
-  athlete_uuid      String     @db.VarChar(36)
-  session_date      DateTime   @db.Date
-  source_system     String     @default("readiness_screen") @db.VarChar(50)
-  source_athlete_id String?    @db.VarChar(100)
-  trial_id          Int?
-  age_at_collection Decimal?   @db.Decimal
-  age_group         String?
-  created_at        DateTime   @default(now()) @db.Timestamp(6)
-  jump_height       Decimal?   @db.Decimal
-  peak_power        Decimal?   @db.Decimal
-  peak_force        Decimal?   @db.Decimal
-  pp_w_per_kg       Decimal?   @db.Decimal
-  pp_forceplate     Decimal?   @db.Decimal
-  force_at_pp       Decimal?   @db.Decimal
-  vel_at_pp         Decimal?   @db.Decimal
-  d_athletes        d_athletes @relation(fields: [athlete_uuid], references: [athlete_uuid], onDelete: Cascade)
+  id                    Int        @id @default(autoincrement())
+  athlete_uuid          String     @db.VarChar(36)
+  session_date          DateTime   @db.Date
+  source_system         String     @default("readiness_screen") @db.VarChar(50)
+  source_athlete_id     String?    @db.VarChar(100)
+  trial_id              Int?
+  age_at_collection     Decimal?   @db.Decimal
+  age_group             String?
+  created_at            DateTime   @default(now()) @db.Timestamp(6)
+  jump_height           Decimal?   @db.Decimal
+  peak_power            Decimal?   @db.Decimal
+  peak_force            Decimal?   @db.Decimal
+  pp_w_per_kg           Decimal?   @db.Decimal
+  pp_forceplate         Decimal?   @db.Decimal
+  force_at_pp           Decimal?   @db.Decimal
+  vel_at_pp             Decimal?   @db.Decimal
+  trial_name            String?
+  peak_power_w          Decimal?   @db.Decimal
+  time_to_peak_s        Decimal?   @db.Decimal
+  rpd_max_w_per_s       Decimal?   @db.Decimal
+  time_to_rpd_max_s     Decimal?   @db.Decimal
+  rise_time_10_90_s     Decimal?   @db.Decimal
+  fwhm_s                Decimal?   @db.Decimal
+  auc_j                 Decimal?   @db.Decimal
+  work_early_pct        Decimal?   @db.Decimal
+  decay_90_10_s         Decimal?   @db.Decimal
+  t_com_norm_0to1       Decimal?   @db.Decimal
+  skewness              Decimal?   @db.Decimal
+  kurtosis              Decimal?   @db.Decimal
+  spectral_centroid_hz   Decimal?   @db.Decimal
+  contraction_time_s     Decimal?
+  eccentric_duration_s   Decimal?
+  concentric_duration_s  Decimal?
+  ecc_con_duration_ratio Decimal?
+  eccentric_mean_power_w Decimal?
+  eccentric_peak_power_w Decimal?
+  eccentric_auc_j        Decimal?
+  concentric_auc_j       Decimal?
+  mrsi                   Decimal?
+  d_athletes            d_athletes @relation(fields: [athlete_uuid], references: [athlete_uuid], onDelete: Cascade)
 
   @@unique([athlete_uuid, session_date, trial_id], map: "uq_readiness_ppu_session_trial")
   @@index([session_date], map: "idx_f_readiness_screen_ppu_date")
@@ -1244,6 +1292,96 @@ model f_pitching_force_data {
   @@schema("public")
 }
 
+model f_pitching_force_metrics {
+  id                              Int        @id @default(autoincrement())
+  athlete_uuid                    String     @db.VarChar(36)
+  session_date                    DateTime   @db.Date
+  source_system                   String     @default("pitching") @db.VarChar(50)
+  source_athlete_id               String?    @db.VarChar(100)
+  owner_filename                  String?
+  trial_index                     Int
+  handedness                      String?    @db.VarChar(20)
+  body_weight_kg                  Decimal?   @db.Decimal
+  body_weight_n                   Decimal?   @db.Decimal
+  lead_plate_id                   Int?
+  drive_plate_id                  Int?
+  braking_sign                    Int?       @db.SmallInt
+  axis_braking                    String?    @db.VarChar(2)
+  axis_vertical                   String?    @db.VarChar(2)
+  axis_mediolateral               String?    @db.VarChar(2)
+  fc_frame                        Int?
+  br_frame                        Int?
+  mer_frame                       Int?
+  fc_time_s                       Decimal?   @db.Decimal
+  br_time_s                       Decimal?   @db.Decimal
+  mer_time_s                      Decimal?   @db.Decimal
+  initial_contact_frame           Int?
+  initial_contact_time_s          Decimal?   @db.Decimal
+  foot_loading_time_ms            Decimal?   @db.Decimal
+  fc_to_br_duration_s             Decimal?   @db.Decimal
+  lead_peak_vertical_n            Decimal?   @db.Decimal
+  lead_peak_vertical_bw           Decimal?   @db.Decimal
+  lead_peak_vertical_time_s       Decimal?   @db.Decimal
+  lead_peak_vertical_pct_fc_br    Decimal?   @db.Decimal
+  lead_peak_braking_n             Decimal?   @db.Decimal
+  lead_peak_braking_bw            Decimal?   @db.Decimal
+  lead_peak_braking_time_s        Decimal?   @db.Decimal
+  lead_peak_braking_pct_fc_br     Decimal?   @db.Decimal
+  lead_peak_resultant_n           Decimal?   @db.Decimal
+  lead_peak_resultant_bw          Decimal?   @db.Decimal
+  lead_peak_resultant_time_s      Decimal?   @db.Decimal
+  lead_peak_resultant_pct_fc_br   Decimal?   @db.Decimal
+  peak_v_to_peak_b_lag_ms         Decimal?   @db.Decimal
+  peaks_synced_flag               Boolean?
+  peaks_before_mer_flag           Boolean?
+  single_impulse_flag             Boolean?
+  impulse_peak_count              Int?
+  lead_rfd_vertical_n_per_s       Decimal?   @db.Decimal
+  lead_rfd_vertical_bw_per_s      Decimal?   @db.Decimal
+  lead_rfd_braking_n_per_s        Decimal?   @db.Decimal
+  lead_rfd_braking_bw_per_s       Decimal?   @db.Decimal
+  lead_time_to_peak_fz_ms         Decimal?   @db.Decimal
+  lead_impulse_v_fc_to_br_ns      Decimal?   @db.Decimal
+  lead_impulse_v_fc_to_br_bws     Decimal?   @db.Decimal
+  lead_impulse_v_fc_to_mer_ns     Decimal?   @db.Decimal
+  lead_impulse_v_fc_to_mer_bws    Decimal?   @db.Decimal
+  lead_impulse_v_into_ball_ns     Decimal?   @db.Decimal
+  lead_impulse_v_into_ball_bws    Decimal?   @db.Decimal
+  lead_impulse_b_fc_to_br_ns      Decimal?   @db.Decimal
+  lead_impulse_b_fc_to_br_bws     Decimal?   @db.Decimal
+  lead_impulse_b_fc_to_mer_ns     Decimal?   @db.Decimal
+  lead_impulse_b_fc_to_mer_bws    Decimal?   @db.Decimal
+  lead_impulse_b_into_ball_ns     Decimal?   @db.Decimal
+  lead_impulse_b_into_ball_bws    Decimal?   @db.Decimal
+  lead_impulse_resultant_fc_to_br_ns   Decimal? @db.Decimal
+  lead_impulse_resultant_into_ball_ns  Decimal? @db.Decimal
+  lead_impulse_resultant_into_ball_bws Decimal? @db.Decimal
+  lead_fz_at_50pct_bw             Decimal?   @db.Decimal
+  lead_fz_at_midpoint_bw          Decimal?   @db.Decimal
+  lead_fy_at_midpoint_bw          Decimal?   @db.Decimal
+  lead_resultant_at_midpoint_bw   Decimal?   @db.Decimal
+  drive_peak_vertical_n           Decimal?   @db.Decimal
+  drive_peak_vertical_bw          Decimal?   @db.Decimal
+  drive_peak_vertical_time_s      Decimal?   @db.Decimal
+  drive_peak_braking_n            Decimal?   @db.Decimal
+  drive_peak_braking_bw           Decimal?   @db.Decimal
+  drive_peak_braking_time_s       Decimal?   @db.Decimal
+  drive_unload_time_s             Decimal?   @db.Decimal
+  drive_to_lead_handoff_ms        Decimal?   @db.Decimal
+  total_vertical_peak_n           Decimal?   @db.Decimal
+  virtual_plate_xcheck_pct        Decimal?   @db.Decimal
+  qa_flags                        String[]
+  qa_warnings_json                Json?
+  processor_version               String     @db.VarChar(20)
+  created_at                      DateTime   @default(now()) @db.Timestamptz(6)
+  d_athletes                      d_athletes @relation(fields: [athlete_uuid], references: [athlete_uuid], onDelete: Cascade, onUpdate: NoAction, map: "f_pitching_force_metrics_fkey")
+
+  @@unique([athlete_uuid, session_date, trial_index], map: "f_pitching_force_metrics_unique")
+  @@index([athlete_uuid, session_date], map: "idx_force_metrics_athlete_date")
+  @@index([owner_filename], map: "idx_force_metrics_owner")
+  @@schema("public")
+}
+
 model f_pitching_marker_data {
   id                Int        @id @default(autoincrement())
   athlete_uuid      String     @db.VarChar(36)
@@ -1306,6 +1444,7 @@ model f_readiness_screen_score {
   ppu_z                Decimal?   @db.Decimal
   iso_z                Decimal?   @db.Decimal
   power_curve_z        Decimal?   @db.Decimal
+  grip_z               Decimal?
   metrics_used         Int?
   baseline_window_days Int?       @default(28)
   flags_json           Json?
@@ -1344,9 +1483,18 @@ model f_readiness_screen_power_curve {
   decay_90_10_s        Decimal?   @db.Decimal
   skewness             Decimal?   @db.Decimal
   kurtosis             Decimal?   @db.Decimal
-  spectral_centroid_hz Decimal?   @db.Decimal
-  created_at           DateTime   @default(now()) @db.Timestamp(6)
-  d_athletes           d_athletes @relation(fields: [athlete_uuid], references: [athlete_uuid], onDelete: Cascade)
+  spectral_centroid_hz   Decimal?   @db.Decimal
+  contraction_time_s     Decimal?
+  eccentric_duration_s   Decimal?
+  concentric_duration_s  Decimal?
+  ecc_con_duration_ratio Decimal?
+  eccentric_mean_power_w Decimal?
+  eccentric_peak_power_w Decimal?
+  eccentric_auc_j        Decimal?
+  concentric_auc_j       Decimal?
+  mrsi                   Decimal?
+  created_at             DateTime   @default(now()) @db.Timestamp(6)
+  d_athletes             d_athletes @relation(fields: [athlete_uuid], references: [athlete_uuid], onDelete: Cascade)
 
   @@unique([athlete_uuid, session_date, movement_type, trial_id], map: "uq_power_curve_session")
   @@index([athlete_uuid], map: "idx_f_readiness_pc_uuid")
@@ -1383,5 +1531,30 @@ model f_pitching_time_data {
   @@unique([athlete_uuid, session_date, trial_index], map: "idx_f_pitching_time_data_unique")
   @@index([session_date], map: "idx_f_pitching_time_data_date")
   @@index([owner_filename], map: "idx_f_pitching_time_data_owner")
+  @@schema("public")
+}
+
+model f_readiness_screen_grip {
+  id                Int        @id @default(autoincrement())
+  athlete_uuid      String     @db.VarChar(36)
+  session_date      DateTime   @db.Date
+  source_system     String?    @db.VarChar(64)
+  source_athlete_id String?    @db.VarChar(64)
+  age_at_collection Decimal?
+  age_group         String?    @db.VarChar(32)
+  left_kg           Decimal?
+  right_kg          Decimal?
+  avg_kg            Decimal?
+  max_kg            Decimal?
+  asymmetry_pct     Decimal?
+  dominant_hand     String?    @db.VarChar(8)
+  entry_source      String?    @db.VarChar(16)
+  notes             String?
+  created_at        DateTime   @default(now())
+  d_athletes        d_athletes @relation(fields: [athlete_uuid], references: [athlete_uuid], onDelete: Cascade)
+
+  @@unique([athlete_uuid, session_date], name: "uq_grip_athlete_session")
+  @@index([athlete_uuid], name: "idx_grip_athlete")
+  @@index([session_date], name: "idx_grip_session")
   @@schema("public")
 }

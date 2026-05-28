@@ -30,3 +30,10 @@ def lbs_to_kg(lbs: Optional[float]) -> Optional[float]:
     if lbs is None or lbs <= 0:
         return None
     return lbs / KG_TO_LBS
+
+
+def inches_to_meters(inches: Optional[float]) -> Optional[float]:
+    """Convert inches to meters. Returns None if inches is None or <= 0."""
+    if inches is None or inches <= 0:
+        return None
+    return inches / METERS_TO_INCHES

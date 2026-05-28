@@ -1000,70 +1000,103 @@ def slv_performance_table(ax, left_df, right_df, movement_name, population=None)
 # ------------------------------------------------
 # Power Curve (synthetic normalized)
 # ------------------------------------------------
-def power_curve(ax, df, pop_df=None, power_files_dir=None):
+def power_curve(ax, df, pop_df=None, power_files_dir=None, athlete_name=None, session_date=None, power_data_dict=None):
     """
     Plot power curves from Power.txt files if available, otherwise synthesize.
-    
+
     Args:
         ax: Matplotlib axes
         df: DataFrame with trial data (must include 'trial_name' column)
         pop_df: Population data (unused but kept for compatibility)
         power_files_dir: Base directory where Power.txt files are stored
+        athlete_name: Athlete display name — used to build exact filename match in Processed txt Files
+        session_date: Session date string YYYY-MM-DD — used with athlete_name for exact match
+        power_data_dict: In-memory cache {trial_name: numpy_array} — read during ingestion before files move
     """
     curves = []
-    
+    _used_synthetic = False
+
+    # Resolve a secondary local fallback directory (e.g. D:\Athletic Screen 2.0\Output Files)
+    # in case power_files_dir is a temp upload dir that is missing the Power.txt files.
+    _local_fallback = os.getenv('ATHLETIC_SCREEN_DATA_DIR_FALLBACK', '')
+    if not _local_fallback:
+        try:
+            from common.config import get_raw_paths
+            _local_fallback = get_raw_paths().get('athletic_screen', '').rstrip('/\\')
+        except Exception:
+            _local_fallback = ''
+
     # Try to load actual Power.txt files if directory is provided
     if power_files_dir and 'trial_name' in df.columns:
         from power_analysis import load_power_txt
-        import glob
-        
+
         processed_dir = os.path.join(power_files_dir, "Processed txt Files")
-        
+
         for _, r in df.iterrows():
             trial_name = r.get('trial_name')
             if not trial_name:
                 continue
-            
-            # Look for Power.txt file - try different patterns
+
+            # Use in-memory cache if available — data was read during ingestion before files were moved
+            if power_data_dict and trial_name in power_data_dict:
+                cached = power_data_dict[trial_name]
+                if len(cached) > 0:
+                    t_norm = np.linspace(0, 1, len(cached))
+                    p_norm = (cached - cached.min()) / (cached.max() - cached.min() + 1e-10)
+                    curves.append((t_norm, p_norm))
+                    print(f"[PowerCurve] Using cached data for {trial_name}")
+                continue
+
+            # Look for Power.txt file - try upload dir first, then local fallback
             power_file = None
-            patterns = [
+            patterns = []
+            # Exact athlete-specific filename first (matches main.py's renamed file in Processed txt Files)
+            if athlete_name and session_date:
+                clean_name = athlete_name.replace(',', '').replace(' ', '_')
+                patterns.append(os.path.join(processed_dir, f"{trial_name}_{clean_name}_{session_date}_Power.txt"))
+            patterns += [
                 os.path.join(processed_dir, f"{trial_name}_Power.txt"),
                 os.path.join(processed_dir, f"{trial_name}*_Power.txt"),
                 os.path.join(power_files_dir, f"{trial_name}_Power.txt"),
                 os.path.join(power_files_dir, f"{trial_name}*_Power.txt"),
             ]
-            
+            if _local_fallback and _local_fallback != power_files_dir:
+                patterns += [
+                    os.path.join(_local_fallback, f"{trial_name}_Power.txt"),
+                    os.path.join(_local_fallback, f"{trial_name}*_Power.txt"),
+                ]
+
+            print(f"[PowerCurve] Searching for {trial_name}_Power.txt in {power_files_dir}")
             for pattern in patterns:
                 matches = glob.glob(pattern)
                 if matches:
                     power_file = matches[0]
                     break
-            
+
             if power_file and os.path.exists(power_file):
                 try:
                     power_data = load_power_txt(power_file)
-                    # Normalize time to 0-1 and power values
                     if len(power_data) > 0:
                         t_normalized = np.linspace(0, 1, len(power_data))
-                        # Normalize power to 0-1 range for visualization
                         power_normalized = (power_data - power_data.min()) / (power_data.max() - power_data.min() + 1e-10)
                         curves.append((t_normalized, power_normalized))
+                        print(f"[PowerCurve] Loaded real data: {power_file}")
                 except Exception as e:
-                    # Fall back to synthesized curve if loading fails
+                    print(f"[PowerCurve] SYNTHETIC fallback for {trial_name} (load error: {e})")
+                    _used_synthetic = True
                     t = np.linspace(0, 1, 200)
-                    shape = np.exp(-((t - 0.35) ** 2) / (0.06)) * r["PP_FORCEPLATE"]
-                    curves.append((t, shape / shape.max()))  # Normalize to 0-1
+                    curves.append((t, np.exp(-((t - 0.35) ** 2) / 0.06)))
             else:
-                # Fall back to synthesized curve if file not found
+                print(f"[PowerCurve] SYNTHETIC fallback for {trial_name} (no file found, tried {len(patterns)} patterns)")
+                _used_synthetic = True
                 t = np.linspace(0, 1, 200)
-                shape = np.exp(-((t - 0.35) ** 2) / (0.06)) * r["PP_FORCEPLATE"]
-                curves.append((t, shape / shape.max()))  # Normalize to 0-1
+                curves.append((t, np.exp(-((t - 0.35) ** 2) / 0.06)))
     else:
         # Fallback: synthesize curves if no directory provided or no trial_name
+        _used_synthetic = True
         t = np.linspace(0, 1, 200)
         for _, r in df.iterrows():
-            shape = np.exp(-((t - 0.35) ** 2) / (0.06)) * r["PP_FORCEPLATE"]
-            curves.append((t, shape / shape.max()))  # Normalize to 0-1
+            curves.append((t, np.exp(-((t - 0.35) ** 2) / 0.06)))
 
     # Plot individual trial curves as dashed blue lines
     for t_vals, power_vals in curves:
@@ -1121,49 +1154,88 @@ def power_curve(ax, df, pop_df=None, power_files_dir=None):
     ax.spines['right'].set_color('white')
     ax.grid(True, color='white', alpha=0.2)
     ax.set_facecolor('#373e43')
+    if _used_synthetic:
+        ax.text(0.5, 0.5, "SYNTHETIC\n(Power.txt not found)", transform=ax.transAxes,
+                ha='center', va='center', color='red', alpha=0.25,
+                fontsize=20, fontweight='bold', rotation=30)
 
 # ------------------------------------------------
 # SLV Power Curve (shows left in dark blue and right in red)
 # ------------------------------------------------
-def slv_power_curve(ax, left_df, right_df, pop_df=None, power_files_dir=None):
+def slv_power_curve(ax, left_df, right_df, pop_df=None, power_files_dir=None, athlete_name=None, session_date=None, power_data_dict=None):
     """
     Power curve for SLV showing left and right curves from Power.txt files if available.
-    
+
     Args:
         ax: Matplotlib axes
         left_df: DataFrame with left leg trial data
         right_df: DataFrame with right leg trial data
         pop_df: Population data (unused but kept for compatibility)
         power_files_dir: Base directory where Power.txt files are stored
+        athlete_name: Athlete display name — used to build exact filename match in Processed txt Files
+        session_date: Session date string YYYY-MM-DD — used with athlete_name for exact match
+        power_data_dict: In-memory cache {trial_name: numpy_array} — read during ingestion before files move
     """
     from scipy.interpolate import interp1d
     from power_analysis import load_power_txt
-    import glob
-    
+
     processed_dir = os.path.join(power_files_dir, "Processed txt Files") if power_files_dir else None
-    
+
+    _local_fallback = os.getenv('ATHLETIC_SCREEN_DATA_DIR_FALLBACK', '')
+    if not _local_fallback:
+        try:
+            from common.config import get_raw_paths
+            _local_fallback = get_raw_paths().get('athletic_screen', '').rstrip('/\\')
+        except Exception:
+            _local_fallback = ''
+
+    _used_synthetic = False
+
     def load_curves_from_files(df, side_name):
         """Load curves from Power.txt files or synthesize if not available."""
+        nonlocal _used_synthetic
         curves = []
         t = np.linspace(0, 1, 200)
-        
+
         for _, r in df.iterrows():
             trial_name = r.get('trial_name')
             power_file = None
-            
-            if processed_dir and trial_name:
-                patterns = [
-                    os.path.join(processed_dir, f"{trial_name}_Power.txt"),
-                    os.path.join(processed_dir, f"{trial_name}*_Power.txt"),
-                    os.path.join(power_files_dir, f"{trial_name}_Power.txt"),
-                    os.path.join(power_files_dir, f"{trial_name}*_Power.txt"),
+
+            # Use in-memory cache if available
+            if power_data_dict and trial_name and trial_name in power_data_dict:
+                cached = power_data_dict[trial_name]
+                if len(cached) > 0:
+                    t_norm = np.linspace(0, 1, len(cached))
+                    p_norm = (cached - cached.min()) / (cached.max() - cached.min() + 1e-10)
+                    curves.append((t_norm, p_norm))
+                    print(f"[PowerCurve SLV {side_name}] Using cached data for {trial_name}")
+                continue
+
+            if (processed_dir or power_files_dir) and trial_name:
+                patterns = []
+                # Exact athlete-specific filename first (matches main.py's renamed file in Processed txt Files)
+                if athlete_name and session_date and processed_dir:
+                    clean_name = athlete_name.replace(',', '').replace(' ', '_')
+                    patterns.append(os.path.join(processed_dir, f"{trial_name}_{clean_name}_{session_date}_Power.txt"))
+                patterns += [
+                    os.path.join(processed_dir, f"{trial_name}_Power.txt") if processed_dir else '',
+                    os.path.join(processed_dir, f"{trial_name}*_Power.txt") if processed_dir else '',
+                    os.path.join(power_files_dir, f"{trial_name}_Power.txt") if power_files_dir else '',
+                    os.path.join(power_files_dir, f"{trial_name}*_Power.txt") if power_files_dir else '',
                 ]
+                if _local_fallback and _local_fallback != power_files_dir:
+                    patterns += [
+                        os.path.join(_local_fallback, f"{trial_name}_Power.txt"),
+                        os.path.join(_local_fallback, f"{trial_name}*_Power.txt"),
+                    ]
+                patterns = [p for p in patterns if p]
+                print(f"[PowerCurve SLV {side_name}] Searching for {trial_name}_Power.txt")
                 for pattern in patterns:
                     matches = glob.glob(pattern)
                     if matches:
                         power_file = matches[0]
                         break
-            
+
             if power_file and os.path.exists(power_file):
                 try:
                     power_data = load_power_txt(power_file)
@@ -1171,15 +1243,16 @@ def slv_power_curve(ax, left_df, right_df, pop_df=None, power_files_dir=None):
                         t_normalized = np.linspace(0, 1, len(power_data))
                         power_normalized = (power_data - power_data.min()) / (power_data.max() - power_data.min() + 1e-10)
                         curves.append((t_normalized, power_normalized))
-                except:
-                    # Fallback to synthesized
-                    shape = np.exp(-((t - 0.35) ** 2) / (0.06)) * r["PP_FORCEPLATE"]
-                    curves.append((t, shape / shape.max()))
+                        print(f"[PowerCurve SLV {side_name}] Loaded real data: {power_file}")
+                except Exception as e:
+                    print(f"[PowerCurve SLV {side_name}] SYNTHETIC fallback for {trial_name} (load error: {e})")
+                    _used_synthetic = True
+                    curves.append((t, np.exp(-((t - 0.35) ** 2) / 0.06)))
             else:
-                # Synthesize curve
-                shape = np.exp(-((t - 0.35) ** 2) / (0.06)) * r["PP_FORCEPLATE"]
-                curves.append((t, shape / shape.max()))
-        
+                print(f"[PowerCurve SLV {side_name}] SYNTHETIC fallback for {trial_name} (no file found)")
+                _used_synthetic = True
+                curves.append((t, np.exp(-((t - 0.35) ** 2) / 0.06)))
+
         return curves
     
     # Left leg curves (dashed blue)
@@ -1229,6 +1302,10 @@ def slv_power_curve(ax, left_df, right_df, pop_df=None, power_files_dir=None):
     ax.spines['right'].set_color('white')
     ax.grid(True, color='white', alpha=0.2)
     ax.set_facecolor('#373e43')
+    if _used_synthetic:
+        ax.text(0.5, 0.5, "SYNTHETIC\n(Power.txt not found)", transform=ax.transAxes,
+                ha='center', va='center', color='red', alpha=0.25,
+                fontsize=20, fontweight='bold', rotation=30)
 
 # ------------------------------------------------
 # F–V scatter
@@ -1729,7 +1806,7 @@ def slv_bar_graph(ax, metric, left_df, right_df, population):
 # ------------------------------------------------
 # Page Builder for One Movement
 # ------------------------------------------------
-def movement_page(pdf, movement_name, df, pop_df, athlete_name, report_date, logo_path, power_files_dir=None):
+def movement_page(pdf, movement_name, df, pop_df, athlete_name, report_date, logo_path, power_files_dir=None, power_data_dict=None):
     df_ath = df.copy()  # df already filtered for this athlete
 
     if df_ath.empty:
@@ -1924,7 +2001,7 @@ def movement_page(pdf, movement_name, df, pop_df, athlete_name, report_date, log
     radar_chart(ax_radar, best, f"{movement_name} Radar", pop_df, movement_name=movement_name)
     performance_table(ax_table, best, movement_name, population=pop_df)
     
-    power_curve(ax_power, df_ath, pop_df, power_files_dir=power_files_dir)
+    power_curve(ax_power, df_ath, pop_df, power_files_dir=power_files_dir, athlete_name=athlete_name, session_date=report_date, power_data_dict=power_data_dict)
     fv_scatter(ax_fv, df_ath, pop_df)
     
     # Progress circles - same approach for all movements (separate Force and Velocity)
@@ -1980,7 +2057,7 @@ def movement_page(pdf, movement_name, df, pop_df, athlete_name, report_date, log
 # ------------------------------------------------
 # SLV special page
 # ------------------------------------------------
-def slv_page(pdf, df, pop_df, athlete_name, report_date, logo_path, power_files_dir=None):
+def slv_page(pdf, df, pop_df, athlete_name, report_date, logo_path, power_files_dir=None, power_data_dict=None):
     df_ath = df.copy()  # df already filtered for this athlete
     left = df_ath[df_ath["side"] == "Left"]
     right = df_ath[df_ath["side"] == "Right"]
@@ -2053,7 +2130,7 @@ def slv_page(pdf, df, pop_df, athlete_name, report_date, logo_path, power_files_
     # Create charts - order matches page layout
     slv_radar_chart(ax_radar, left_best_row, right_best_row, pop_df, movement_name="SLV")
     slv_performance_table(ax_table, left, right, "SLV", population=pop_df)
-    slv_power_curve(ax_power, left, right, pop_df, power_files_dir=power_files_dir)
+    slv_power_curve(ax_power, left, right, pop_df, power_files_dir=power_files_dir, athlete_name=athlete_name, session_date=report_date, power_data_dict=power_data_dict)
     slv_fv_scatter(ax_fv, left, right, pop_df)
     
     if best_left is not None:
@@ -2120,7 +2197,7 @@ def slv_page(pdf, df, pop_df, athlete_name, report_date, logo_path, power_files_
 # ------------------------------------------------
 # Main PDF Generation Function
 # ------------------------------------------------
-def generate_pdf_report(athlete_uuid, athlete_name, session_date, output_dir, logo_path=None, power_files_dir=None, filename_suffix="", skip_gender_filter=False):
+def generate_pdf_report(athlete_uuid, athlete_name, session_date, output_dir, logo_path=None, power_files_dir=None, filename_suffix="", skip_gender_filter=False, power_data_dict=None):
     """
     Generate PDF report for an athlete.
 
@@ -2208,15 +2285,17 @@ def generate_pdf_report(athlete_uuid, athlete_name, session_date, output_dir, lo
             # DJ, CMJ, PPU are identical page structures
             for key in ["DJ", "CMJ", "PPU"]:
                 if key in all_data and key in all_pop_data:
-                    movement_page(pdf, key, all_data[key], all_pop_data[key], 
-                                 athlete_name, report_date, logo_path, power_files_dir)
+                    movement_page(pdf, key, all_data[key], all_pop_data[key],
+                                 athlete_name, report_date, logo_path, power_files_dir,
+                                 power_data_dict=power_data_dict)
                 else:
                     print(f"Skipping {key} - no data available")
-            
+
             # SLV special
             if "SLV" in all_data and "SLV" in all_pop_data:
-                slv_page(pdf, all_data["SLV"], all_pop_data["SLV"], 
-                        athlete_name, report_date, logo_path, power_files_dir)
+                slv_page(pdf, all_data["SLV"], all_pop_data["SLV"],
+                        athlete_name, report_date, logo_path, power_files_dir,
+                        power_data_dict=power_data_dict)
             else:
                 print("Skipping SLV - no data available")
         

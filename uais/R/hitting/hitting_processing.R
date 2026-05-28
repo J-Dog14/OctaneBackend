@@ -1941,7 +1941,7 @@ process_all_files <- function(data_root = NULL) {
           session_date <- path_to_date_map_json[[parent_dir]]
         }
         if (is.null(session_date)) session_date <- Sys.Date()
-        matched_uid <- owner_mapping[[dir_path]]
+        matched_uid <- owner_mapping[[dir_path]] %||% NA_character_
         if (is.na(matched_uid)) {
           for (athlete_info in athlete_list) {
             if (nrow(athlete_info) > 0) {
@@ -2152,11 +2152,14 @@ process_all_files <- function(data_root = NULL) {
           r <- json_df[i, ]
           parse_err <- NULL
           json_data <- tryCatch({
-            jsonlite::parse_json(as.character(r$json_path))
+            # Read file content explicitly so jsonlite doesn't use file.exists() on network paths
+            .jlines <- readLines(as.character(r$json_path), warn = FALSE, encoding = "UTF-8")
+            jsonlite::parse_json(paste(.jlines, collapse = "\n"), simplifyVector = FALSE)
           }, error = function(e) {
             parse_err <<- conditionMessage(e)
+            # Fallback: binary read to handle BOM encoding
             tryCatch({
-              raw_bytes <- readBin(as.character(r$json_path), "raw", file.info(as.character(r$json_path))$size)
+              raw_bytes <- readBin(as.character(r$json_path), "raw", n = 2^25)
               if (length(raw_bytes) >= 2 && raw_bytes[1] == as.raw(0xFF) && raw_bytes[2] == as.raw(0xFE)) {
                 txt <- iconv(rawToChar(raw_bytes[-c(1, 2)]), from = "UTF-16LE", to = "UTF-8")
               } else if (length(raw_bytes) >= 3 && raw_bytes[1] == as.raw(0xEF) && raw_bytes[2] == as.raw(0xBB) && raw_bytes[3] == as.raw(0xBF)) {
@@ -2164,12 +2167,13 @@ process_all_files <- function(data_root = NULL) {
               } else {
                 txt <- rawToChar(raw_bytes)
               }
-              jsonlite::parse_json(txt)
+              jsonlite::parse_json(txt, simplifyVector = FALSE)
             }, error = function(e2) NULL)
           })
           if (is.null(json_data)) {
-            log_progress("  [WARNING] Could not parse JSON:", as.character(r$json_path),
-                         if (!is.null(parse_err)) paste0("-- Error: ", parse_err) else "")
+            cat("  [WARNING] Could not parse JSON:", as.character(r$json_path),
+                if (!is.null(parse_err)) paste0("-- Error: ", parse_err) else "", "\n")
+            flush.console()
             n_3d_skipped <- n_3d_skipped + 1L
             next
           }

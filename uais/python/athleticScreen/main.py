@@ -132,38 +132,68 @@ def _get_athlete_gender(athlete_uuid):
         return None
 
 
-def run_report_generation(athletes_to_report, folder_path):
+_LOCAL_D = r'D:\Athletic Screen 2.0\Reports'
+_LOCAL_G = r'G:\My Drive\Athletic Screen 2.0 Reports\Reports 2.0'
+
+
+def _copy_report_locally(report_path: str, primary_dir: str) -> None:
+    """Copy a generated report to the local D: and G: drive export paths."""
+    def _same_dir(a: str, b: str) -> bool:
+        try:
+            return os.path.normcase(os.path.abspath(a)) == os.path.normcase(os.path.abspath(b))
+        except Exception:
+            return False
+
+    dest_filename = os.path.basename(report_path)
+
+    if not _same_dir(primary_dir, _LOCAL_D):
+        try:
+            os.makedirs(_LOCAL_D, exist_ok=True)
+            shutil.copy2(report_path, os.path.join(_LOCAL_D, dest_filename))
+        except Exception as e:
+            print(f"Warning: Could not export report to D: drive: {e}")
+
+    if not _same_dir(primary_dir, _LOCAL_G):
+        try:
+            os.makedirs(_LOCAL_G, exist_ok=True)
+            shutil.copy2(report_path, os.path.join(_LOCAL_G, dest_filename))
+        except Exception as e:
+            print(f"Warning: Google Drive path not available ({_LOCAL_G}), skipping: {e}")
+
+
+def run_report_generation(athletes_to_report, folder_path, power_data_cache=None):
     """
     Generate PDF reports for the given athletes.
     athletes_to_report: dict mapping athlete_uuid -> (name, date_str)
     folder_path: base directory for Power files (e.g. Output Files).
+    power_data_cache: dict of (athlete_uuid, trial_name) -> raw power numpy array
     """
     from athleticScreen.pdf_report import generate_pdf_report
-    reports_dir_1 = os.getenv('ATHLETIC_SCREEN_REPORTS_GOOGLE_DRIVE', r'G:\My Drive\Athletic Screen 2.0 Reports\Reports 2.0')
-    reports_dir_2 = os.getenv('ATHLETIC_SCREEN_REPORTS_DIR', r'D:\Athletic Screen 2.0\Reports')
-    os.makedirs(reports_dir_1, exist_ok=True)
-    os.makedirs(reports_dir_2, exist_ok=True)
+    # Primary output dir: Next.js sets this env var to a temp dir for R2 upload;
+    # when running directly (no override) fall back to the local D: drive.
+    primary_dir = os.getenv('ATHLETIC_SCREEN_REPORTS_GOOGLE_DRIVE') or _LOCAL_D
+    os.makedirs(primary_dir, exist_ok=True)
     logo_path = Path(__file__).parent / "8ctnae - Faded 8 to Blue.png"
     if not logo_path.exists():
         logo_path = None
     for athlete_uuid, (name, date_str) in athletes_to_report.items():
         try:
+            athlete_power_dict = {
+                tname: pdata
+                for (uid, tname), pdata in (power_data_cache or {}).items()
+                if uid == athlete_uuid
+            }
             report_path = generate_pdf_report(
                 athlete_uuid=athlete_uuid,
                 athlete_name=name,
                 session_date=date_str,
-                output_dir=reports_dir_1,
+                output_dir=primary_dir,
                 logo_path=logo_path,
                 power_files_dir=folder_path,
+                power_data_dict=athlete_power_dict or None,
             )
             if report_path:
-                try:
-                    clean_name = name.replace(' ', '_').replace(',', '')
-                    report_filename = f"{clean_name}_{date_str}_report.pdf"
-                    report_path_2 = os.path.join(reports_dir_2, report_filename)
-                    shutil.copy2(report_path, report_path_2)
-                except Exception as copy_error:
-                    print(f"Warning: Could not copy report to second location: {copy_error}")
+                _copy_report_locally(report_path, primary_dir)
             else:
                 print(f"Warning: Failed to generate PDF report for {name}")
 
@@ -175,19 +205,14 @@ def run_report_generation(athletes_to_report, folder_path):
                         athlete_uuid=athlete_uuid,
                         athlete_name=name,
                         session_date=date_str,
-                        output_dir=reports_dir_1,
+                        output_dir=primary_dir,
                         logo_path=logo_path,
                         power_files_dir=folder_path,
                         filename_suffix="_all_comparison",
                         skip_gender_filter=True,
                     )
                     if all_comp_path:
-                        try:
-                            clean_name = name.replace(' ', '_').replace(',', '')
-                            all_comp_filename = f"{clean_name}_{date_str}_report_all_comparison.pdf"
-                            shutil.copy2(all_comp_path, os.path.join(reports_dir_2, all_comp_filename))
-                        except Exception as copy_error:
-                            print(f"Warning: Could not copy all_comparison report to second location: {copy_error}")
+                        _copy_report_locally(all_comp_path, primary_dir)
                 except Exception as e:
                     print(f"Warning: Could not generate all_comparison PDF report for {name}: {e}")
                     import traceback
@@ -324,6 +349,7 @@ def process_txt_files(folder_path: str, dry_run: bool = False, athlete_uuid: str
     errors = []
     inserted_count = 0
     updated_count = 0
+    power_data_cache = {}  # (athlete_uuid, trial_name) -> raw power numpy array, read before files are moved
     
     for file_path in txt_files:
         # Use a savepoint for each file so one error doesn't abort the whole transaction
@@ -536,6 +562,7 @@ def process_txt_files(folder_path: str, dry_run: bool = False, athlete_uuid: str
                 if power_file and os.path.exists(power_file):
                     try:
                         power_data = load_power_txt(power_file)
+                        power_data_cache[(athlete_uuid, trial_name)] = power_data
                         power_analysis = analyze_power_curve_advanced(power_data, fs_hz=1000.0)
                         
                         # Map analysis results to database columns, converting numpy types
@@ -871,7 +898,7 @@ def process_txt_files(folder_path: str, dry_run: bool = False, athlete_uuid: str
                     existing_date = athletes_to_report[report_uuid][1]
                     if date_str > existing_date:
                         athletes_to_report[report_uuid] = (name, date_str)
-            run_report_generation(athletes_to_report, folder_path)
+            run_report_generation(athletes_to_report, folder_path, power_data_cache=power_data_cache)
         except Exception as e:
             print(f"Warning: Report generation failed: {e}")
             import traceback

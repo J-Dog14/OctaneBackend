@@ -9,6 +9,7 @@ Processes a single athlete's data from a selected folder:
 5. Generates PDF report
 """
 import os
+import shutil
 import sys
 from pathlib import Path
 from datetime import datetime
@@ -657,14 +658,22 @@ def process_single_folder(folder_path: str, athlete_uuid: str = None, profile: d
                 pg_conn.commit()
         
         # Generate report
+        _LOCAL_PRO_SUP = r'D:\Pro-Sup Test\Reports'
         try:
-            generate_report_from_postgres(
+            _report_out_dir = os.getenv('PRO_SUP_REPORTS_DIR', _LOCAL_PRO_SUP)
+            _report_path = generate_report_from_postgres(
                 athlete_uuid=athlete_uuid,
                 athlete_name=athlete_name,
                 test_date=test_date,
-                output_dir=os.getenv('PRO_SUP_REPORTS_DIR', "D:/Pro-Sup Test/Reports"),
+                output_dir=_report_out_dir,
                 conn=pg_conn
             )
+            if _report_path and os.path.normcase(os.path.abspath(_report_out_dir)) != os.path.normcase(os.path.abspath(_LOCAL_PRO_SUP)):
+                try:
+                    os.makedirs(_LOCAL_PRO_SUP, exist_ok=True)
+                    shutil.copy2(_report_path, os.path.join(_LOCAL_PRO_SUP, os.path.basename(_report_path)))
+                except Exception as _copy_err:
+                    print(f"Warning: Could not export report to {_LOCAL_PRO_SUP}: {_copy_err}")
         except Exception as e:
             print(f"Warning: Could not generate report: {e}")
         
@@ -714,15 +723,22 @@ def report_only():
         test_date_raw, athlete_name = row
         test_date = test_date_raw.strftime("%Y-%m-%d") if hasattr(test_date_raw, "strftime") else str(test_date_raw)
 
-        output_dir = os.getenv("PRO_SUP_REPORTS_DIR", "D:/Pro-Sup Test/Reports")
+        _LOCAL_PRO_SUP = r'D:\Pro-Sup Test\Reports'
+        output_dir = os.getenv("PRO_SUP_REPORTS_DIR", _LOCAL_PRO_SUP)
         print(f"Generating report for {athlete_name} ({test_date})...")
-        generate_report_from_postgres(
+        _report_path = generate_report_from_postgres(
             athlete_uuid=athlete_uuid,
             athlete_name=athlete_name,
             test_date=test_date,
             output_dir=output_dir,
             conn=pg_conn,
         )
+        if _report_path and os.path.normcase(os.path.abspath(output_dir)) != os.path.normcase(os.path.abspath(_LOCAL_PRO_SUP)):
+            try:
+                os.makedirs(_LOCAL_PRO_SUP, exist_ok=True)
+                shutil.copy2(_report_path, os.path.join(_LOCAL_PRO_SUP, os.path.basename(_report_path)))
+            except Exception as _copy_err:
+                print(f"Warning: Could not export report to {_LOCAL_PRO_SUP}: {_copy_err}")
         print("Report generation complete.")
     except Exception as e:
         print(f"Error generating report: {e}")

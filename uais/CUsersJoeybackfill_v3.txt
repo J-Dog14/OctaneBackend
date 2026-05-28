@@ -1,0 +1,1876 @@
+Found 624 trial(s) to reprocess.
+
+[trial 1/624] Fastball RH 10.c3d  (2026-05-26)
+  plates: lead=4 drive=3  FC=387 BR=419 MER=392
+  lead=1.31BW  drive=1.28BW  flags=[]
+[trial 2/624] Fastball RH 11.c3d  (2026-05-26)
+  plates: lead=4 drive=3  FC=415 BR=430 MER=429
+  lead=1.54BW  drive=1.29BW  flags=[]
+[trial 3/624] Fastball RH 12.c3d  (2026-05-26)
+  plates: lead=4 drive=3  FC=419 BR=432 MER=419
+  lead=1.58BW  drive=1.37BW  flags=[]
+[trial 4/624] Fastball RH 14.c3d  (2026-05-26)
+  plates: lead=4 drive=3  FC=412 BR=427 MER=412
+  lead=1.27BW  drive=1.63BW  flags=[]
+[trial 5/624] Fastball RH 6.c3d  (2026-05-26)
+  plates: lead=4 drive=3  FC=377 BR=416 MER=415
+  lead=0.00BW  drive=1.35BW  flags=['no_lead_grf_in_delivery']
+[trial 6/624] Fastball RH 2.c3d  (2026-05-22)
+  plates: lead=4 drive=3  FC=377 BR=390 MER=389
+  lead=1.93BW  drive=1.53BW  flags=[]
+[trial 7/624] Fastball RH 3.c3d  (2026-05-22)
+  plates: lead=4 drive=3  FC=350 BR=384 MER=369
+  lead=2.03BW  drive=1.53BW  flags=[]
+[trial 8/624] Fastball RH 6.c3d  (2026-05-22)
+  plates: lead=4 drive=3  FC=373 BR=376 MER=375
+  lead=0.79BW  drive=1.62BW  flags=['short_trial']
+[trial 9/624] Fastball RH 7.c3d  (2026-05-22)
+  plates: lead=4 drive=3  FC=339 BR=380 MER=357
+  lead=2.29BW  drive=1.58BW  flags=[]
+[trial 10/624] Fastball RH 8.c3d  (2026-05-22)
+  plates: lead=4 drive=3  FC=351 BR=378 MER=366
+  lead=2.27BW  drive=1.59BW  flags=[]
+[trial 11/624] Fastball RH 1.c3d  (2026-05-21)
+  plates: lead=4 drive=3  FC=336 BR=372 MER=350
+  lead=0.00BW  drive=1.47BW  flags=['no_lead_grf_in_delivery']
+[trial 12/624] Fastball RH 2.c3d  (2026-05-21)
+  plates: lead=4 drive=3  FC=319 BR=364 MER=331
+  lead=2.33BW  drive=1.49BW  flags=[]
+[trial 13/624] Fastball RH 3.c3d  (2026-05-21)
+  plates: lead=4 drive=3  FC=320 BR=362 MER=329
+  lead=2.29BW  drive=1.54BW  flags=[]
+[trial 14/624] Fastball RH 7.c3d  (2026-05-21)
+  plates: lead=4 drive=3  FC=350 BR=359 MER=358
+  lead=1.10BW  drive=1.46BW  flags=['short_trial']
+[trial 15/624] Fastball RH 8.c3d  (2026-05-21)
+  plates: lead=4 drive=3  FC=321 BR=348 MER=326
+  lead=2.26BW  drive=1.49BW  flags=[]
+[trial 16/624] Fastball RH 12.c3d  (2026-05-18)
+  plates: lead=4 drive=3  FC=346 BR=393 MER=392
+  lead=0.00BW  drive=1.43BW  flags=['no_lead_grf_in_delivery']
+[trial 17/624] Fastball RH 13.c3d  (2026-05-18)
+  plates: lead=4 drive=3  FC=343 BR=376 MER=365
+  lead=1.72BW  drive=1.44BW  flags=[]
+[trial 18/624] Fastball RH 14.c3d  (2026-05-18)
+  plates: lead=4 drive=3  FC=366 BR=399 MER=383
+  lead=1.83BW  drive=1.51BW  flags=[]
+[trial 19/624] Fastball RH 15.c3d  (2026-05-18)
+  plates: lead=4 drive=3  FC=328 BR=377 MER=353
+  lead=1.83BW  drive=1.45BW  flags=[]
+[trial 20/624] Fastball RH 3.c3d  (2026-05-18)
+  plates: lead=4 drive=3  FC=333 BR=378 MER=352
+  lead=2.00BW  drive=1.43BW  flags=[]
+[trial 21/624] Fastball RH 1.c3d  (2026-05-13)
+  plates: lead=4 drive=3  FC=376 BR=421 MER=376
+  lead=1.41BW  drive=1.19BW  flags=[]
+[trial 22/624] Fastball RH 12.c3d  (2026-05-13)
+  plates: lead=4 drive=3  FC=377 BR=425 MER=424
+  lead=1.66BW  drive=1.28BW  flags=[]
+[trial 23/624] Fastball RH 13.c3d  (2026-05-13)
+  plates: lead=4 drive=3  FC=363 BR=419 MER=411
+  lead=0.00BW  drive=1.24BW  flags=['no_lead_grf_in_delivery']
+[trial 24/624] Fastball RH 14.c3d  (2026-05-13)
+  plates: lead=4 drive=3  FC=345 BR=401 MER=364
+  lead=0.00BW  drive=1.24BW  flags=['no_lead_grf_in_delivery']
+[trial 25/624] Fastball RH 6.c3d  (2026-05-13)
+  plates: lead=4 drive=3  FC=404 BR=425 MER=406
+  lead=1.28BW  drive=1.26BW  flags=[]
+[trial 26/624] Fastball RH 12.c3d  (2026-05-13)
+  plates: lead=4 drive=3  FC=392 BR=430 MER=392
+  lead=0.00BW  drive=1.50BW  flags=['no_lead_grf_in_delivery']
+[trial 27/624] Fastball RH 3.c3d  (2026-05-13)
+  plates: lead=4 drive=3  FC=384 BR=423 MER=384
+  lead=0.00BW  drive=1.61BW  flags=['no_lead_grf_in_delivery']
+[trial 28/624] Fastball RH 4.c3d  (2026-05-13)
+  plates: lead=4 drive=3  FC=364 BR=398 MER=370
+  lead=2.51BW  drive=1.62BW  flags=[]
+[trial 29/624] Fastball RH 7.c3d  (2026-05-13)
+  plates: lead=4 drive=3  FC=385 BR=428 MER=385
+  lead=0.00BW  drive=1.36BW  flags=['no_lead_grf_in_delivery']
+[trial 30/624] Fastball RH 9.c3d  (2026-05-13)
+  plates: lead=4 drive=3  FC=373 BR=415 MER=385
+  lead=2.43BW  drive=1.50BW  flags=[]
+[trial 31/624] Fastball RH 11.c3d  (2026-05-12)
+  plates: lead=4 drive=3  FC=341 BR=380 MER=365
+  lead=0.00BW  drive=1.19BW  flags=['no_lead_grf_in_delivery']
+[trial 32/624] Fastball RH 14.c3d  (2026-05-12)
+  plates: lead=4 drive=3  FC=303 BR=343 MER=342
+  lead=1.84BW  drive=1.17BW  flags=[]
+[trial 33/624] Fastball RH 3.c3d  (2026-05-12)
+  plates: lead=4 drive=3  FC=358 BR=367 MER=366
+  lead=1.85BW  drive=1.17BW  flags=['short_trial']
+[trial 34/624] Fastball RH 4.c3d  (2026-05-12)
+  plates: lead=4 drive=3  FC=327 BR=361 MER=360
+  lead=1.80BW  drive=1.18BW  flags=[]
+[trial 35/624] Fastball RH 8.c3d  (2026-05-12)
+  plates: lead=4 drive=3  FC=338 BR=370 MER=369
+  lead=2.04BW  drive=1.15BW  flags=[]
+[trial 36/624] Fastball RH 13.c3d  (2026-05-12)
+  plates: lead=4 drive=3  FC=368 BR=374 MER=373
+  lead=1.70BW  drive=1.48BW  flags=['short_trial']
+[trial 37/624] Fastball RH 14.c3d  (2026-05-12)
+  plates: lead=4 drive=3  FC=339 BR=378 MER=377
+  lead=0.00BW  drive=1.57BW  flags=['no_lead_grf_in_delivery']
+[trial 38/624] Fastball RH 15.c3d  (2026-05-12)
+  plates: lead=4 drive=3  FC=363 BR=394 MER=375
+  lead=1.74BW  drive=1.51BW  flags=[]
+[trial 39/624] Fastball RH 16.c3d  (2026-05-12)
+  plates: lead=4 drive=3  FC=366 BR=384 MER=376
+  lead=2.00BW  drive=1.51BW  flags=[]
+[trial 40/624] Fastball RH 7.c3d  (2026-05-12)
+  plates: lead=4 drive=3  FC=333 BR=371 MER=342
+  lead=0.00BW  drive=1.49BW  flags=['no_lead_grf_in_delivery']
+[trial 41/624] Fastball RH 1.c3d  (2026-05-11)
+  plates: lead=4 drive=3  FC=395 BR=426 MER=414
+  lead=1.64BW  drive=1.34BW  flags=[]
+[trial 42/624] Fastball RH 10.c3d  (2026-05-11)
+  plates: lead=4 drive=3  FC=352 BR=395 MER=363
+  lead=2.33BW  drive=1.29BW  flags=[]
+[trial 43/624] Fastball RH 12.c3d  (2026-05-11)
+  plates: lead=4 drive=3  FC=336 BR=389 MER=354
+  lead=2.09BW  drive=1.27BW  flags=[]
+[trial 44/624] Fastball RH 4.c3d  (2026-05-11)
+  plates: lead=4 drive=3  FC=372 BR=407 MER=390
+  lead=1.83BW  drive=1.23BW  flags=[]
+[trial 45/624] Fastball RH 6.c3d  (2026-05-11)
+  plates: lead=4 drive=3  FC=364 BR=416 MER=384
+  lead=2.34BW  drive=1.22BW  flags=[]
+[trial 46/624] Fastball RH 1.c3d  (2026-05-07)
+  plates: lead=4 drive=3  FC=437 BR=488 MER=437
+  lead=0.00BW  drive=1.04BW  flags=['no_lead_grf_in_delivery']
+[trial 47/624] Fastball RH 2.c3d  (2026-05-07)
+  plates: lead=4 drive=3  FC=435 BR=486 MER=435
+  lead=0.00BW  drive=1.13BW  flags=['no_lead_grf_in_delivery']
+[trial 48/624] Fastball RH 4.c3d  (2026-05-07)
+  plates: lead=4 drive=3  FC=409 BR=455 MER=434
+  lead=1.70BW  drive=1.13BW  flags=[]
+[trial 49/624] Fastball RH 5.c3d  (2026-05-07)
+  plates: lead=4 drive=3  FC=428 BR=461 MER=459
+  lead=1.29BW  drive=1.22BW  flags=[]
+[trial 50/624] Fastball RH 6.c3d  (2026-05-07)
+  plates: lead=4 drive=3  FC=434 BR=483 MER=482
+  lead=0.00BW  drive=1.16BW  flags=['no_lead_grf_in_delivery']
+[trial 51/624] Fastball LH 10.c3d  (2026-05-07)
+  plates: lead=4 drive=3  FC=353 BR=386 MER=370
+  lead=1.86BW  drive=1.52BW  flags=[]
+[trial 52/624] Fastball LH 12.c3d  (2026-05-07)
+  plates: lead=4 drive=3  FC=410 BR=432 MER=422
+  lead=1.59BW  drive=1.51BW  flags=[]
+[trial 53/624] Fastball LH 4.c3d  (2026-05-07)
+  plates: lead=4 drive=3  FC=346 BR=383 MER=363
+  lead=2.13BW  drive=1.31BW  flags=[]
+[trial 54/624] Fastball LH 5.c3d  (2026-05-07)
+  plates: lead=4 drive=3  FC=352 BR=390 MER=380
+  lead=0.00BW  drive=1.40BW  flags=['no_lead_grf_in_delivery']
+[trial 55/624] Fastball LH 9.c3d  (2026-05-07)
+  plates: lead=4 drive=3  FC=381 BR=420 MER=415
+  lead=0.00BW  drive=1.45BW  flags=['no_lead_grf_in_delivery']
+[trial 56/624] Fastball RH 10.c3d  (2026-05-05)
+  plates: lead=4 drive=3  FC=395 BR=402 MER=401
+  lead=0.76BW  drive=1.44BW  flags=['short_trial']
+[trial 57/624] Fastball RH 11.c3d  (2026-05-05)
+  plates: lead=4 drive=3  FC=358 BR=410 MER=394
+  lead=0.00BW  drive=1.50BW  flags=['no_lead_grf_in_delivery']
+[trial 58/624] Fastball RH 12.c3d  (2026-05-05)
+  plates: lead=4 drive=3  FC=357 BR=402 MER=383
+  lead=1.88BW  drive=1.43BW  flags=[]
+[trial 59/624] Fastball RH 4.c3d  (2026-05-05)
+  plates: lead=4 drive=3  FC=338 BR=376 MER=370
+  lead=1.52BW  drive=1.35BW  flags=[]
+[trial 60/624] Fastball RH 7.c3d  (2026-05-05)
+  plates: lead=4 drive=3  FC=330 BR=383 MER=361
+  lead=2.12BW  drive=1.33BW  flags=[]
+[trial 61/624] Fastball RH 11.c3d  (2026-04-30)
+  plates: lead=4 drive=3  FC=407 BR=425 MER=424
+  lead=0.32BW  drive=1.50BW  flags=[]
+[trial 62/624] Fastball RH 14.c3d  (2026-04-30)
+  plates: lead=4 drive=3  FC=416 BR=458 MER=457
+  lead=0.00BW  drive=1.40BW  flags=['no_lead_grf_in_delivery']
+[trial 63/624] Fastball RH 16.c3d  (2026-04-30)
+  plates: lead=4 drive=3  FC=394 BR=434 MER=429
+  lead=1.30BW  drive=1.44BW  flags=[]
+[trial 64/624] Fastball RH 4.c3d  (2026-04-30)
+  plates: lead=4 drive=3  FC=423 BR=442 MER=441
+  lead=0.41BW  drive=1.38BW  flags=[]
+[trial 65/624] Fastball RH 8.c3d  (2026-04-30)
+  plates: lead=4 drive=3  FC=357 BR=422 MER=399
+  lead=1.67BW  drive=1.46BW  flags=[]
+[trial 66/624] Fastball RH 1.c3d  (2026-04-15)
+  plates: lead=4 drive=3  FC=393 BR=428 MER=427
+  lead=0.00BW  drive=1.32BW  flags=['no_lead_grf_in_delivery']
+[trial 67/624] Fastball RH 2.c3d  (2026-04-15)
+  plates: lead=4 drive=3  FC=406 BR=442 MER=441
+  lead=0.00BW  drive=1.27BW  flags=['no_lead_grf_in_delivery']
+[trial 68/624] Fastball RH 3.c3d  (2026-04-15)
+  plates: lead=4 drive=3  FC=433 BR=440 MER=439
+  lead=0.40BW  drive=1.28BW  flags=['short_trial']
+[trial 69/624] Fastball RH 3.c3d  (2026-04-09)
+  plates: lead=4 drive=3  FC=412 BR=468 MER=434
+  lead=2.31BW  drive=0.62BW  flags=[]
+[trial 70/624] Fastball RH 5.c3d  (2026-04-09)
+  plates: lead=4 drive=3  FC=430 BR=468 MER=467
+  lead=0.00BW  drive=0.77BW  flags=['no_lead_grf_in_delivery']
+[trial 71/624] Fastball RH 6.c3d  (2026-04-09)
+  plates: lead=4 drive=3  FC=430 BR=456 MER=455
+  lead=1.46BW  drive=1.22BW  flags=[]
+[trial 72/624] Fastball RH 7.c3d  (2026-04-09)
+  plates: lead=4 drive=3  FC=413 BR=446 MER=425
+  lead=2.30BW  drive=0.65BW  flags=[]
+[trial 73/624] Fastball RH 8.c3d  (2026-04-09)
+  plates: lead=4 drive=3  FC=450 BR=461 MER=460
+  lead=1.49BW  drive=0.80BW  flags=[]
+[trial 74/624] Fastball LH 10.c3d  (2026-03-26)
+  plates: lead=4 drive=3  FC=330 BR=366 MER=357
+  lead=0.00BW  drive=1.76BW  flags=['no_lead_grf_in_delivery']
+[trial 75/624] Fastball LH 11.c3d  (2026-03-26)
+  plates: lead=4 drive=3  FC=353 BR=378 MER=367
+  lead=1.58BW  drive=1.64BW  flags=[]
+[trial 76/624] Fastball LH 12.c3d  (2026-03-26)
+  plates: lead=4 drive=3  FC=347 BR=372 MER=369
+  lead=1.61BW  drive=1.57BW  flags=[]
+[trial 77/624] Fastball LH 13.c3d  (2026-03-26)
+  plates: lead=4 drive=3  FC=366 BR=409 MER=390
+  lead=1.95BW  drive=1.52BW  flags=[]
+[trial 78/624] Fastball LH 4.c3d  (2026-03-26)
+  plates: lead=4 drive=3  FC=363 BR=396 MER=380
+  lead=0.03BW  drive=1.72BW  flags=['no_lead_grf_in_delivery']
+[trial 79/624] Fastball LH 5.c3d  (2026-03-26)
+  plates: lead=4 drive=3  FC=358 BR=385 MER=375
+  lead=1.54BW  drive=1.83BW  flags=[]
+[trial 80/624] Fastball LH 6.c3d  (2026-03-26)
+  plates: lead=4 drive=3  FC=351 BR=371 MER=364
+  lead=1.41BW  drive=1.76BW  flags=[]
+[trial 81/624] Fastball LH 9.c3d  (2026-03-26)
+  plates: lead=4 drive=3  FC=317 BR=353 MER=333
+  lead=0.00BW  drive=1.73BW  flags=['no_lead_grf_in_delivery']
+[trial 82/624] Fastball RH 10.c3d  (2026-03-20)
+  plates: lead=4 drive=3  FC=383 BR=417 MER=384
+  lead=0.00BW  drive=1.33BW  flags=['no_lead_grf_in_delivery']
+[trial 83/624] Fastball RH 11.c3d  (2026-03-20)
+  plates: lead=4 drive=3  FC=386 BR=421 MER=420
+  lead=?  drive=1.34BW  flags=['no_lead_grf_in_delivery']
+[trial 84/624] Fastball RH 3.c3d  (2026-02-19)
+  plates: lead=4 drive=3  FC=347 BR=383 MER=360
+  lead=0.00BW  drive=1.56BW  flags=['no_lead_grf_in_delivery']
+[trial 85/624] Fastball RH 6.c3d  (2026-02-19)
+  plates: lead=4 drive=3  FC=344 BR=381 MER=380
+  lead=0.11BW  drive=1.49BW  flags=['no_lead_grf_in_delivery']
+[trial 86/624] Fastball RH 7.c3d  (2026-02-19)
+  plates: lead=4 drive=3  FC=373 BR=407 MER=390
+  lead=2.05BW  drive=1.52BW  flags=[]
+[trial 87/624] Fastball RH 8.c3d  (2026-02-19)
+  plates: lead=4 drive=3  FC=369 BR=377 MER=376
+  lead=0.55BW  drive=1.52BW  flags=['short_trial']
+[trial 88/624] Fastball RH 9.c3d  (2026-02-19)
+  plates: lead=4 drive=3  FC=350 BR=377 MER=365
+  lead=2.06BW  drive=1.54BW  flags=[]
+[trial 89/624] Fastball RH 1.c3d  (2026-02-17)
+  plates: lead=4 drive=3  FC=473 BR=502 MER=501
+  lead=1.44BW  drive=1.38BW  flags=[]
+[trial 90/624] Fastball RH 2.c3d  (2026-02-17)
+  plates: lead=4 drive=3  FC=465 BR=497 MER=496
+  lead=1.68BW  drive=1.46BW  flags=[]
+[trial 91/624] Fastball RH 3.c3d  (2026-02-17)
+  plates: lead=4 drive=3  FC=475 BR=517 MER=515
+  lead=0.00BW  drive=1.31BW  flags=['no_lead_grf_in_delivery']
+[trial 92/624] Fastball RH 4.c3d  (2026-02-17)
+  plates: lead=4 drive=3  FC=484 BR=511 MER=510
+  lead=1.40BW  drive=1.35BW  flags=[]
+[trial 93/624] Fastball RH 1.c3d  (2026-02-10)
+  plates: lead=4 drive=3  FC=370 BR=417 MER=415
+  lead=0.00BW  drive=1.30BW  flags=['no_lead_grf_in_delivery']
+[trial 94/624] Fastball RH 10.c3d  (2026-02-10)
+  plates: lead=4 drive=3  FC=369 BR=414 MER=369
+  lead=0.00BW  drive=1.33BW  flags=['no_lead_grf_in_delivery']
+[trial 95/624] Fastball RH 4.c3d  (2026-02-10)
+  plates: lead=4 drive=3  FC=348 BR=391 MER=365
+  lead=0.11BW  drive=1.33BW  flags=['no_lead_grf_in_delivery']
+[trial 96/624] Fastball RH 6.c3d  (2026-02-10)
+  plates: lead=4 drive=3  FC=348 BR=393 MER=392
+  lead=0.00BW  drive=1.35BW  flags=['no_lead_grf_in_delivery']
+[trial 97/624] Fastball RH 7.c3d  (2026-02-10)
+  plates: lead=4 drive=3  FC=363 BR=383 MER=363
+  lead=1.69BW  drive=1.36BW  flags=[]
+[trial 98/624] Fastball LH 10.c3d  (2026-01-23)
+  plates: lead=4 drive=3  FC=282 BR=320 MER=285
+  lead=0.00BW  drive=1.38BW  flags=['no_lead_grf_in_delivery']
+[trial 99/624] Fastball LH 11.c3d  (2026-01-23)
+  plates: lead=4 drive=3  FC=318 BR=347 MER=337
+  lead=2.08BW  drive=1.46BW  flags=[]
+[trial 100/624] Fastball LH 12.c3d  (2026-01-23)
+  plates: lead=4 drive=3  FC=327 BR=347 MER=327
+  lead=1.87BW  drive=1.45BW  flags=[]
+[trial 101/624] Fastball LH 13.c3d  (2026-01-23)
+  plates: lead=4 drive=3  FC=320 BR=348 MER=339
+  lead=1.88BW  drive=1.48BW  flags=[]
+[trial 102/624] Fastball LH 8.c3d  (2026-01-23)
+  plates: lead=4 drive=3  FC=346 BR=360 MER=346
+  lead=1.33BW  drive=1.45BW  flags=[]
+[trial 103/624] Fastball RH 10.c3d  (2026-01-07)
+  plates: lead=4 drive=3  FC=328 BR=361 MER=339
+  lead=2.92BW  drive=1.99BW  flags=[]
+[trial 104/624] Fastball RH 14.c3d  (2026-01-07)
+  plates: lead=4 drive=3  FC=327 BR=366 MER=358
+  lead=0.00BW  drive=1.98BW  flags=['no_lead_grf_in_delivery']
+[trial 105/624] Fastball RH 17.c3d  (2026-01-07)
+  plates: lead=4 drive=3  FC=359 BR=378 MER=377
+  lead=2.56BW  drive=1.82BW  flags=[]
+[trial 106/624] Fastball RH 7.c3d  (2026-01-07)
+  plates: lead=4 drive=3  FC=323 BR=360 MER=331
+  lead=3.05BW  drive=1.91BW  flags=[]
+[trial 107/624] Fastball RH 9.c3d  (2026-01-07)
+  plates: lead=4 drive=3  FC=319 BR=363 MER=352
+  lead=0.00BW  drive=1.81BW  flags=['no_lead_grf_in_delivery']
+[trial 108/624] Fastball RH 14.c3d  (2025-12-11)
+  plates: lead=4 drive=3  FC=332 BR=368 MER=334
+  lead=1.92BW  drive=1.74BW  flags=[]
+[trial 109/624] Fastball RH 2.c3d  (2025-12-11)
+  plates: lead=4 drive=3  FC=345 BR=387 MER=386
+  lead=0.00BW  drive=1.68BW  flags=['no_lead_grf_in_delivery']
+[trial 110/624] Fastball RH 4.c3d  (2025-12-11)
+  plates: lead=4 drive=3  FC=366 BR=405 MER=404
+  lead=0.00BW  drive=1.69BW  flags=['no_lead_grf_in_delivery']
+[trial 111/624] Fastball RH 6.c3d  (2025-12-11)
+  plates: lead=4 drive=3  FC=374 BR=390 MER=379
+  lead=1.76BW  drive=1.63BW  flags=[]
+[trial 112/624] Fastball RH 7.c3d  (2025-12-11)
+  plates: lead=4 drive=3  FC=377 BR=403 MER=382
+  lead=1.69BW  drive=1.72BW  flags=[]
+[trial 113/624] Fastball RH 12.c3d  (2025-12-11)
+  plates: lead=4 drive=3  FC=328 BR=338 MER=337
+  lead=1.16BW  drive=1.36BW  flags=[]
+[trial 114/624] Fastball RH 16.c3d  (2025-12-11)
+  plates: lead=4 drive=3  FC=286 BR=327 MER=286
+  lead=0.00BW  drive=1.38BW  flags=['no_lead_grf_in_delivery']
+[trial 115/624] Fastball RH 17.c3d  (2025-12-11)
+  plates: lead=4 drive=3  FC=306 BR=330 MER=323
+  lead=1.38BW  drive=1.38BW  flags=[]
+[trial 116/624] Fastball RH 6.c3d  (2025-12-11)
+  plates: lead=4 drive=3  FC=298 BR=339 MER=298
+  lead=0.00BW  drive=1.30BW  flags=['no_lead_grf_in_delivery']
+[trial 117/624] Fastball RH 8.c3d  (2025-12-11)
+  plates: lead=4 drive=3  FC=312 BR=336 MER=331
+  lead=1.37BW  drive=1.45BW  flags=[]
+[trial 118/624] Fastball RH 10.c3d  (2025-11-20)
+  plates: lead=4 drive=3  FC=367 BR=399 MER=381
+  lead=1.93BW  drive=1.21BW  flags=[]
+[trial 119/624] Fastball RH 2.c3d  (2025-11-20)
+  plates: lead=4 drive=3  FC=350 BR=395 MER=361
+  lead=2.13BW  drive=1.21BW  flags=[]
+[trial 120/624] Fastball RH 3.c3d  (2025-11-20)
+  plates: lead=4 drive=3  FC=365 BR=406 MER=380
+  lead=1.94BW  drive=1.22BW  flags=[]
+[trial 121/624] Fastball RH 4.c3d  (2025-11-20)
+  plates: lead=4 drive=3  FC=369 BR=398 MER=381
+  lead=1.73BW  drive=1.23BW  flags=[]
+[trial 122/624] Fastball RH 5.c3d  (2025-11-20)
+  plates: lead=4 drive=3  FC=357 BR=407 MER=357
+  lead=0.00BW  drive=1.14BW  flags=['no_lead_grf_in_delivery']
+[trial 123/624] Fastball RH 10.c3d  (2025-11-19)
+  plates: lead=4 drive=3  FC=357 BR=379 MER=375
+  lead=1.62BW  drive=1.74BW  flags=[]
+[trial 124/624] Fastball RH 11.c3d  (2025-11-19)
+  plates: lead=4 drive=3  FC=349 BR=360 MER=359
+  lead=1.98BW  drive=1.43BW  flags=[]
+[trial 125/624] Fastball RH 3.c3d  (2025-11-19)
+  plates: lead=4 drive=3  FC=337 BR=386 MER=381
+  lead=1.86BW  drive=1.45BW  flags=[]
+[trial 126/624] Fastball RH 5.c3d  (2025-11-19)
+  plates: lead=4 drive=3  FC=339 BR=380 MER=362
+  lead=1.84BW  drive=1.48BW  flags=[]
+[trial 127/624] Fastball RH 6.c3d  (2025-11-19)
+  plates: lead=4 drive=3  FC=346 BR=378 MER=370
+  lead=2.00BW  drive=1.42BW  flags=[]
+[trial 128/624] Fastball RH 7.c3d  (2025-11-19)
+  plates: lead=4 drive=3  FC=325 BR=372 MER=353
+  lead=1.83BW  drive=1.45BW  flags=[]
+[trial 129/624] Fastball RH 9.c3d  (2025-11-19)
+  plates: lead=4 drive=3  FC=312 BR=356 MER=339
+  lead=1.85BW  drive=1.46BW  flags=[]
+[trial 130/624] Fastball RH 10.c3d  (2025-11-07)
+  plates: lead=4 drive=3  FC=317 BR=351 MER=325
+  lead=3.05BW  drive=1.47BW  flags=[]
+[trial 131/624] Fastball RH 6.c3d  (2025-11-07)
+  plates: lead=4 drive=3  FC=338 BR=368 MER=339
+  lead=0.00BW  drive=1.50BW  flags=['no_lead_grf_in_delivery']
+[trial 132/624] Fastball RH 7.c3d  (2025-11-07)
+  plates: lead=4 drive=3  FC=372 BR=379 MER=378
+  lead=0.66BW  drive=1.46BW  flags=['short_trial']
+[trial 133/624] Fastball RH 8.c3d  (2025-11-07)
+  plates: lead=4 drive=3  FC=323 BR=352 MER=342
+  lead=0.00BW  drive=1.45BW  flags=['no_lead_grf_in_delivery']
+[trial 134/624] Fastball RH 9.c3d  (2025-11-07)
+  plates: lead=4 drive=3  FC=306 BR=338 MER=334
+  lead=0.00BW  drive=1.45BW  flags=['no_lead_grf_in_delivery']
+[trial 135/624] Fastball RH 2.c3d  (2025-11-05)
+  plates: lead=4 drive=3  FC=352 BR=370 MER=369
+  lead=1.21BW  drive=1.59BW  flags=[]
+[trial 136/624] Fastball RH 3.c3d  (2025-11-05)
+  plates: lead=4 drive=3  FC=331 BR=380 MER=331
+  lead=0.00BW  drive=1.69BW  flags=['no_lead_grf_in_delivery']
+[trial 137/624] Fastball RH 4.c3d  (2025-11-05)
+  plates: lead=4 drive=3  FC=331 BR=359 MER=356
+  lead=1.41BW  drive=1.67BW  flags=[]
+[trial 138/624] Fastball RH 5.c3d  (2025-11-05)
+  plates: lead=4 drive=3  FC=340 BR=360 MER=359
+  lead=1.46BW  drive=1.72BW  flags=[]
+[trial 139/624] Fastball RH 6.c3d  (2025-11-05)
+  plates: lead=4 drive=3  FC=302 BR=351 MER=329
+  lead=1.97BW  drive=1.63BW  flags=[]
+[trial 140/624] Fastball RH 10.c3d  (2025-10-31)
+  plates: lead=4 drive=3  FC=330 BR=377 MER=347
+  lead=1.81BW  drive=1.70BW  flags=[]
+[trial 141/624] Fastball RH 16.c3d  (2025-10-31)
+  plates: lead=4 drive=3  FC=315 BR=361 MER=338
+  lead=0.00BW  drive=1.73BW  flags=['no_lead_grf_in_delivery']
+[trial 142/624] Fastball RH 17.c3d  (2025-10-31)
+  plates: lead=4 drive=3  FC=334 BR=370 MER=352
+  lead=1.74BW  drive=1.70BW  flags=[]
+[trial 143/624] Fastball RH 18.c3d  (2025-10-31)
+  plates: lead=4 drive=3  FC=375 BR=377 MER=376
+  lead=0.17BW  drive=1.79BW  flags=['short_trial']
+[trial 144/624] Fastball RH 5.c3d  (2025-10-31)
+  plates: lead=4 drive=3  FC=354 BR=387 MER=372
+  lead=1.72BW  drive=1.57BW  flags=[]
+[trial 145/624] Fastball LH 12.c3d  (2025-10-28)
+  plates: lead=4 drive=3  FC=378 BR=395 MER=390
+  lead=2.17BW  drive=1.45BW  flags=[]
+[trial 146/624] Fastball LH 14.c3d  (2025-10-28)
+  plates: lead=4 drive=3  FC=350 BR=370 MER=360
+  lead=1.83BW  drive=1.51BW  flags=[]
+[trial 147/624] Fastball LH 2.c3d  (2025-10-28)
+  plates: lead=4 drive=3  FC=369 BR=394 MER=378
+  lead=2.63BW  drive=1.51BW  flags=[]
+[trial 148/624] Fastball LH 5.c3d  (2025-10-28)
+  plates: lead=4 drive=3  FC=334 BR=370 MER=351
+  lead=0.07BW  drive=1.44BW  flags=['no_lead_grf_in_delivery']
+[trial 149/624] Fastball LH 9.c3d  (2025-10-28)
+  plates: lead=4 drive=3  FC=311 BR=350 MER=324
+  lead=1.93BW  drive=1.55BW  flags=[]
+[trial 150/624] Fastball LH 14.c3d  (2025-10-24)
+  plates: lead=4 drive=3  FC=312 BR=349 MER=348
+  lead=0.00BW  drive=1.82BW  flags=['no_lead_grf_in_delivery']
+[trial 151/624] Fastball LH 15.c3d  (2025-10-24)
+  plates: lead=4 drive=3  FC=324 BR=357 MER=350
+  lead=1.78BW  drive=1.70BW  flags=[]
+[trial 152/624] Fastball LH 16.c3d  (2025-10-24)
+  plates: lead=4 drive=3  FC=318 BR=342 MER=318
+  lead=1.34BW  drive=1.66BW  flags=[]
+[trial 153/624] Fastball LH 3.c3d  (2025-10-24)
+  plates: lead=4 drive=3  FC=373 BR=379 MER=373
+  lead=0.60BW  drive=1.83BW  flags=['short_trial']
+[trial 154/624] Fastball LH 5.c3d  (2025-10-24)
+  plates: lead=4 drive=3  FC=346 BR=385 MER=359
+  lead=0.00BW  drive=1.75BW  flags=['no_lead_grf_in_delivery']
+[trial 155/624] Fastball LH 6.c3d  (2025-10-24)
+  plates: lead=4 drive=3  FC=348 BR=391 MER=366
+  lead=1.81BW  drive=1.79BW  flags=[]
+[trial 156/624] Fastball LH 7.c3d  (2025-10-24)
+  plates: lead=4 drive=3  FC=349 BR=386 MER=385
+  lead=0.00BW  drive=1.76BW  flags=['no_lead_grf_in_delivery']
+[trial 157/624] Fastball LH 9.c3d  (2025-10-24)
+  plates: lead=4 drive=3  FC=357 BR=360 MER=357
+  lead=0.40BW  drive=1.89BW  flags=['short_trial']
+[trial 158/624] Fastball RH 10.c3d  (2025-10-22)
+  plates: lead=4 drive=3  FC=354 BR=398 MER=370
+  lead=0.00BW  drive=1.35BW  flags=['no_lead_grf_in_delivery']
+[trial 159/624] Fastball RH 12.c3d  (2025-10-22)
+  plates: lead=4 drive=3  FC=362 BR=377 MER=376
+  lead=1.36BW  drive=1.32BW  flags=[]
+[trial 160/624] Fastball RH 15.c3d  (2025-10-22)
+  plates: lead=4 drive=3  FC=349 BR=393 MER=363
+  lead=2.25BW  drive=1.32BW  flags=[]
+[trial 161/624] Fastball RH 6.c3d  (2025-10-22)
+  plates: lead=4 drive=3  FC=369 BR=394 MER=378
+  lead=2.07BW  drive=1.34BW  flags=[]
+[trial 162/624] Fastball RH 9.c3d  (2025-10-22)
+  plates: lead=4 drive=3  FC=376 BR=391 MER=383
+  lead=2.38BW  drive=1.33BW  flags=[]
+[trial 163/624] Fastball RH 10.c3d  (2025-10-06)
+  plates: lead=4 drive=3  FC=430 BR=468 MER=467
+  lead=0.00BW  drive=1.53BW  flags=['no_lead_grf_in_delivery']
+[trial 164/624] Fastball RH 12.c3d  (2025-10-06)
+  plates: lead=4 drive=3  FC=430 BR=479 MER=453
+  lead=2.12BW  drive=1.40BW  flags=[]
+[trial 165/624] Fastball RH 13.c3d  (2025-10-06)
+  plates: lead=4 drive=3  FC=417 BR=444 MER=433
+  lead=1.88BW  drive=1.54BW  flags=[]
+[trial 166/624] Fastball RH 5.c3d  (2025-10-06)
+  plates: lead=4 drive=3  FC=400 BR=441 MER=400
+  lead=0.00BW  drive=1.52BW  flags=['no_lead_grf_in_delivery']
+[trial 167/624] Fastball RH 8.c3d  (2025-10-06)
+  plates: lead=4 drive=3  FC=428 BR=440 MER=439
+  lead=1.67BW  drive=1.43BW  flags=[]
+[trial 168/624] Fastball RH 2.c3d  (2025-10-06)
+  plates: lead=4 drive=3  FC=393 BR=428 MER=427
+  lead=0.00BW  drive=1.28BW  flags=['no_lead_grf_in_delivery']
+[trial 169/624] Fastball RH 3.c3d  (2025-10-06)
+  plates: lead=4 drive=3  FC=406 BR=442 MER=441
+  lead=0.00BW  drive=1.24BW  flags=['no_lead_grf_in_delivery']
+[trial 170/624] Fastball RH 4.c3d  (2025-10-06)
+  plates: lead=4 drive=3  FC=379 BR=413 MER=412
+  lead=0.00BW  drive=1.28BW  flags=['no_lead_grf_in_delivery']
+[trial 171/624] Fastball RH 5.c3d  (2025-10-06)
+  plates: lead=4 drive=3  FC=433 BR=440 MER=439
+  lead=0.39BW  drive=1.25BW  flags=['short_trial']
+[trial 172/624] Fastball RH 6.c3d  (2025-10-06)
+  plates: lead=4 drive=3  FC=390 BR=426 MER=425
+  lead=0.00BW  drive=1.31BW  flags=['no_lead_grf_in_delivery']
+[trial 173/624] Fastball RH 13.c3d  (2025-10-02)
+  plates: lead=4 drive=3  FC=343 BR=351 MER=350
+  lead=1.93BW  drive=1.53BW  flags=['short_trial']
+[trial 174/624] Fastball RH 14.c3d  (2025-10-02)
+  plates: lead=4 drive=3  FC=315 BR=356 MER=355
+  lead=0.00BW  drive=1.58BW  flags=['no_lead_grf_in_delivery']
+[trial 175/624] Fastball RH 15.c3d  (2025-10-02)
+  plates: lead=4 drive=3  FC=346 BR=350 MER=346
+  lead=0.27BW  drive=1.56BW  flags=['short_trial']
+[trial 176/624] Fastball RH 16.c3d  (2025-10-02)
+  plates: lead=4 drive=3  FC=337 BR=376 MER=373
+  lead=0.00BW  drive=1.47BW  flags=['no_lead_grf_in_delivery']
+[trial 177/624] Fastball RH 9.c3d  (2025-10-02)
+  plates: lead=4 drive=3  FC=348 BR=387 MER=386
+  lead=0.00BW  drive=1.44BW  flags=['no_lead_grf_in_delivery']
+[trial 178/624] Fastball RH 10.c3d  (2025-09-30)
+  plates: lead=4 drive=3  FC=319 BR=364 MER=363
+  lead=0.00BW  drive=1.61BW  flags=['no_lead_grf_in_delivery']
+[trial 179/624] Fastball RH 11.c3d  (2025-09-30)
+  plates: lead=4 drive=3  FC=336 BR=351 MER=350
+  lead=1.52BW  drive=1.64BW  flags=[]
+[trial 180/624] Fastball RH 2.c3d  (2025-09-30)
+  plates: lead=4 drive=3  FC=351 BR=381 MER=372
+  lead=1.45BW  drive=1.56BW  flags=[]
+[trial 181/624] Fastball RH 3.c3d  (2025-09-30)
+  plates: lead=4 drive=3  FC=326 BR=372 MER=371
+  lead=0.00BW  drive=1.57BW  flags=['no_lead_grf_in_delivery']
+[trial 182/624] Fastball RH 9.c3d  (2025-09-30)
+  plates: lead=4 drive=3  FC=321 BR=365 MER=364
+  lead=0.00BW  drive=1.61BW  flags=['no_lead_grf_in_delivery']
+[trial 183/624] Fastball RH 1.c3d  (2025-09-30)
+  plates: lead=4 drive=3  FC=411 BR=443 MER=439
+  lead=1.50BW  drive=1.21BW  flags=[]
+[trial 184/624] Fastball RH 2.c3d  (2025-09-30)
+  plates: lead=4 drive=3  FC=452 BR=467 MER=466
+  lead=1.18BW  drive=1.16BW  flags=[]
+[trial 185/624] Fastball RH 5.c3d  (2025-09-30)
+  plates: lead=4 drive=3  FC=394 BR=441 MER=394
+  lead=0.01BW  drive=1.25BW  flags=['no_lead_grf_in_delivery']
+[trial 186/624] Fastball RH 6.c3d  (2025-09-30)
+  plates: lead=4 drive=3  FC=398 BR=453 MER=432
+  lead=1.94BW  drive=1.15BW  flags=[]
+[trial 187/624] Fastball RH 8.c3d  (2025-09-30)
+  plates: lead=4 drive=3  FC=390 BR=440 MER=390
+  lead=0.00BW  drive=1.24BW  flags=['no_lead_grf_in_delivery']
+[trial 188/624] Fastball RH 2.c3d  (2025-09-26)
+  plates: lead=4 drive=3  FC=270 BR=301 MER=278
+  lead=1.95BW  drive=1.41BW  flags=[]
+[trial 189/624] Fastball RH 4.c3d  (2025-09-26)
+  plates: lead=4 drive=3  FC=366 BR=389 MER=374
+  lead=1.99BW  drive=1.48BW  flags=[]
+[trial 190/624] Fastball RH 5.c3d  (2025-09-26)
+  plates: lead=4 drive=3  FC=348 BR=387 MER=348
+  lead=0.00BW  drive=1.55BW  flags=['no_lead_grf_in_delivery']
+[trial 191/624] Fastball RH 7.c3d  (2025-09-26)
+  plates: lead=4 drive=3  FC=337 BR=376 MER=337
+  lead=0.00BW  drive=1.64BW  flags=['no_lead_grf_in_delivery']
+[trial 192/624] Fastball RH 8.c3d  (2025-09-26)
+  plates: lead=4 drive=3  FC=322 BR=360 MER=324
+  lead=0.00BW  drive=1.59BW  flags=['no_lead_grf_in_delivery']
+[trial 193/624] Fastball LH 10.c3d  (2025-09-25)
+  plates: lead=4 drive=3  FC=375 BR=399 MER=395
+  lead=1.22BW  drive=1.42BW  flags=[]
+[trial 194/624] Fastball LH 5.c3d  (2025-09-25)
+  plates: lead=4 drive=3  FC=357 BR=400 MER=395
+  lead=0.00BW  drive=1.43BW  flags=['no_lead_grf_in_delivery']
+[trial 195/624] Fastball LH 6.c3d  (2025-09-25)
+  plates: lead=4 drive=3  FC=378 BR=402 MER=389
+  lead=1.30BW  drive=1.47BW  flags=[]
+[trial 196/624] Fastball LH 7.c3d  (2025-09-25)
+  plates: lead=4 drive=3  FC=411 BR=419 MER=411
+  lead=0.34BW  drive=1.40BW  flags=['short_trial']
+[trial 197/624] Fastball LH 8.c3d  (2025-09-25)
+  plates: lead=4 drive=3  FC=350 BR=387 MER=364
+  lead=1.78BW  drive=1.48BW  flags=[]
+[trial 198/624] Fastball RH 2.c3d  (2025-09-22)
+  plates: lead=4 drive=3  FC=404 BR=409 MER=408
+  lead=1.92BW  drive=1.41BW  flags=['short_trial']
+[trial 199/624] Fastball RH 3.c3d  (2025-09-22)
+  plates: lead=4 drive=3  FC=374 BR=402 MER=401
+  lead=2.40BW  drive=1.43BW  flags=[]
+[trial 200/624] Fastball RH 4.c3d  (2025-09-22)
+  plates: lead=4 drive=3  FC=370 BR=407 MER=406
+  lead=1.79BW  drive=1.37BW  flags=[]
+[trial 201/624] Fastball RH 6.c3d  (2025-09-22)
+  plates: lead=4 drive=3  FC=386 BR=420 MER=419
+  lead=1.82BW  drive=1.39BW  flags=[]
+[trial 202/624] Fastball RH 8.c3d  (2025-09-22)
+  plates: lead=4 drive=3  FC=355 BR=393 MER=392
+  lead=1.85BW  drive=1.40BW  flags=[]
+[trial 203/624] Fastball LH 2.c3d  (2025-09-19)
+  plates: lead=4 drive=3  FC=322 BR=353 MER=334
+  lead=2.01BW  drive=1.39BW  flags=[]
+[trial 204/624] Fastball LH 3.c3d  (2025-09-19)
+  plates: lead=4 drive=3  FC=309 BR=342 MER=322
+  lead=2.12BW  drive=1.36BW  flags=[]
+[trial 205/624] Fastball LH 4.c3d  (2025-09-19)
+  plates: lead=4 drive=3  FC=307 BR=344 MER=318
+  lead=0.01BW  drive=1.39BW  flags=['no_lead_grf_in_delivery']
+[trial 206/624] Fastball LH 6.c3d  (2025-09-19)
+  plates: lead=4 drive=3  FC=321 BR=341 MER=330
+  lead=1.66BW  drive=1.39BW  flags=[]
+[trial 207/624] Fastball LH 7.c3d  (2025-09-19)
+  plates: lead=4 drive=3  FC=338 BR=344 MER=338
+  lead=1.46BW  drive=1.38BW  flags=['short_trial']
+[trial 208/624] Fastball RH 1.c3d  (2025-09-18)
+  plates: lead=4 drive=3  FC=311 BR=348 MER=323
+  lead=1.80BW  drive=1.32BW  flags=[]
+[trial 209/624] Fastball RH 10.c3d  (2025-09-18)
+  plates: lead=4 drive=3  FC=325 BR=344 MER=338
+  lead=1.46BW  drive=1.35BW  flags=[]
+[trial 210/624] Fastball RH 11.c3d  (2025-09-18)
+  plates: lead=4 drive=3  FC=311 BR=353 MER=352
+  lead=0.00BW  drive=1.34BW  flags=['no_lead_grf_in_delivery']
+[trial 211/624] Fastball RH 3.c3d  (2025-09-18)
+  plates: lead=4 drive=3  FC=324 BR=340 MER=338
+  lead=1.24BW  drive=1.33BW  flags=[]
+[trial 212/624] Fastball RH 4.c3d  (2025-09-18)
+  plates: lead=4 drive=3  FC=305 BR=331 MER=320
+  lead=1.36BW  drive=1.34BW  flags=[]
+[trial 213/624] Fastball RH 6.c3d  (2025-09-18)
+  plates: lead=4 drive=3  FC=343 BR=345 MER=344
+  lead=0.23BW  drive=1.42BW  flags=['short_trial']
+[trial 214/624] Fastball RH 10.c3d  (2025-09-16)
+  plates: lead=4 drive=3  FC=347 BR=367 MER=366
+  lead=1.17BW  drive=1.23BW  flags=[]
+[trial 215/624] Fastball RH 11.c3d  (2025-09-16)
+  plates: lead=4 drive=3  FC=328 BR=364 MER=328
+  lead=2.10BW  drive=1.22BW  flags=[]
+[trial 216/624] Fastball RH 12.c3d  (2025-09-16)
+  plates: lead=4 drive=3  FC=382 BR=392 MER=391
+  lead=0.91BW  drive=1.17BW  flags=[]
+[trial 217/624] Fastball RH 2.c3d  (2025-09-16)
+  plates: lead=4 drive=3  FC=146 BR=189 MER=176
+  lead=1.62BW  drive=1.55BW  flags=[]
+[trial 218/624] Fastball RH 3.c3d  (2025-09-16)
+  plates: lead=4 drive=3  FC=134 BR=178 MER=163
+  lead=1.96BW  drive=1.65BW  flags=[]
+[trial 219/624] Fastball RH 8.c3d  (2025-09-16)
+  plates: lead=4 drive=3  FC=352 BR=389 MER=374
+  lead=1.82BW  drive=1.17BW  flags=[]
+[trial 220/624] Fastball RH 9.c3d  (2025-09-16)
+  plates: lead=4 drive=3  FC=348 BR=381 MER=366
+  lead=1.97BW  drive=1.20BW  flags=[]
+[trial 221/624] Fastball RH 1.c3d  (2025-09-13)
+  plates: lead=4 drive=3  FC=322 BR=353 MER=345
+  lead=1.62BW  drive=1.54BW  flags=[]
+[trial 222/624] Fastball RH 12.c3d  (2025-09-13)
+  plates: lead=4 drive=3  FC=280 BR=319 MER=280
+  lead=0.00BW  drive=1.56BW  flags=['no_lead_grf_in_delivery']
+[trial 223/624] Fastball RH 13.c3d  (2025-09-13)
+  plates: lead=4 drive=3  FC=289 BR=330 MER=306
+  lead=1.83BW  drive=1.58BW  flags=[]
+[trial 224/624] Fastball RH 5.c3d  (2025-09-13)
+  plates: lead=4 drive=3  FC=295 BR=333 MER=318
+  lead=1.87BW  drive=1.42BW  flags=[]
+[trial 225/624] Fastball RH 8.c3d  (2025-09-13)
+  plates: lead=4 drive=3  FC=303 BR=336 MER=321
+  lead=1.85BW  drive=1.56BW  flags=[]
+[trial 226/624] Fastball RH 1.c3d  (2025-09-13)
+  plates: lead=4 drive=3  FC=352 BR=364 MER=363
+  lead=1.69BW  drive=1.44BW  flags=[]
+[trial 227/624] Fastball RH 11.c3d  (2025-09-13)
+  plates: lead=4 drive=3  FC=334 BR=351 MER=350
+  lead=1.81BW  drive=1.34BW  flags=[]
+[trial 228/624] Fastball RH 5.c3d  (2025-09-13)
+  plates: lead=4 drive=3  FC=320 BR=356 MER=338
+  lead=1.88BW  drive=1.38BW  flags=[]
+[trial 229/624] Fastball RH 6.c3d  (2025-09-13)
+  plates: lead=4 drive=3  FC=339 BR=356 MER=354
+  lead=1.99BW  drive=1.34BW  flags=[]
+[trial 230/624] Fastball RH 8.c3d  (2025-09-13)
+  plates: lead=4 drive=3  FC=340 BR=376 MER=361
+  lead=1.87BW  drive=1.30BW  flags=[]
+[trial 231/624] Fastball RH 5.c3d  (2025-09-12)
+  plates: lead=4 drive=3  FC=389 BR=410 MER=400
+  lead=2.02BW  drive=1.55BW  flags=[]
+[trial 232/624] Fastball RH 6.c3d  (2025-09-12)
+  plates: lead=4 drive=3  FC=131 BR=419 MER=154
+  lead=0.00BW  drive=1.57BW  flags=[]
+[trial 233/624] Fastball RH 7.c3d  (2025-09-12)
+  plates: lead=4 drive=3  FC=389 BR=423 MER=389
+  lead=0.00BW  drive=1.56BW  flags=['no_lead_grf_in_delivery']
+[trial 234/624] Fastball RH 8.c3d  (2025-09-12)
+  plates: lead=4 drive=3  FC=396 BR=416 MER=404
+  lead=1.82BW  drive=1.56BW  flags=[]
+[trial 235/624] Fastball RH 9.c3d  (2025-09-12)
+  plates: lead=4 drive=3  FC=401 BR=418 MER=412
+  lead=1.61BW  drive=1.54BW  flags=[]
+[trial 236/624] Fastball LH 1.c3d  (2025-09-12)
+  plates: lead=4 drive=3  FC=294 BR=338 MER=310
+  lead=2.08BW  drive=1.52BW  flags=[]
+[trial 237/624] Fastball LH 3.c3d  (2025-09-12)
+  plates: lead=4 drive=3  FC=354 BR=358 MER=354
+  lead=0.37BW  drive=1.44BW  flags=['short_trial']
+[trial 238/624] Fastball LH 4.c3d  (2025-09-12)
+  plates: lead=4 drive=3  FC=312 BR=330 MER=323
+  lead=1.55BW  drive=1.47BW  flags=[]
+[trial 239/624] Fastball LH 5.c3d  (2025-09-12)
+  plates: lead=4 drive=3  FC=272 BR=315 MER=284
+  lead=1.92BW  drive=1.45BW  flags=[]
+[trial 240/624] Fastball LH 6.c3d  (2025-09-12)
+  plates: lead=4 drive=3  FC=262 BR=306 MER=274
+  lead=1.87BW  drive=1.47BW  flags=[]
+[trial 241/624] Fastball RH 1.c3d  (2025-09-12)
+  plates: lead=4 drive=3  FC=348 BR=360 MER=359
+  lead=2.86BW  drive=1.47BW  flags=[]
+[trial 242/624] Fastball RH 2.c3d  (2025-09-12)
+  plates: lead=4 drive=3  FC=302 BR=349 MER=328
+  lead=2.82BW  drive=1.50BW  flags=[]
+[trial 243/624] Fastball RH 3.c3d  (2025-09-12)
+  plates: lead=4 drive=3  FC=319 BR=343 MER=340
+  lead=2.95BW  drive=1.51BW  flags=[]
+[trial 244/624] Fastball RH 4.c3d  (2025-09-12)
+  plates: lead=4 drive=3  FC=344 BR=355 MER=354
+  lead=2.61BW  drive=1.49BW  flags=[]
+[trial 245/624] Fastball RH 6.c3d  (2025-09-12)
+  plates: lead=4 drive=3  FC=323 BR=352 MER=344
+  lead=2.79BW  drive=1.45BW  flags=[]
+[trial 246/624] Fastball RH 10.c3d  (2025-09-09)
+  plates: lead=4 drive=3  FC=424 BR=430 MER=429
+  lead=0.89BW  drive=1.44BW  flags=['short_trial']
+[trial 247/624] Fastball RH 3.c3d  (2025-09-09)
+  plates: lead=4 drive=3  FC=414 BR=424 MER=423
+  lead=1.25BW  drive=1.36BW  flags=[]
+[trial 248/624] Fastball RH 4.c3d  (2025-09-09)
+  plates: lead=4 drive=3  FC=427 BR=439 MER=438
+  lead=1.30BW  drive=1.36BW  flags=[]
+[trial 249/624] Fastball RH 6.c3d  (2025-09-09)
+  plates: lead=4 drive=3  FC=418 BR=424 MER=423
+  lead=1.32BW  drive=1.45BW  flags=['short_trial']
+[trial 250/624] Fastball RH 7.c3d  (2025-09-09)
+  plates: lead=4 drive=3  FC=391 BR=430 MER=421
+  lead=0.00BW  drive=1.45BW  flags=['no_lead_grf_in_delivery']
+[trial 251/624] Fastball RH 11.c3d  (2025-08-29)
+  plates: lead=4 drive=3  FC=338 BR=385 MER=383
+  lead=2.06BW  drive=1.55BW  flags=[]
+[trial 252/624] Fastball RH 12.c3d  (2025-08-29)
+  plates: lead=4 drive=3  FC=341 BR=389 MER=388
+  lead=1.99BW  drive=1.54BW  flags=[]
+[trial 253/624] Fastball RH 6.c3d  (2025-08-29)
+  plates: lead=4 drive=3  FC=395 BR=399 MER=395
+  lead=0.51BW  drive=1.46BW  flags=['short_trial']
+[trial 254/624] Fastball RH 7.c3d  (2025-08-29)
+  plates: lead=4 drive=3  FC=364 BR=404 MER=403
+  lead=1.92BW  drive=1.59BW  flags=[]
+[trial 255/624] Fastball RH 9.c3d  (2025-08-29)
+  plates: lead=4 drive=3  FC=361 BR=390 MER=389
+  lead=2.09BW  drive=1.59BW  flags=[]
+[trial 256/624] Fastball RH 10.c3d  (2025-08-27)
+  plates: lead=4 drive=3  FC=347 BR=384 MER=347
+  lead=2.08BW  drive=1.53BW  flags=[]
+[trial 257/624] Fastball RH 15.c3d  (2025-08-27)
+  plates: lead=4 drive=3  FC=407 BR=435 MER=434
+  lead=2.27BW  drive=1.39BW  flags=[]
+[trial 258/624] Fastball RH 17.c3d  (2025-08-27)
+  plates: lead=4 drive=3  FC=380 BR=407 MER=389
+  lead=1.84BW  drive=1.48BW  flags=[]
+[trial 259/624] Fastball RH 4.c3d  (2025-08-27)
+  plates: lead=4 drive=3  FC=384 BR=417 MER=391
+  lead=2.03BW  drive=1.48BW  flags=[]
+[trial 260/624] Fastball RH 8.c3d  (2025-08-27)
+  plates: lead=4 drive=3  FC=390 BR=419 MER=398
+  lead=2.05BW  drive=1.50BW  flags=[]
+[trial 261/624] Fastball RH 10.c3d  (2025-08-26)
+  plates: lead=4 drive=3  FC=415 BR=462 MER=461
+  lead=0.02BW  drive=1.32BW  flags=['no_lead_grf_in_delivery']
+[trial 262/624] Fastball RH 15.c3d  (2025-08-26)
+  plates: lead=4 drive=3  FC=419 BR=455 MER=425
+  lead=1.92BW  drive=1.36BW  flags=[]
+[trial 263/624] Fastball RH 3.c3d  (2025-08-26)
+  plates: lead=4 drive=3  FC=403 BR=448 MER=447
+  lead=0.00BW  drive=1.31BW  flags=['no_lead_grf_in_delivery']
+[trial 264/624] Fastball RH 6.c3d  (2025-08-26)
+  plates: lead=4 drive=3  FC=381 BR=426 MER=423
+  lead=0.00BW  drive=1.30BW  flags=['no_lead_grf_in_delivery']
+[trial 265/624] Fastball RH 8.c3d  (2025-08-26)
+  plates: lead=4 drive=3  FC=394 BR=439 MER=394
+  lead=0.00BW  drive=1.33BW  flags=['no_lead_grf_in_delivery']
+[trial 266/624] Fastball RH 11.c3d  (2025-08-25)
+  plates: lead=4 drive=3  FC=400 BR=438 MER=420
+  lead=2.14BW  drive=1.11BW  flags=[]
+[trial 267/624] Fastball RH 14.c3d  (2025-08-25)
+  plates: lead=4 drive=3  FC=414 BR=446 MER=421
+  lead=1.64BW  drive=0.95BW  flags=[]
+[trial 268/624] Fastball RH 5.c3d  (2025-08-25)
+  plates: lead=4 drive=3  FC=414 BR=458 MER=452
+  lead=0.00BW  drive=1.46BW  flags=['no_lead_grf_in_delivery']
+[trial 269/624] Fastball RH 7.c3d  (2025-08-25)
+  plates: lead=4 drive=3  FC=424 BR=449 MER=441
+  lead=1.86BW  drive=1.48BW  flags=[]
+[trial 270/624] Fastball RH 8.c3d  (2025-08-25)
+  plates: lead=4 drive=3  FC=416 BR=456 MER=441
+  lead=2.04BW  drive=1.43BW  flags=[]
+[trial 271/624] Fastball RH 11.c3d  (2025-08-20)
+  plates: lead=4 drive=3  FC=396 BR=447 MER=423
+  lead=3.96BW  drive=2.93BW  flags=[]
+[trial 272/624] Fastball RH 15.c3d  (2025-08-20)
+  plates: lead=4 drive=3  FC=404 BR=440 MER=426
+  lead=3.71BW  drive=2.90BW  flags=[]
+[trial 273/624] Fastball RH 2.c3d  (2025-08-20)
+  plates: lead=4 drive=3  FC=393 BR=441 MER=414
+  lead=3.87BW  drive=2.94BW  flags=[]
+[trial 274/624] Fastball RH 5.c3d  (2025-08-20)
+  plates: lead=4 drive=3  FC=361 BR=422 MER=386
+  lead=3.93BW  drive=2.91BW  flags=[]
+[trial 275/624] Fastball RH 7.c3d  (2025-08-20)
+  plates: lead=4 drive=3  FC=379 BR=435 MER=403
+  lead=3.61BW  drive=2.93BW  flags=[]
+[trial 276/624] Fastball RH 10.c3d  (2025-08-15)
+  plates: lead=4 drive=3  FC=338 BR=364 MER=347
+  lead=2.06BW  drive=1.27BW  flags=[]
+[trial 277/624] Fastball RH 11.c3d  (2025-08-15)
+  plates: lead=4 drive=3  FC=343 BR=382 MER=352
+  lead=2.02BW  drive=1.24BW  flags=[]
+[trial 278/624] Fastball RH 13.c3d  (2025-08-15)
+  plates: lead=4 drive=3  FC=338 BR=374 MER=373
+  lead=0.15BW  drive=1.30BW  flags=['no_lead_grf_in_delivery']
+[trial 279/624] Fastball RH 6.c3d  (2025-08-15)
+  plates: lead=4 drive=3  FC=362 BR=370 MER=369
+  lead=1.46BW  drive=1.23BW  flags=['short_trial']
+[trial 280/624] Fastball RH 8.c3d  (2025-08-15)
+  plates: lead=4 drive=3  FC=337 BR=369 MER=348
+  lead=2.04BW  drive=1.25BW  flags=[]
+[trial 281/624] Fastball RH 10.c3d  (2025-08-13)
+  plates: lead=4 drive=3  FC=423 BR=443 MER=442
+  lead=1.47BW  drive=1.26BW  flags=[]
+[trial 282/624] Fastball RH 11.c3d  (2025-08-13)
+  plates: lead=4 drive=3  FC=396 BR=447 MER=436
+  lead=0.00BW  drive=1.10BW  flags=['no_lead_grf_in_delivery']
+[trial 283/624] Fastball RH 12.c3d  (2025-08-13)
+  plates: lead=4 drive=3  FC=390 BR=439 MER=392
+  lead=0.00BW  drive=1.14BW  flags=['no_lead_grf_in_delivery']
+[trial 284/624] Fastball RH 8.c3d  (2025-08-13)
+  plates: lead=4 drive=3  FC=395 BR=451 MER=419
+  lead=2.41BW  drive=1.31BW  flags=[]
+[trial 285/624] Fastball RH 9.c3d  (2025-08-13)
+  plates: lead=4 drive=3  FC=394 BR=422 MER=412
+  lead=1.84BW  drive=1.35BW  flags=[]
+[trial 286/624] Fastball RH 10.c3d  (2025-08-12)
+  plates: lead=4 drive=3  FC=312 BR=355 MER=317
+  lead=1.62BW  drive=1.69BW  flags=[]
+[trial 287/624] Fastball RH 11.c3d  (2025-08-12)
+  plates: lead=4 drive=3  FC=328 BR=359 MER=332
+  lead=1.70BW  drive=1.66BW  flags=[]
+[trial 288/624] Fastball RH 3.c3d  (2025-08-12)
+  plates: lead=4 drive=3  FC=338 BR=367 MER=344
+  lead=1.73BW  drive=1.71BW  flags=[]
+[trial 289/624] Fastball RH 4.c3d  (2025-08-12)
+  plates: lead=4 drive=3  FC=341 BR=366 MER=347
+  lead=1.43BW  drive=1.50BW  flags=[]
+[trial 290/624] Fastball RH 5.c3d  (2025-08-12)
+  plates: lead=4 drive=3  FC=243 BR=276 MER=267
+  lead=0.83BW  drive=1.17BW  flags=[]
+[trial 291/624] Fastball RH 6.c3d  (2025-08-12)
+  plates: lead=4 drive=3  FC=319 BR=356 MER=355
+  lead=0.00BW  drive=1.43BW  flags=['no_lead_grf_in_delivery']
+[trial 292/624] Fastball RH 7.c3d  (2025-08-12)
+  plates: lead=4 drive=3  FC=366 BR=388 MER=379
+  lead=0.95BW  drive=1.35BW  flags=[]
+[trial 293/624] Fastball RH 10.c3d  (2025-08-11)
+  plates: lead=4 drive=3  FC=323 BR=362 MER=330
+  lead=2.08BW  drive=1.37BW  flags=[]
+[trial 294/624] Fastball RH 13.c3d  (2025-08-11)
+  plates: lead=4 drive=3  FC=330 BR=348 MER=338
+  lead=1.11BW  drive=1.39BW  flags=[]
+[trial 295/624] Fastball RH 14.c3d  (2025-08-11)
+  plates: lead=4 drive=3  FC=352 BR=370 MER=361
+  lead=1.35BW  drive=1.34BW  flags=[]
+[trial 296/624] Fastball RH 6.c3d  (2025-08-11)
+  plates: lead=4 drive=3  FC=347 BR=364 MER=355
+  lead=1.51BW  drive=1.41BW  flags=[]
+[trial 297/624] Fastball RH 7.c3d  (2025-08-11)
+  plates: lead=4 drive=3  FC=328 BR=364 MER=338
+  lead=1.96BW  drive=1.36BW  flags=[]
+[trial 298/624] Fastball RH 15.c3d  (2025-08-07)
+  plates: lead=4 drive=3  FC=365 BR=390 MER=387
+  lead=1.56BW  drive=1.48BW  flags=[]
+[trial 299/624] Fastball RH 16.c3d  (2025-08-07)
+  plates: lead=4 drive=3  FC=366 BR=404 MER=366
+  lead=0.01BW  drive=1.55BW  flags=['no_lead_grf_in_delivery']
+[trial 300/624] Fastball RH 2.c3d  (2025-08-07)
+  plates: lead=4 drive=3  FC=370 BR=408 MER=381
+  lead=0.00BW  drive=1.61BW  flags=['no_lead_grf_in_delivery']
+[trial 301/624] Fastball RH 5.c3d  (2025-08-07)
+  plates: lead=4 drive=3  FC=375 BR=413 MER=376
+  lead=0.00BW  drive=1.48BW  flags=['no_lead_grf_in_delivery']
+[trial 302/624] Fastball RH 7.c3d  (2025-08-07)
+  plates: lead=4 drive=3  FC=391 BR=424 MER=407
+  lead=2.41BW  drive=1.58BW  flags=[]
+[trial 303/624] Fastball RH 13.c3d  (2025-08-07)
+  plates: lead=4 drive=3  FC=372 BR=418 MER=400
+  lead=2.32BW  drive=1.58BW  flags=[]
+[trial 304/624] Fastball RH 15.c3d  (2025-08-07)
+  plates: lead=4 drive=3  FC=375 BR=417 MER=392
+  lead=2.32BW  drive=1.56BW  flags=[]
+[trial 305/624] Fastball RH 16.c3d  (2025-08-07)
+  plates: lead=4 drive=3  FC=398 BR=426 MER=417
+  lead=2.16BW  drive=1.57BW  flags=[]
+[trial 306/624] Fastball RH 5.c3d  (2025-08-07)
+  plates: lead=4 drive=3  FC=395 BR=439 MER=416
+  lead=2.14BW  drive=1.44BW  flags=[]
+[trial 307/624] Fastball RH 8.c3d  (2025-08-07)
+  plates: lead=4 drive=3  FC=389 BR=428 MER=412
+  lead=2.40BW  drive=1.47BW  flags=[]
+[trial 308/624] Fastball RH 11.c3d  (2025-08-01)
+  plates: lead=4 drive=3  FC=396 BR=429 MER=401
+  lead=2.32BW  drive=1.23BW  flags=[]
+[trial 309/624] Fastball RH 3.c3d  (2025-08-01)
+  plates: lead=4 drive=3  FC=373 BR=400 MER=377
+  lead=1.86BW  drive=1.30BW  flags=[]
+[trial 310/624] Fastball RH 6.c3d  (2025-08-01)
+  plates: lead=4 drive=3  FC=455 BR=473 MER=457
+  lead=2.08BW  drive=1.36BW  flags=[]
+[trial 311/624] Fastball RH 7.c3d  (2025-08-01)
+  plates: lead=4 drive=3  FC=427 BR=460 MER=427
+  lead=0.00BW  drive=1.29BW  flags=['no_lead_grf_in_delivery']
+[trial 312/624] Fastball RH 8.c3d  (2025-08-01)
+  plates: lead=4 drive=3  FC=424 BR=460 MER=459
+  lead=0.00BW  drive=1.39BW  flags=['no_lead_grf_in_delivery']
+[trial 313/624] Fastball RH 10.c3d  (2025-07-24)
+  plates: lead=4 drive=3  FC=376 BR=389 MER=388
+  lead=2.26BW  drive=1.32BW  flags=['body_weight_missing']
+[trial 314/624] Fastball RH 5.c3d  (2025-07-24)
+  plates: lead=4 drive=3  FC=371 BR=410 MER=371
+  lead=0.00BW  drive=1.28BW  flags=['body_weight_missing', 'no_lead_grf_in_delivery']
+[trial 315/624] Fastball RH 6.c3d  (2025-07-24)
+  plates: lead=4 drive=3  FC=369 BR=403 MER=391
+  lead=0.00BW  drive=1.29BW  flags=['body_weight_missing', 'no_lead_grf_in_delivery']
+[trial 316/624] Fastball RH 7.c3d  (2025-07-24)
+  plates: lead=4 drive=3  FC=374 BR=406 MER=392
+  lead=2.30BW  drive=1.40BW  flags=['body_weight_missing']
+[trial 317/624] Fastball RH 9.c3d  (2025-07-24)
+  plates: lead=4 drive=3  FC=407 BR=410 MER=409
+  lead=0.37BW  drive=1.29BW  flags=['body_weight_missing', 'short_trial']
+[trial 318/624] Fastball LH 10.c3d  (2025-07-15)
+  plates: lead=4 drive=3  FC=434 BR=444 MER=443
+  lead=0.43BW  drive=0.95BW  flags=['body_weight_missing']
+[trial 319/624] Fastball LH 11.c3d  (2025-07-15)
+  plates: lead=4 drive=3  FC=428 BR=474 MER=458
+  lead=1.58BW  drive=0.96BW  flags=['body_weight_missing']
+[trial 320/624] Fastball LH 13.c3d  (2025-07-15)
+  plates: lead=4 drive=3  FC=436 BR=479 MER=465
+  lead=1.43BW  drive=0.97BW  flags=['body_weight_missing']
+[trial 321/624] Fastball LH 5.c3d  (2025-07-15)
+  plates: lead=4 drive=3  FC=426 BR=469 MER=428
+  lead=0.00BW  drive=0.97BW  flags=['body_weight_missing', 'no_lead_grf_in_delivery']
+[trial 322/624] Fastball LH 9.c3d  (2025-07-15)
+  plates: lead=4 drive=3  FC=463 BR=506 MER=497
+  lead=0.01BW  drive=0.94BW  flags=['body_weight_missing', 'no_lead_grf_in_delivery']
+[trial 323/624] Fastball RH 2.c3d  (2025-06-19)
+  plates: lead=4 drive=3  FC=372 BR=430 MER=410
+  lead=1.96BW  drive=1.27BW  flags=[]
+[trial 324/624] Fastball RH 3.c3d  (2025-06-19)
+  plates: lead=4 drive=3  FC=385 BR=441 MER=414
+  lead=1.97BW  drive=1.23BW  flags=[]
+[trial 325/624] Fastball RH 4.c3d  (2025-06-19)
+  plates: lead=4 drive=3  FC=411 BR=467 MER=447
+  lead=1.98BW  drive=1.19BW  flags=[]
+[trial 326/624] Fastball RH 5.c3d  (2025-06-19)
+  plates: lead=4 drive=3  FC=404 BR=418 MER=417
+  lead=1.08BW  drive=1.08BW  flags=[]
+[trial 327/624] Fastball RH 6.c3d  (2025-06-19)
+  plates: lead=4 drive=3  FC=379 BR=431 MER=430
+  lead=0.00BW  drive=1.26BW  flags=['no_lead_grf_in_delivery']
+[trial 328/624] Fastball RH 13.c3d  (2025-06-09)
+  plates: lead=4 drive=3  FC=392 BR=437 MER=392
+  lead=0.00BW  drive=1.47BW  flags=['no_lead_grf_in_delivery']
+[trial 329/624] Fastball RH 16.c3d  (2025-06-09)
+  plates: lead=4 drive=3  FC=393 BR=429 MER=421
+  lead=1.72BW  drive=1.48BW  flags=[]
+[trial 330/624] Fastball RH 3.c3d  (2025-06-09)
+  plates: lead=4 drive=3  FC=411 BR=449 MER=431
+  lead=1.94BW  drive=1.53BW  flags=[]
+[trial 331/624] Fastball RH 7.c3d  (2025-06-09)
+  plates: lead=4 drive=3  FC=389 BR=435 MER=416
+  lead=2.06BW  drive=1.48BW  flags=[]
+[trial 332/624] Fastball RH 8.c3d  (2025-06-09)
+  plates: lead=4 drive=3  FC=402 BR=435 MER=425
+  lead=1.85BW  drive=1.44BW  flags=[]
+[trial 333/624] Fastball LH 12.c3d  (2025-06-03)
+  plates: lead=4 drive=3  FC=329 BR=366 MER=356
+  lead=1.75BW  drive=1.11BW  flags=[]
+[trial 334/624] Fastball LH 2.c3d  (2025-06-03)
+  plates: lead=4 drive=3  FC=314 BR=361 MER=343
+  lead=1.91BW  drive=1.26BW  flags=[]
+[trial 335/624] Fastball LH 6.c3d  (2025-06-03)
+  plates: lead=4 drive=3  FC=363 BR=394 MER=387
+  lead=1.76BW  drive=1.12BW  flags=[]
+[trial 336/624] Fastball LH 7.c3d  (2025-06-03)
+  plates: lead=4 drive=3  FC=359 BR=400 MER=386
+  lead=1.91BW  drive=1.22BW  flags=[]
+[trial 337/624] Fastball LH 9.c3d  (2025-06-03)
+  plates: lead=4 drive=3  FC=365 BR=406 MER=389
+  lead=1.87BW  drive=1.27BW  flags=[]
+[trial 338/624] Fastball RH 13.c3d  (2025-06-03)
+  plates: lead=4 drive=3  FC=343 BR=369 MER=367
+  lead=1.36BW  drive=1.43BW  flags=[]
+[trial 339/624] Fastball RH 14.c3d  (2025-06-03)
+  plates: lead=4 drive=3  FC=326 BR=371 MER=349
+  lead=2.14BW  drive=1.32BW  flags=[]
+[trial 340/624] Fastball RH 15.c3d  (2025-06-03)
+  plates: lead=4 drive=3  FC=346 BR=361 MER=360
+  lead=1.75BW  drive=1.51BW  flags=[]
+[trial 341/624] Fastball RH 17.c3d  (2025-06-03)
+  plates: lead=4 drive=3  FC=304 BR=357 MER=329
+  lead=2.22BW  drive=1.42BW  flags=[]
+[trial 342/624] Fastball RH 18.c3d  (2025-06-03)
+  plates: lead=4 drive=3  FC=303 BR=353 MER=322
+  lead=2.16BW  drive=1.40BW  flags=[]
+[trial 343/624] Fastball RH 11.c3d  (2025-05-28)
+  plates: lead=4 drive=3  FC=464 BR=499 MER=489
+  lead=2.02BW  drive=1.26BW  flags=[]
+[trial 344/624] Fastball RH 13.c3d  (2025-05-28)
+  plates: lead=4 drive=3  FC=472 BR=504 MER=497
+  lead=1.93BW  drive=1.24BW  flags=[]
+[trial 345/624] Fastball RH 5.c3d  (2025-05-28)
+  plates: lead=4 drive=3  FC=472 BR=496 MER=495
+  lead=1.75BW  drive=1.30BW  flags=[]
+[trial 346/624] Fastball RH 7.c3d  (2025-05-28)
+  plates: lead=4 drive=3  FC=470 BR=486 MER=485
+  lead=1.73BW  drive=1.31BW  flags=[]
+[trial 347/624] Fastball RH 9.c3d  (2025-05-28)
+  plates: lead=4 drive=3  FC=450 BR=465 MER=464
+  lead=2.05BW  drive=1.25BW  flags=[]
+[trial 348/624] Fastball RH 2.c3d  (2025-05-23)
+  plates: lead=4 drive=3  FC=319 BR=361 MER=346
+  lead=1.99BW  drive=1.32BW  flags=[]
+[trial 349/624] Fastball RH 3.c3d  (2025-05-23)
+  plates: lead=4 drive=3  FC=346 BR=382 MER=365
+  lead=2.10BW  drive=1.56BW  flags=[]
+[trial 350/624] Fastball RH 4.c3d  (2025-05-23)
+  plates: lead=4 drive=3  FC=339 BR=373 MER=361
+  lead=2.18BW  drive=1.54BW  flags=[]
+[trial 351/624] Fastball RH 5.c3d  (2025-05-23)
+  plates: lead=4 drive=3  FC=352 BR=384 MER=373
+  lead=2.15BW  drive=1.52BW  flags=[]
+[trial 352/624] Pitch RH 1.c3d  (2025-05-23)
+  plates: lead=4 drive=3  FC=115 BR=132 MER=130
+  lead=1.61BW  drive=0.03BW  flags=[]
+[trial 353/624] Pitch RH 2.c3d  (2025-05-23)
+  plates: lead=4 drive=3  FC=148 BR=179 MER=169
+  lead=2.05BW  drive=0.65BW  flags=[]
+[trial 354/624] Pitch RH 3.c3d  (2025-05-23)
+  plates: lead=4 drive=3  FC=112 BR=165 MER=137
+  lead=2.49BW  drive=0.09BW  flags=[]
+[trial 355/624] Pitch RH 4.c3d  (2025-05-23)
+  plates: lead=4 drive=3  FC=132 BR=159 MER=147
+  lead=2.24BW  drive=0.51BW  flags=[]
+[trial 356/624] Fastball RH 1.c3d  (2025-05-21)
+  plates: lead=4 drive=3  FC=390 BR=406 MER=405
+  lead=2.10BW  drive=1.22BW  flags=[]
+[trial 357/624] Fastball RH 11.c3d  (2025-05-21)
+  plates: lead=4 drive=3  FC=382 BR=411 MER=407
+  lead=2.10BW  drive=1.34BW  flags=[]
+[trial 358/624] Fastball RH 13.c3d  (2025-05-21)
+  plates: lead=4 drive=3  FC=396 BR=433 MER=396
+  lead=0.00BW  drive=1.19BW  flags=['no_lead_grf_in_delivery']
+[trial 359/624] Fastball RH 4.c3d  (2025-05-21)
+  plates: lead=4 drive=3  FC=390 BR=433 MER=428
+  lead=2.12BW  drive=1.24BW  flags=[]
+[trial 360/624] Fastball RH 8.c3d  (2025-05-21)
+  plates: lead=4 drive=3  FC=416 BR=421 MER=420
+  lead=0.19BW  drive=1.18BW  flags=['short_trial']
+[trial 361/624] Fastball LH 11.c3d  (2025-05-20)
+  plates: lead=4 drive=3  FC=440 BR=475 MER=454
+  lead=1.80BW  drive=1.34BW  flags=[]
+[trial 362/624] Fastball LH 13.c3d  (2025-05-20)
+  plates: lead=4 drive=3  FC=460 BR=506 MER=479
+  lead=1.97BW  drive=1.37BW  flags=[]
+[trial 363/624] Fastball LH 15.c3d  (2025-05-20)
+  plates: lead=4 drive=3  FC=451 BR=493 MER=472
+  lead=1.91BW  drive=1.35BW  flags=[]
+[trial 364/624] Fastball LH 3.c3d  (2025-05-20)
+  plates: lead=4 drive=3  FC=456 BR=499 MER=474
+  lead=1.91BW  drive=1.26BW  flags=[]
+[trial 365/624] Fastball LH 6.c3d  (2025-05-20)
+  plates: lead=4 drive=3  FC=442 BR=483 MER=464
+  lead=1.86BW  drive=1.30BW  flags=[]
+[trial 366/624] Fastball RH 12.c3d  (2025-05-20)
+  plates: lead=4 drive=3  FC=400 BR=441 MER=400
+  lead=0.00BW  drive=1.56BW  flags=['no_lead_grf_in_delivery']
+[trial 367/624] Fastball RH 14.c3d  (2025-05-20)
+  plates: lead=4 drive=3  FC=431 BR=483 MER=455
+  lead=1.80BW  drive=1.52BW  flags=[]
+[trial 368/624] Fastball RH 5.c3d  (2025-05-20)
+  plates: lead=4 drive=3  FC=478 BR=506 MER=494
+  lead=1.37BW  drive=1.47BW  flags=[]
+[trial 369/624] Fastball RH 6.c3d  (2025-05-20)
+  plates: lead=4 drive=3  FC=435 BR=466 MER=454
+  lead=1.44BW  drive=1.47BW  flags=[]
+[trial 370/624] Fastball RH 8.c3d  (2025-05-20)
+  plates: lead=4 drive=3  FC=472 BR=505 MER=491
+  lead=1.30BW  drive=1.50BW  flags=[]
+[trial 371/624] Fastball RH 10.c3d  (2025-05-20)
+  plates: lead=4 drive=3  FC=318 BR=354 MER=337
+  lead=1.99BW  drive=1.45BW  flags=[]
+[trial 372/624] Fastball RH 14.c3d  (2025-05-20)
+  plates: lead=4 drive=3  FC=285 BR=330 MER=304
+  lead=2.36BW  drive=1.41BW  flags=[]
+[trial 373/624] Fastball RH 2.c3d  (2025-05-20)
+  plates: lead=4 drive=3  FC=326 BR=363 MER=336
+  lead=0.00BW  drive=1.35BW  flags=['no_lead_grf_in_delivery']
+[trial 374/624] Fastball RH 5.c3d  (2025-05-20)
+  plates: lead=4 drive=3  FC=344 BR=375 MER=362
+  lead=1.89BW  drive=1.42BW  flags=[]
+[trial 375/624] Fastball RH 7.c3d  (2025-05-20)
+  plates: lead=4 drive=3  FC=358 BR=375 MER=374
+  lead=2.09BW  drive=1.46BW  flags=[]
+[trial 376/624] Fastball RH 14.c3d  (2025-05-19)
+  plates: lead=4 drive=3  FC=270 BR=297 MER=290
+  lead=1.51BW  drive=1.05BW  flags=[]
+[trial 377/624] Fastball RH 15.c3d  (2025-05-19)
+  plates: lead=4 drive=3  FC=274 BR=309 MER=294
+  lead=1.91BW  drive=1.08BW  flags=[]
+[trial 378/624] Fastball RH 16.c3d  (2025-05-19)
+  plates: lead=4 drive=3  FC=394 BR=431 MER=414
+  lead=2.12BW  drive=1.06BW  flags=[]
+[trial 379/624] Fastball RH 6.c3d  (2025-05-19)
+  plates: lead=4 drive=3  FC=419 BR=456 MER=438
+  lead=2.05BW  drive=1.07BW  flags=[]
+[trial 380/624] Fastball RH 8.c3d  (2025-05-19)
+  plates: lead=4 drive=3  FC=438 BR=466 MER=457
+  lead=1.53BW  drive=1.05BW  flags=[]
+[trial 381/624] Fastball RH 11.c3d  (2025-05-16)
+  plates: lead=4 drive=3  FC=395 BR=402 MER=401
+  lead=1.84BW  drive=1.54BW  flags=['short_trial']
+[trial 382/624] Fastball RH 15.c3d  (2025-05-16)
+  plates: lead=4 drive=3  FC=366 BR=404 MER=380
+  lead=2.28BW  drive=1.51BW  flags=[]
+[trial 383/624] Fastball RH 3.c3d  (2025-05-16)
+  plates: lead=4 drive=3  FC=393 BR=419 MER=405
+  lead=2.39BW  drive=1.47BW  flags=[]
+[trial 384/624] Fastball RH 8.c3d  (2025-05-16)
+  plates: lead=4 drive=3  FC=382 BR=418 MER=392
+  lead=2.32BW  drive=1.49BW  flags=[]
+[trial 385/624] Fastball RH 9.c3d  (2025-05-16)
+  plates: lead=4 drive=3  FC=403 BR=422 MER=415
+  lead=2.23BW  drive=1.52BW  flags=[]
+[trial 386/624] Fastball RH 2.c3d  (2025-05-15)
+  plates: lead=4 drive=3  FC=369 BR=412 MER=381
+  lead=1.80BW  drive=1.13BW  flags=[]
+[trial 387/624] Fastball RH 3.c3d  (2025-05-15)
+  plates: lead=4 drive=3  FC=384 BR=425 MER=404
+  lead=1.72BW  drive=1.06BW  flags=[]
+[trial 388/624] Fastball RH 4.c3d  (2025-05-15)
+  plates: lead=4 drive=3  FC=389 BR=422 MER=402
+  lead=1.63BW  drive=1.18BW  flags=[]
+[trial 389/624] Fastball RH 5.c3d  (2025-05-15)
+  plates: lead=4 drive=3  FC=360 BR=399 MER=376
+  lead=1.58BW  drive=1.02BW  flags=[]
+[trial 390/624] Fastball RH 7.c3d  (2025-05-15)
+  plates: lead=4 drive=3  FC=372 BR=404 MER=384
+  lead=1.57BW  drive=1.21BW  flags=[]
+[trial 391/624] Fastball RH 13.c3d  (2025-05-15)
+  plates: lead=4 drive=3  FC=339 BR=375 MER=355
+  lead=2.75BW  drive=1.46BW  flags=[]
+[trial 392/624] Fastball RH 14.c3d  (2025-05-15)
+  plates: lead=4 drive=3  FC=330 BR=374 MER=347
+  lead=2.86BW  drive=1.42BW  flags=[]
+[trial 393/624] Fastball RH 15.c3d  (2025-05-15)
+  plates: lead=4 drive=3  FC=303 BR=338 MER=313
+  lead=2.90BW  drive=1.46BW  flags=[]
+[trial 394/624] Fastball RH 16.c3d  (2025-05-15)
+  plates: lead=4 drive=3  FC=345 BR=373 MER=351
+  lead=2.89BW  drive=1.44BW  flags=[]
+[trial 395/624] Fastball RH 17.c3d  (2025-05-15)
+  plates: lead=4 drive=3  FC=309 BR=336 MER=321
+  lead=2.95BW  drive=1.42BW  flags=[]
+[trial 396/624] Fastball RH 13.c3d  (2025-05-05)
+  plates: lead=4 drive=3  FC=379 BR=382 MER=381
+  lead=0.31BW  drive=1.59BW  flags=['short_trial']
+[trial 397/624] Fastball RH 19.c3d  (2025-05-05)
+  plates: lead=4 drive=3  FC=357 BR=383 MER=367
+  lead=1.97BW  drive=1.59BW  flags=[]
+[trial 398/624] Fastball RH 20.c3d  (2025-05-05)
+  plates: lead=4 drive=3  FC=339 BR=380 MER=351
+  lead=2.27BW  drive=1.54BW  flags=[]
+[trial 399/624] Fastball RH 3.c3d  (2025-05-05)
+  plates: lead=4 drive=3  FC=329 BR=360 MER=343
+  lead=1.92BW  drive=1.43BW  flags=[]
+[trial 400/624] Fastball RH 6.c3d  (2025-05-05)
+  plates: lead=4 drive=3  FC=327 BR=357 MER=338
+  lead=2.15BW  drive=1.59BW  flags=[]
+[trial 401/624] Breaking Ball RH 1.c3d  (2025-05-01)
+  plates: lead=4 drive=3  FC=561 BR=577 MER=571
+  lead=1.77BW  drive=1.42BW  flags=[]
+[trial 402/624] Breaking Ball RH 2.c3d  (2025-05-01)
+  plates: lead=4 drive=3  FC=512 BR=541 MER=520
+  lead=1.93BW  drive=1.46BW  flags=[]
+[trial 403/624] Fastball RH 1.c3d  (2025-05-01)
+  plates: lead=4 drive=3  FC=546 BR=562 MER=561
+  lead=2.25BW  drive=1.49BW  flags=[]
+[trial 404/624] Fastball RH 2.c3d  (2025-05-01)
+  plates: lead=4 drive=3  FC=492 BR=519 MER=518
+  lead=2.55BW  drive=1.55BW  flags=[]
+[trial 405/624] Fastball RH 3.c3d  (2025-05-01)
+  plates: lead=4 drive=3  FC=480 BR=517 MER=516
+  lead=2.87BW  drive=1.53BW  flags=[]
+[trial 406/624] Fastball RH 4.c3d  (2025-05-01)
+  plates: lead=4 drive=3  FC=494 BR=537 MER=536
+  lead=2.41BW  drive=1.47BW  flags=[]
+[trial 407/624] Fastball RH 9.c3d  (2025-05-01)
+  plates: lead=4 drive=3  FC=483 BR=521 MER=520
+  lead=2.68BW  drive=1.44BW  flags=[]
+[trial 408/624] Off Speed RH 1.c3d  (2025-05-01)
+  plates: lead=4 drive=3  FC=517 BR=532 MER=523
+  lead=1.62BW  drive=1.30BW  flags=[]
+[trial 409/624] Off Speed RH 2.c3d  (2025-05-01)
+  plates: lead=4 drive=3  FC=492 BR=534 MER=533
+  lead=0.10BW  drive=1.40BW  flags=['no_lead_grf_in_delivery']
+[trial 410/624] Fastball RH 10.c3d  (2025-04-30)
+  plates: lead=4 drive=3  FC=342 BR=359 MER=358
+  lead=2.50BW  drive=1.41BW  flags=[]
+[trial 411/624] Fastball RH 13.c3d  (2025-04-30)
+  plates: lead=4 drive=3  FC=357 BR=375 MER=374
+  lead=2.58BW  drive=1.48BW  flags=[]
+[trial 412/624] Fastball RH 16.c3d  (2025-04-30)
+  plates: lead=4 drive=3  FC=340 BR=367 MER=359
+  lead=2.43BW  drive=1.22BW  flags=[]
+[trial 413/624] Fastball RH 3.c3d  (2025-04-30)
+  plates: lead=4 drive=3  FC=341 BR=363 MER=361
+  lead=2.09BW  drive=1.58BW  flags=[]
+[trial 414/624] Fastball RH 7.c3d  (2025-04-30)
+  plates: lead=4 drive=3  FC=339 BR=372 MER=340
+  lead=0.01BW  drive=1.63BW  flags=['no_lead_grf_in_delivery']
+[trial 415/624] Fastball RH 10.c3d  (2025-04-28)
+  plates: lead=4 drive=3  FC=363 BR=411 MER=376
+  lead=1.89BW  drive=1.49BW  flags=[]
+[trial 416/624] Fastball RH 11.c3d  (2025-04-28)
+  plates: lead=4 drive=3  FC=414 BR=430 MER=421
+  lead=1.23BW  drive=1.53BW  flags=[]
+[trial 417/624] Fastball RH 16.c3d  (2025-04-28)
+  plates: lead=4 drive=3  FC=370 BR=414 MER=384
+  lead=1.96BW  drive=1.50BW  flags=[]
+[trial 418/624] Fastball RH 4.c3d  (2025-04-28)
+  plates: lead=4 drive=3  FC=386 BR=424 MER=394
+  lead=2.08BW  drive=1.49BW  flags=[]
+[trial 419/624] Fastball RH 9.c3d  (2025-04-28)
+  plates: lead=4 drive=3  FC=371 BR=413 MER=382
+  lead=1.95BW  drive=1.56BW  flags=[]
+[trial 420/624] Fastball RH 11.c3d  (2025-04-04)
+  plates: lead=4 drive=3  FC=346 BR=349 MER=348
+  lead=0.81BW  drive=0.92BW  flags=['short_trial']
+[trial 421/624] Fastball RH 12.c3d  (2025-04-04)
+  plates: lead=4 drive=3  FC=322 BR=354 MER=331
+  lead=2.60BW  drive=1.32BW  flags=[]
+[trial 422/624] Fastball RH 5.c3d  (2025-04-04)
+  plates: lead=4 drive=3  FC=316 BR=354 MER=328
+  lead=2.63BW  drive=1.25BW  flags=[]
+[trial 423/624] Fastball RH 8.c3d  (2025-04-04)
+  plates: lead=4 drive=3  FC=334 BR=378 MER=345
+  lead=2.35BW  drive=1.23BW  flags=['br_detected']
+[trial 424/624] Fastball RH 9.c3d  (2025-04-04)
+  plates: lead=4 drive=3  FC=328 BR=358 MER=335
+  lead=2.52BW  drive=1.32BW  flags=[]
+[trial 425/624] Pitch RH 10.c3d  (2025-03-10)
+  plates: lead=4 drive=3  FC=382 BR=423 MER=382
+  lead=0.00BW  drive=1.26BW  flags=['no_lead_grf_in_delivery']
+[trial 426/624] Pitch RH 12.c3d  (2025-03-10)
+  plates: lead=4 drive=3  FC=189 BR=230 MER=218
+  lead=0.00BW  drive=1.80BW  flags=['no_lead_grf_in_delivery']
+[trial 427/624] Pitch RH 13.c3d  (2025-03-10)
+  plates: lead=4 drive=3  FC=177 BR=218 MER=177
+  lead=0.00BW  drive=1.70BW  flags=['no_lead_grf_in_delivery']
+[trial 428/624] Pitch RH 16.c3d  (2025-03-10)
+  plates: lead=4 drive=3  FC=330 BR=373 MER=348
+  lead=1.79BW  drive=1.42BW  flags=[]
+[trial 429/624] Pitch RH 18.c3d  (2025-03-10)
+  plates: lead=4 drive=3  FC=323 BR=353 MER=335
+  lead=1.92BW  drive=1.37BW  flags=[]
+[trial 430/624] Pitch RH 19.c3d  (2025-03-10)
+  plates: lead=4 drive=3  FC=348 BR=362 MER=361
+  lead=1.53BW  drive=1.37BW  flags=[]
+[trial 431/624] Pitch RH 2.c3d  (2025-03-10)
+  plates: lead=4 drive=3  FC=381 BR=421 MER=383
+  lead=0.00BW  drive=1.34BW  flags=['no_lead_grf_in_delivery']
+[trial 432/624] Pitch RH 20.c3d  (2025-03-10)
+  plates: lead=4 drive=3  FC=678 BR=694 MER=693
+  lead=1.45BW  drive=1.24BW  flags=[]
+[trial 433/624] Pitch RH 21.c3d  (2025-03-10)
+  plates: lead=4 drive=3  FC=629 BR=648 MER=643
+  lead=1.80BW  drive=1.38BW  flags=[]
+[trial 434/624] Pitch RH 4.c3d  (2025-03-10)
+  plates: lead=4 drive=3  FC=378 BR=430 MER=406
+  lead=1.86BW  drive=1.23BW  flags=[]
+[trial 435/624] Pitch RH 7.c3d  (2025-03-10)
+  plates: lead=4 drive=3  FC=341 BR=375 MER=361
+  lead=1.85BW  drive=1.40BW  flags=[]
+[trial 436/624] Pitch RH 9.c3d  (2025-03-10)
+  plates: lead=4 drive=3  FC=382 BR=424 MER=382
+  lead=0.00BW  drive=1.21BW  flags=['no_lead_grf_in_delivery']
+[trial 437/624] Fastball RH 11.c3d  (2025-02-11)
+  plates: lead=4 drive=3  FC=283 BR=316 MER=315
+  lead=1.96BW  drive=1.44BW  flags=[]
+[trial 438/624] Fastball RH 13.c3d  (2025-02-11)
+  plates: lead=4 drive=3  FC=298 BR=315 MER=299
+  lead=2.05BW  drive=1.32BW  flags=[]
+[trial 439/624] Fastball RH 14.c3d  (2025-02-11)
+  plates: lead=4 drive=3  FC=298 BR=325 MER=301
+  lead=1.80BW  drive=1.37BW  flags=[]
+[trial 440/624] Fastball RH 7.c3d  (2025-02-11)
+  plates: lead=4 drive=3  FC=359 BR=401 MER=360
+  lead=1.98BW  drive=1.19BW  flags=[]
+[trial 441/624] Fastball RH 8.c3d  (2025-02-11)
+  plates: lead=4 drive=3  FC=337 BR=381 MER=338
+  lead=1.93BW  drive=1.26BW  flags=[]
+[trial 442/624] Fastball LH 1.c3d  (2025-02-10)
+  plates: lead=4 drive=3  FC=350 BR=372 MER=365
+  lead=1.77BW  drive=1.61BW  flags=[]
+[trial 443/624] Fastball LH 3.c3d  (2025-02-10)
+  plates: lead=4 drive=3  FC=373 BR=398 MER=388
+  lead=2.15BW  drive=1.43BW  flags=[]
+[trial 444/624] Fastball LH 4.c3d  (2025-02-10)
+  plates: lead=4 drive=3  FC=373 BR=405 MER=387
+  lead=2.33BW  drive=1.46BW  flags=[]
+[trial 445/624] Fastball LH 6.c3d  (2025-02-10)
+  plates: lead=4 drive=3  FC=399 BR=415 MER=408
+  lead=2.61BW  drive=1.46BW  flags=[]
+[trial 446/624] Fastball LH 8.c3d  (2025-02-10)
+  plates: lead=4 drive=3  FC=366 BR=404 MER=366
+  lead=0.00BW  drive=1.47BW  flags=['no_lead_grf_in_delivery']
+[trial 447/624] Fastball RH 11.c3d  (2025-02-04)
+  plates: lead=4 drive=3  FC=370 BR=391 MER=373
+  lead=1.37BW  drive=1.54BW  flags=[]
+[trial 448/624] Fastball RH 16.c3d  (2025-02-04)
+  plates: lead=4 drive=3  FC=410 BR=433 MER=416
+  lead=1.80BW  drive=1.55BW  flags=[]
+[trial 449/624] Fastball RH 5.c3d  (2025-02-04)
+  plates: lead=4 drive=3  FC=365 BR=403 MER=383
+  lead=0.00BW  drive=1.47BW  flags=['no_lead_grf_in_delivery']
+[trial 450/624] Fastball RH 6.c3d  (2025-02-04)
+  plates: lead=4 drive=3  FC=378 BR=395 MER=386
+  lead=1.30BW  drive=1.50BW  flags=[]
+[trial 451/624] Fastball RH 8.c3d  (2025-02-04)
+  plates: lead=4 drive=3  FC=321 BR=357 MER=326
+  lead=1.62BW  drive=1.45BW  flags=[]
+[trial 452/624] Fastball RH 1.c3d  (2025-01-29)
+  plates: lead=4 drive=3  FC=381 BR=427 MER=404
+  lead=2.16BW  drive=1.35BW  flags=[]
+[trial 453/624] Fastball RH 3.c3d  (2025-01-29)
+  plates: lead=4 drive=3  FC=367 BR=423 MER=389
+  lead=2.18BW  drive=1.42BW  flags=[]
+[trial 454/624] Fastball RH 5.c3d  (2025-01-29)
+  plates: lead=4 drive=3  FC=329 BR=384 MER=350
+  lead=2.21BW  drive=1.43BW  flags=[]
+[trial 455/624] Fastball RH 7.c3d  (2025-01-29)
+  plates: lead=4 drive=3  FC=359 BR=398 MER=379
+  lead=1.92BW  drive=1.45BW  flags=[]
+[trial 456/624] Fastball RH 8.c3d  (2025-01-29)
+  plates: lead=4 drive=3  FC=352 BR=408 MER=376
+  lead=2.18BW  drive=1.45BW  flags=[]
+[trial 457/624] Fastball LH 1.c3d  (2025-01-27)
+  plates: lead=4 drive=3  FC=362 BR=399 MER=383
+  lead=1.86BW  drive=1.83BW  flags=[]
+[trial 458/624] Fastball LH 10.c3d  (2025-01-27)
+  plates: lead=4 drive=3  FC=337 BR=373 MER=372
+  lead=0.00BW  drive=1.79BW  flags=['no_lead_grf_in_delivery']
+[trial 459/624] Fastball LH 12.c3d  (2025-01-27)
+  plates: lead=4 drive=3  FC=334 BR=381 MER=354
+  lead=1.73BW  drive=1.76BW  flags=[]
+[trial 460/624] Fastball LH 7.c3d  (2025-01-27)
+  plates: lead=4 drive=3  FC=369 BR=405 MER=404
+  lead=0.00BW  drive=1.79BW  flags=['no_lead_grf_in_delivery']
+[trial 461/624] Fastball LH 8.c3d  (2025-01-27)
+  plates: lead=4 drive=3  FC=386 BR=422 MER=400
+  lead=1.83BW  drive=1.64BW  flags=[]
+[trial 462/624] Fastball RH 12.c3d  (2025-01-20)
+  plates: lead=4 drive=3  FC=445 BR=492 MER=469
+  lead=2.21BW  drive=1.29BW  flags=[]
+[trial 463/624] Fastball RH 13.c3d  (2025-01-20)
+  plates: lead=4 drive=3  FC=426 BR=481 MER=454
+  lead=2.25BW  drive=1.35BW  flags=[]
+[trial 464/624] Fastball RH 14.c3d  (2025-01-20)
+  plates: lead=4 drive=3  FC=430 BR=469 MER=456
+  lead=2.03BW  drive=1.30BW  flags=[]
+[trial 465/624] Fastball RH 15.c3d  (2025-01-20)
+  plates: lead=4 drive=3  FC=430 BR=468 MER=455
+  lead=1.77BW  drive=1.30BW  flags=[]
+[trial 466/624] Fastball RH 4.c3d  (2025-01-20)
+  plates: lead=4 drive=3  FC=382 BR=453 MER=417
+  lead=2.16BW  drive=1.25BW  flags=[]
+[trial 467/624] Fastball RH 10.c3d  (2025-01-15)
+  plates: lead=4 drive=3  FC=314 BR=359 MER=337
+  lead=1.57BW  drive=1.43BW  flags=[]
+[trial 468/624] Fastball RH 2.c3d  (2025-01-15)
+  plates: lead=4 drive=3  FC=320 BR=354 MER=340
+  lead=0.00BW  drive=1.35BW  flags=['no_lead_grf_in_delivery']
+[trial 469/624] Fastball RH 4.c3d  (2025-01-15)
+  plates: lead=4 drive=3  FC=329 BR=366 MER=364
+  lead=0.00BW  drive=1.42BW  flags=['no_lead_grf_in_delivery']
+[trial 470/624] Fastball RH 5.c3d  (2025-01-15)
+  plates: lead=4 drive=3  FC=336 BR=377 MER=344
+  lead=1.71BW  drive=1.51BW  flags=[]
+[trial 471/624] Fastball RH 9.c3d  (2025-01-15)
+  plates: lead=4 drive=3  FC=349 BR=389 MER=361
+  lead=1.62BW  drive=1.43BW  flags=[]
+[trial 472/624] Fastball RH 11.c3d  (2025-01-15)
+  plates: lead=4 drive=3  FC=389 BR=432 MER=391
+  lead=2.25BW  drive=1.28BW  flags=[]
+[trial 473/624] Fastball RH 12.c3d  (2025-01-15)
+  plates: lead=4 drive=3  FC=409 BR=440 MER=415
+  lead=1.52BW  drive=1.25BW  flags=[]
+[trial 474/624] Fastball RH 5.c3d  (2025-01-15)
+  plates: lead=4 drive=3  FC=399 BR=442 MER=437
+  lead=2.25BW  drive=1.28BW  flags=[]
+[trial 475/624] Fastball RH 6.c3d  (2025-01-15)
+  plates: lead=4 drive=3  FC=443 BR=446 MER=445
+  lead=0.26BW  drive=1.28BW  flags=['short_trial']
+[trial 476/624] Fastball RH 8.c3d  (2025-01-15)
+  plates: lead=4 drive=3  FC=391 BR=434 MER=398
+  lead=2.11BW  drive=1.25BW  flags=[]
+[trial 477/624] Pitch RH 10.c3d  (2025-01-08)
+  plates: lead=4 drive=3  FC=113 BR=152 MER=151
+  lead=0.00BW  drive=1.17BW  flags=['no_lead_grf_in_delivery']
+[trial 478/624] Pitch RH 13.c3d  (2025-01-08)
+  plates: lead=4 drive=3  FC=122 BR=165 MER=164
+  lead=0.00BW  drive=1.61BW  flags=['no_lead_grf_in_delivery']
+[trial 479/624] Pitch RH 14.c3d  (2025-01-08)
+  plates: lead=4 drive=3  FC=134 BR=179 MER=178
+  lead=0.00BW  drive=1.44BW  flags=['no_lead_grf_in_delivery']
+[trial 480/624] Pitch RH 3.c3d  (2025-01-08)
+  plates: lead=4 drive=3  FC=112 BR=147 MER=146
+  lead=0.00BW  drive=1.48BW  flags=['no_lead_grf_in_delivery']
+[trial 481/624] Pitch RH 7.c3d  (2025-01-08)
+  plates: lead=4 drive=3  FC=120 BR=166 MER=160
+  lead=0.00BW  drive=1.51BW  flags=['no_lead_grf_in_delivery']
+[trial 482/624] Fastball RH 10.c3d  (2024-12-19)
+  plates: lead=4 drive=3  FC=322 BR=368 MER=347
+  lead=2.16BW  drive=1.52BW  flags=[]
+[trial 483/624] Fastball RH 2.c3d  (2024-12-19)
+  plates: lead=4 drive=3  FC=396 BR=407 MER=406
+  lead=1.84BW  drive=1.53BW  flags=[]
+[trial 484/624] Fastball RH 5.c3d  (2024-12-19)
+  plates: lead=4 drive=3  FC=338 BR=369 MER=349
+  lead=2.21BW  drive=1.59BW  flags=[]
+[trial 485/624] Fastball RH 7.c3d  (2024-12-19)
+  plates: lead=4 drive=3  FC=332 BR=370 MER=349
+  lead=2.16BW  drive=1.65BW  flags=[]
+[trial 486/624] Fastball RH 8.c3d  (2024-12-19)
+  plates: lead=4 drive=3  FC=335 BR=364 MER=350
+  lead=2.12BW  drive=1.55BW  flags=[]
+[trial 487/624] Fastball RH 5.c3d  (2024-12-17)
+  plates: lead=4 drive=3  FC=374 BR=413 MER=377
+  lead=0.00BW  drive=1.46BW  flags=['no_lead_grf_in_delivery']
+[trial 488/624] Fastball RH 6.c3d  (2024-12-17)
+  plates: lead=4 drive=3  FC=305 BR=362 MER=330
+  lead=2.06BW  drive=1.48BW  flags=[]
+[trial 489/624] Fastball RH 7.c3d  (2024-12-17)
+  plates: lead=4 drive=3  FC=343 BR=394 MER=366
+  lead=1.97BW  drive=1.45BW  flags=[]
+[trial 490/624] Fastball RH 8.c3d  (2024-12-17)
+  plates: lead=4 drive=3  FC=402 BR=454 MER=426
+  lead=1.95BW  drive=1.35BW  flags=[]
+[trial 491/624] Fastball RH 9.c3d  (2024-12-17)
+  plates: lead=4 drive=3  FC=387 BR=417 MER=399
+  lead=2.02BW  drive=1.45BW  flags=[]
+[trial 492/624] Fastball RH 1.c3d  (2024-12-11)
+  plates: lead=4 drive=3  FC=373 BR=419 MER=391
+  lead=2.11BW  drive=1.44BW  flags=[]
+[trial 493/624] Fastball RH 3.c3d  (2024-12-11)
+  plates: lead=4 drive=3  FC=370 BR=424 MER=390
+  lead=2.11BW  drive=1.43BW  flags=[]
+[trial 494/624] Fastball RH 4.c3d  (2024-12-11)
+  plates: lead=4 drive=3  FC=393 BR=432 MER=408
+  lead=2.00BW  drive=1.49BW  flags=[]
+[trial 495/624] Fastball RH 6.c3d  (2024-12-11)
+  plates: lead=4 drive=3  FC=389 BR=431 MER=411
+  lead=1.91BW  drive=1.47BW  flags=[]
+[trial 496/624] Fastball RH 9.c3d  (2024-12-11)
+  plates: lead=4 drive=3  FC=372 BR=426 MER=390
+  lead=2.14BW  drive=1.45BW  flags=[]
+[trial 497/624] Fastball LH 12.c3d  (2024-12-09)
+  plates: lead=4 drive=3  FC=369 BR=411 MER=369
+  lead=2.28BW  drive=1.43BW  flags=[]
+[trial 498/624] Fastball LH 13.c3d  (2024-12-09)
+  plates: lead=4 drive=3  FC=368 BR=399 MER=368
+  lead=2.33BW  drive=1.44BW  flags=[]
+[trial 499/624] Fastball LH 4.c3d  (2024-12-09)
+  plates: lead=4 drive=3  FC=383 BR=427 MER=383
+  lead=2.23BW  drive=1.39BW  flags=[]
+[trial 500/624] Fastball LH 7.c3d  (2024-12-09)
+  plates: lead=4 drive=3  FC=387 BR=418 MER=387
+  lead=2.69BW  drive=1.47BW  flags=[]
+[trial 501/624] Fastball LH 9.c3d  (2024-12-09)
+  plates: lead=4 drive=3  FC=379 BR=418 MER=379
+  lead=0.00BW  drive=1.48BW  flags=['no_lead_grf_in_delivery']
+[trial 502/624] Fastball RH 13.c3d  (2024-12-04)
+  plates: lead=4 drive=3  FC=399 BR=445 MER=408
+  lead=1.49BW  drive=1.23BW  flags=[]
+[trial 503/624] Fastball RH 14.c3d  (2024-12-04)
+  plates: lead=4 drive=3  FC=408 BR=451 MER=450
+  lead=0.01BW  drive=1.18BW  flags=['no_lead_grf_in_delivery']
+[trial 504/624] Fastball RH 15.c3d  (2024-12-04)
+  plates: lead=4 drive=3  FC=398 BR=437 MER=407
+  lead=1.47BW  drive=1.18BW  flags=[]
+[trial 505/624] Fastball RH 6.c3d  (2024-12-04)
+  plates: lead=4 drive=3  FC=402 BR=446 MER=413
+  lead=1.60BW  drive=1.18BW  flags=[]
+[trial 506/624] Fastball RH 9.c3d  (2024-12-04)
+  plates: lead=4 drive=3  FC=407 BR=449 MER=413
+  lead=1.62BW  drive=1.16BW  flags=[]
+[trial 507/624] Fastball RH 1.c3d  (2024-11-20)
+  plates: lead=4 drive=3  FC=109 BR=176 MER=131
+  lead=1.31BW  drive=?  flags=[]
+[trial 508/624] Fastball RH 2.c3d  (2024-11-20)
+  plates: lead=4 drive=3  FC=97 BR=165 MER=119
+  lead=1.48BW  drive=?  flags=[]
+[trial 509/624] Fastball RH 5.c3d  (2024-11-20)
+  plates: lead=4 drive=3  FC=110 BR=181 MER=135
+  lead=1.38BW  drive=?  flags=[]
+[trial 510/624] Pitch RH 4.c3d  (2024-11-20)
+  plates: lead=4 drive=3  FC=432 BR=477 MER=440
+  lead=1.59BW  drive=1.40BW  flags=[]
+[trial 511/624] Pitch RH 5.c3d  (2024-11-20)
+  plates: lead=4 drive=3  FC=416 BR=445 MER=426
+  lead=1.32BW  drive=1.43BW  flags=[]
+[trial 512/624] Pitch RH 6.c3d  (2024-11-20)
+  plates: lead=4 drive=3  FC=447 BR=486 MER=448
+  lead=1.57BW  drive=1.40BW  flags=[]
+[trial 513/624] Fastball RH 1.c3d  (2024-11-13)
+  plates: lead=4 drive=3  FC=456 BR=504 MER=473
+  lead=2.24BW  drive=1.43BW  flags=[]
+[trial 514/624] Fastball RH 2.c3d  (2024-11-13)
+  plates: lead=4 drive=3  FC=457 BR=505 MER=482
+  lead=1.97BW  drive=1.37BW  flags=[]
+[trial 515/624] Fastball RH 5.c3d  (2024-11-13)
+  plates: lead=4 drive=3  FC=447 BR=505 MER=469
+  lead=2.00BW  drive=1.43BW  flags=[]
+[trial 516/624] Fastball RH 7.c3d  (2024-11-13)
+  plates: lead=4 drive=3  FC=438 BR=496 MER=455
+  lead=1.92BW  drive=1.42BW  flags=[]
+[trial 517/624] Fastball RH 8.c3d  (2024-11-13)
+  plates: lead=4 drive=3  FC=438 BR=493 MER=463
+  lead=2.13BW  drive=1.45BW  flags=[]
+[trial 518/624] Fastball RH 18.c3d  (2024-11-11)
+  plates: lead=4 drive=3  FC=328 BR=371 MER=355
+  lead=1.38BW  drive=1.43BW  flags=[]
+[trial 519/624] Fastball RH 19.c3d  (2024-11-11)
+  plates: lead=4 drive=3  FC=327 BR=376 MER=355
+  lead=1.43BW  drive=1.31BW  flags=[]
+[trial 520/624] Fastball RH 7.c3d  (2024-11-11)
+  plates: lead=4 drive=3  FC=329 BR=385 MER=352
+  lead=1.57BW  drive=1.37BW  flags=[]
+[trial 521/624] Fastball RH 8.c3d  (2024-11-11)
+  plates: lead=4 drive=3  FC=352 BR=404 MER=374
+  lead=1.64BW  drive=1.39BW  flags=[]
+[trial 522/624] Fastball RH 9.c3d  (2024-11-11)
+  plates: lead=4 drive=3  FC=372 BR=388 MER=387
+  lead=0.85BW  drive=1.33BW  flags=[]
+[trial 523/624] Fastball LH 12.c3d  (2024-11-07)
+  plates: lead=4 drive=3  FC=323 BR=367 MER=346
+  lead=1.81BW  drive=1.35BW  flags=[]
+[trial 524/624] Fastball LH 13.c3d  (2024-11-07)
+  plates: lead=4 drive=3  FC=319 BR=351 MER=337
+  lead=1.87BW  drive=1.31BW  flags=[]
+[trial 525/624] Fastball LH 14.c3d  (2024-11-07)
+  plates: lead=4 drive=3  FC=296 BR=343 MER=316
+  lead=1.82BW  drive=1.39BW  flags=[]
+[trial 526/624] Fastball LH 5.c3d  (2024-11-07)
+  plates: lead=4 drive=3  FC=320 BR=357 MER=338
+  lead=2.45BW  drive=1.32BW  flags=[]
+[trial 527/624] Fastball LH 9.c3d  (2024-11-07)
+  plates: lead=4 drive=3  FC=346 BR=355 MER=346
+  lead=1.43BW  drive=1.34BW  flags=['short_trial']
+[trial 528/624] Fastball RH 3.c3d  (2024-11-05)
+  plates: lead=4 drive=3  FC=432 BR=477 MER=448
+  lead=1.69BW  drive=1.20BW  flags=[]
+[trial 529/624] Fastball RH 5.c3d  (2024-11-05)
+  plates: lead=4 drive=3  FC=444 BR=483 MER=465
+  lead=1.36BW  drive=1.25BW  flags=[]
+[trial 530/624] Fastball RH 6.c3d  (2024-11-05)
+  plates: lead=4 drive=3  FC=410 BR=454 MER=429
+  lead=1.59BW  drive=1.25BW  flags=[]
+[trial 531/624] Fastball RH 8.c3d  (2024-11-05)
+  plates: lead=4 drive=3  FC=495 BR=497 MER=496
+  lead=0.28BW  drive=1.22BW  flags=['short_trial']
+[trial 532/624] Fastball RH 9.c3d  (2024-11-05)
+  plates: lead=4 drive=3  FC=496 BR=506 MER=505
+  lead=0.62BW  drive=1.22BW  flags=[]
+[trial 533/624] Fastball LH 11.c3d  (2024-10-31)
+  plates: lead=4 drive=3  FC=482 BR=493 MER=491
+  lead=1.55BW  drive=1.23BW  flags=[]
+[trial 534/624] Fastball LH 14.c3d  (2024-10-31)
+  plates: lead=4 drive=3  FC=419 BR=445 MER=427
+  lead=1.81BW  drive=1.36BW  flags=[]
+[trial 535/624] Fastball LH 5.c3d  (2024-10-31)
+  plates: lead=4 drive=3  FC=418 BR=457 MER=431
+  lead=1.84BW  drive=1.27BW  flags=[]
+[trial 536/624] Fastball LH 6.c3d  (2024-10-31)
+  plates: lead=4 drive=3  FC=389 BR=436 MER=407
+  lead=1.74BW  drive=1.33BW  flags=[]
+[trial 537/624] Fastball LH 8.c3d  (2024-10-31)
+  plates: lead=4 drive=3  FC=418 BR=461 MER=431
+  lead=1.80BW  drive=1.24BW  flags=[]
+[trial 538/624] Fastball RH 1.c3d  (2024-10-29)
+  plates: lead=4 drive=3  FC=427 BR=466 MER=452
+  lead=2.21BW  drive=1.24BW  flags=[]
+[trial 539/624] Fastball RH 11.c3d  (2024-10-29)
+  plates: lead=4 drive=3  FC=416 BR=457 MER=444
+  lead=0.00BW  drive=1.27BW  flags=['no_lead_grf_in_delivery']
+[trial 540/624] Fastball RH 14.c3d  (2024-10-29)
+  plates: lead=4 drive=3  FC=428 BR=461 MER=446
+  lead=2.09BW  drive=1.27BW  flags=[]
+[trial 541/624] Fastball RH 3.c3d  (2024-10-29)
+  plates: lead=4 drive=3  FC=425 BR=470 MER=445
+  lead=2.27BW  drive=1.31BW  flags=[]
+[trial 542/624] Fastball RH 7.c3d  (2024-10-29)
+  plates: lead=4 drive=3  FC=395 BR=436 MER=412
+  lead=2.38BW  drive=1.33BW  flags=[]
+[trial 543/624] Fastball RH 13.c3d  (2024-10-29)
+  plates: lead=4 drive=3  FC=408 BR=456 MER=434
+  lead=2.00BW  drive=1.12BW  flags=[]
+[trial 544/624] Fastball RH 14.c3d  (2024-10-29)
+  plates: lead=4 drive=3  FC=417 BR=443 MER=442
+  lead=1.89BW  drive=1.02BW  flags=[]
+[trial 545/624] Fastball RH 2.c3d  (2024-10-29)
+  plates: lead=4 drive=3  FC=400 BR=456 MER=436
+  lead=2.10BW  drive=0.99BW  flags=[]
+[trial 546/624] Fastball RH 8.c3d  (2024-10-29)
+  plates: lead=4 drive=3  FC=396 BR=436 MER=417
+  lead=2.21BW  drive=1.12BW  flags=[]
+[trial 547/624] Fastball RH 9.c3d  (2024-10-29)
+  plates: lead=4 drive=3  FC=426 BR=462 MER=445
+  lead=2.11BW  drive=1.01BW  flags=[]
+[trial 548/624] Fastball LH 10.c3d  (2024-10-28)
+  plates: lead=4 drive=3  FC=447 BR=473 MER=470
+  lead=1.47BW  drive=1.27BW  flags=['body_weight_missing']
+[trial 549/624] Fastball LH 12.c3d  (2024-10-28)
+  plates: lead=4 drive=3  FC=386 BR=421 MER=408
+  lead=0.00BW  drive=1.29BW  flags=['body_weight_missing', 'no_lead_grf_in_delivery']
+[trial 550/624] Fastball LH 4.c3d  (2024-10-28)
+  plates: lead=4 drive=3  FC=404 BR=449 MER=424
+  lead=1.89BW  drive=1.30BW  flags=['body_weight_missing']
+[trial 551/624] Fastball LH 7.c3d  (2024-10-28)
+  plates: lead=4 drive=3  FC=385 BR=434 MER=411
+  lead=1.85BW  drive=1.39BW  flags=['body_weight_missing']
+[trial 552/624] Fastball LH 8.c3d  (2024-10-28)
+  plates: lead=4 drive=3  FC=427 BR=455 MER=447
+  lead=1.63BW  drive=1.29BW  flags=['body_weight_missing']
+[trial 553/624] Fastball LH 10.c3d  (2024-10-23)
+  plates: lead=4 drive=3  FC=317 BR=353 MER=328
+  lead=2.27BW  drive=1.31BW  flags=[]
+[trial 554/624] Fastball LH 4.c3d  (2024-10-23)
+  plates: lead=4 drive=3  FC=339 BR=349 MER=339
+  lead=2.01BW  drive=1.24BW  flags=[]
+[trial 555/624] Fastball LH 5.c3d  (2024-10-23)
+  plates: lead=4 drive=3  FC=313 BR=338 MER=328
+  lead=1.83BW  drive=1.32BW  flags=[]
+[trial 556/624] Fastball LH 6.c3d  (2024-10-23)
+  plates: lead=4 drive=3  FC=335 BR=343 MER=335
+  lead=1.64BW  drive=1.35BW  flags=['short_trial']
+[trial 557/624] Fastball LH 7.c3d  (2024-10-23)
+  plates: lead=4 drive=3  FC=332 BR=355 MER=341
+  lead=2.08BW  drive=1.34BW  flags=[]
+[trial 558/624] Fastball RH 5.c3d  (2024-10-23)
+  plates: lead=4 drive=3  FC=388 BR=429 MER=403
+  lead=2.06BW  drive=1.13BW  flags=[]
+[trial 559/624] Fastball RH 6.c3d  (2024-10-23)
+  plates: lead=4 drive=3  FC=422 BR=432 MER=431
+  lead=1.53BW  drive=1.12BW  flags=[]
+[trial 560/624] Fastball RH 7.c3d  (2024-10-23)
+  plates: lead=4 drive=3  FC=382 BR=423 MER=388
+  lead=0.00BW  drive=1.16BW  flags=['no_lead_grf_in_delivery']
+[trial 561/624] Fastball RH 8.c3d  (2024-10-23)
+  plates: lead=4 drive=3  FC=426 BR=443 MER=439
+  lead=1.42BW  drive=1.17BW  flags=[]
+[trial 562/624] Fastball RH 9.c3d  (2024-10-23)
+  plates: lead=4 drive=3  FC=389 BR=429 MER=401
+  lead=2.07BW  drive=1.16BW  flags=[]
+[trial 563/624] Fastball RH 1.c3d  (2024-10-22)
+  plates: lead=4 drive=3  FC=389 BR=412 MER=394
+  lead=2.20BW  drive=1.48BW  flags=[]
+[trial 564/624] Fastball RH 2.c3d  (2024-10-22)
+  plates: lead=4 drive=3  FC=421 BR=441 MER=431
+  lead=1.60BW  drive=1.37BW  flags=[]
+[trial 565/624] Fastball RH 3.c3d  (2024-10-22)
+  plates: lead=4 drive=3  FC=445 BR=478 MER=453
+  lead=2.04BW  drive=1.40BW  flags=[]
+[trial 566/624] Fastball RH 6.c3d  (2024-10-22)
+  plates: lead=4 drive=3  FC=468 BR=485 MER=477
+  lead=1.76BW  drive=1.43BW  flags=[]
+[trial 567/624] Fastball RH 9.c3d  (2024-10-22)
+  plates: lead=4 drive=3  FC=433 BR=463 MER=448
+  lead=0.00BW  drive=1.51BW  flags=['no_lead_grf_in_delivery']
+[trial 568/624] Fastball RH 10.c3d  (2024-10-21)
+  plates: lead=4 drive=3  FC=369 BR=401 MER=387
+  lead=1.66BW  drive=1.29BW  flags=[]
+[trial 569/624] Fastball RH 12.c3d  (2024-10-21)
+  plates: lead=4 drive=3  FC=335 BR=385 MER=349
+  lead=1.86BW  drive=1.28BW  flags=[]
+[trial 570/624] Fastball RH 13.c3d  (2024-10-21)
+  plates: lead=4 drive=3  FC=347 BR=381 MER=358
+  lead=1.98BW  drive=1.37BW  flags=[]
+[trial 571/624] Fastball RH 14.c3d  (2024-10-21)
+  plates: lead=4 drive=3  FC=350 BR=399 MER=366
+  lead=1.87BW  drive=1.26BW  flags=[]
+[trial 572/624] Fastball RH 16.c3d  (2024-10-21)
+  plates: lead=4 drive=3  FC=354 BR=385 MER=370
+  lead=1.83BW  drive=1.31BW  flags=[]
+[trial 573/624] Fastball RH 1.c3d  (2024-10-16)
+  plates: lead=4 drive=3  FC=451 BR=463 MER=462
+  lead=1.91BW  drive=1.21BW  flags=[]
+[trial 574/624] Fastball RH 2.c3d  (2024-10-16)
+  plates: lead=4 drive=3  FC=441 BR=458 MER=457
+  lead=2.01BW  drive=1.25BW  flags=[]
+[trial 575/624] Fastball RH 3.c3d  (2024-10-16)
+  plates: lead=4 drive=3  FC=432 BR=447 MER=446
+  lead=1.77BW  drive=1.26BW  flags=[]
+[trial 576/624] Fastball RH 4.c3d  (2024-10-16)
+  plates: lead=4 drive=3  FC=397 BR=433 MER=432
+  lead=0.00BW  drive=1.30BW  flags=['no_lead_grf_in_delivery']
+[trial 577/624] Fastball RH 5.c3d  (2024-10-16)
+  plates: lead=4 drive=3  FC=409 BR=444 MER=443
+  lead=0.00BW  drive=1.31BW  flags=['no_lead_grf_in_delivery']
+[trial 578/624] Fastball RH 6.c3d  (2024-10-16)
+  plates: lead=4 drive=3  FC=422 BR=441 MER=439
+  lead=2.58BW  drive=1.28BW  flags=[]
+[trial 579/624] Fastball RH 7.c3d  (2024-10-16)
+  plates: lead=4 drive=3  FC=429 BR=447 MER=445
+  lead=2.62BW  drive=1.30BW  flags=[]
+[trial 580/624] Fastball RH 10.c3d  (2024-10-14)
+  plates: lead=4 drive=3  FC=385 BR=424 MER=399
+  lead=2.10BW  drive=1.44BW  flags=[]
+[trial 581/624] Fastball RH 11.c3d  (2024-10-14)
+  plates: lead=4 drive=3  FC=376 BR=418 MER=391
+  lead=2.17BW  drive=1.49BW  flags=[]
+[trial 582/624] Fastball RH 3.c3d  (2024-10-14)
+  plates: lead=4 drive=3  FC=421 BR=436 MER=434
+  lead=1.59BW  drive=1.38BW  flags=[]
+[trial 583/624] Fastball RH 4.c3d  (2024-10-14)
+  plates: lead=4 drive=3  FC=379 BR=420 MER=419
+  lead=0.00BW  drive=1.41BW  flags=['no_lead_grf_in_delivery']
+[trial 584/624] Fastball RH 7.c3d  (2024-10-14)
+  plates: lead=4 drive=3  FC=388 BR=421 MER=402
+  lead=2.03BW  drive=1.44BW  flags=[]
+[trial 585/624] Fastball LH 12.c3d  (2024-10-10)
+  plates: lead=4 drive=3  FC=349 BR=384 MER=357
+  lead=1.98BW  drive=1.70BW  flags=[]
+[trial 586/624] Fastball LH 3.c3d  (2024-10-10)
+  plates: lead=4 drive=3  FC=337 BR=375 MER=348
+  lead=1.50BW  drive=1.73BW  flags=[]
+[trial 587/624] Fastball LH 5.c3d  (2024-10-10)
+  plates: lead=4 drive=3  FC=317 BR=366 MER=365
+  lead=0.00BW  drive=1.59BW  flags=['no_lead_grf_in_delivery']
+[trial 588/624] Fastball LH 6.c3d  (2024-10-10)
+  plates: lead=4 drive=3  FC=356 BR=371 MER=368
+  lead=1.49BW  drive=1.69BW  flags=[]
+[trial 589/624] Fastball LH 9.c3d  (2024-10-10)
+  plates: lead=4 drive=3  FC=322 BR=356 MER=335
+  lead=1.71BW  drive=1.63BW  flags=[]
+[trial 590/624] Fastball RH 10.c3d  (2024-10-09)
+  plates: lead=4 drive=3  FC=383 BR=417 MER=397
+  lead=2.26BW  drive=1.45BW  flags=[]
+[trial 591/624] Fastball RH 13.c3d  (2024-10-09)
+  plates: lead=4 drive=3  FC=402 BR=423 MER=420
+  lead=1.63BW  drive=1.42BW  flags=[]
+[trial 592/624] Fastball RH 16.c3d  (2024-10-09)
+  plates: lead=4 drive=3  FC=391 BR=412 MER=408
+  lead=1.37BW  drive=1.44BW  flags=[]
+[trial 593/624] Fastball RH 17.c3d  (2024-10-09)
+  plates: lead=4 drive=3  FC=141 BR=179 MER=154
+  lead=2.39BW  drive=0.89BW  flags=[]
+[trial 594/624] Fastball RH 4.c3d  (2024-10-09)
+  plates: lead=4 drive=3  FC=373 BR=420 MER=396
+  lead=2.37BW  drive=1.38BW  flags=[]
+[trial 595/624] Fastball RH 7.c3d  (2024-10-09)
+  plates: lead=4 drive=3  FC=402 BR=434 MER=423
+  lead=2.06BW  drive=1.39BW  flags=[]
+[trial 596/624] Fastball RH 11.c3d  (2024-10-09)
+  plates: lead=4 drive=3  FC=352 BR=384 MER=361
+  lead=2.45BW  drive=1.31BW  flags=[]
+[trial 597/624] Fastball RH 12.c3d  (2024-10-09)
+  plates: lead=4 drive=3  FC=334 BR=369 MER=346
+  lead=2.15BW  drive=1.36BW  flags=[]
+[trial 598/624] Fastball RH 2.c3d  (2024-10-09)
+  plates: lead=4 drive=3  FC=373 BR=400 MER=388
+  lead=2.06BW  drive=1.37BW  flags=[]
+[trial 599/624] Fastball RH 3.c3d  (2024-10-09)
+  plates: lead=4 drive=3  FC=378 BR=421 MER=394
+  lead=1.97BW  drive=1.38BW  flags=[]
+[trial 600/624] Fastball RH 4.c3d  (2024-10-09)
+  plates: lead=4 drive=3  FC=406 BR=416 MER=415
+  lead=2.03BW  drive=1.37BW  flags=[]
+[trial 601/624] Fastball RH 6.c3d  (2024-10-09)
+  plates: lead=4 drive=3  FC=373 BR=390 MER=386
+  lead=2.05BW  drive=1.29BW  flags=[]
+[trial 602/624] Fastball RH 7.c3d  (2024-10-09)
+  plates: lead=4 drive=3  FC=385 BR=387 MER=386
+  lead=0.57BW  drive=1.37BW  flags=['short_trial']
+[trial 603/624] Fastball RH 8.c3d  (2024-10-09)
+  plates: lead=4 drive=3  FC=361 BR=413 MER=374
+  lead=2.20BW  drive=1.29BW  flags=['br_detected']
+[trial 604/624] Fastball RH 1.c3d  (2024-10-03)
+  plates: lead=4 drive=3  FC=317 BR=368 MER=345
+  lead=1.91BW  drive=1.22BW  flags=[]
+[trial 605/624] Fastball RH 10.c3d  (2024-10-03)
+  plates: lead=4 drive=3  FC=309 BR=341 MER=335
+  lead=1.52BW  drive=1.28BW  flags=[]
+[trial 606/624] Fastball RH 3.c3d  (2024-10-03)
+  plates: lead=4 drive=3  FC=345 BR=381 MER=375
+  lead=1.58BW  drive=1.26BW  flags=[]
+[trial 607/624] Fastball RH 6.c3d  (2024-10-03)
+  plates: lead=4 drive=3  FC=289 BR=336 MER=312
+  lead=1.93BW  drive=1.31BW  flags=[]
+[trial 608/624] Fastball RH 7.c3d  (2024-10-03)
+  plates: lead=4 drive=3  FC=288 BR=335 MER=317
+  lead=1.98BW  drive=1.31BW  flags=[]
+[trial 609/624] Fastball RH 8.c3d  (2024-10-03)
+  plates: lead=4 drive=3  FC=299 BR=338 MER=324
+  lead=1.96BW  drive=1.25BW  flags=[]
+[trial 610/624] Fastball RH 9.c3d  (2024-10-03)
+  plates: lead=4 drive=3  FC=286 BR=332 MER=309
+  lead=1.91BW  drive=1.38BW  flags=[]
+[trial 611/624] Fastball LH 11.c3d  (2024-09-10)
+  plates: lead=4 drive=3  FC=377 BR=378 MER=377
+  lead=0.27BW  drive=1.66BW  flags=['short_trial']
+[trial 612/624] Fastball LH 13.c3d  (2024-09-10)
+  plates: lead=4 drive=3  FC=376 BR=392 MER=389
+  lead=1.58BW  drive=1.76BW  flags=[]
+[trial 613/624] Fastball LH 5.c3d  (2024-09-10)
+  plates: lead=4 drive=3  FC=391 BR=432 MER=405
+  lead=1.91BW  drive=1.69BW  flags=[]
+[trial 614/624] Fastball LH 8.c3d  (2024-09-10)
+  plates: lead=4 drive=3  FC=352 BR=387 MER=380
+  lead=0.00BW  drive=1.82BW  flags=['no_lead_grf_in_delivery']
+[trial 615/624] Fastball LH 9.c3d  (2024-09-10)
+  plates: lead=4 drive=3  FC=365 BR=401 MER=379
+  lead=1.92BW  drive=1.82BW  flags=[]
+[trial 616/624] Fastball RH 2.c3d  (2024-06-27)
+  plates: lead=4 drive=3  FC=473 BR=502 MER=501
+  lead=1.54BW  drive=1.48BW  flags=[]
+[trial 617/624] Fastball RH 3.c3d  (2024-06-27)
+  plates: lead=4 drive=3  FC=465 BR=497 MER=496
+  lead=1.79BW  drive=1.56BW  flags=[]
+[trial 618/624] Fastball RH 5.c3d  (2024-06-27)
+  plates: lead=4 drive=3  FC=475 BR=517 MER=515
+  lead=0.00BW  drive=1.40BW  flags=['no_lead_grf_in_delivery']
+[trial 619/624] Fastball RH 6.c3d  (2024-06-27)
+  plates: lead=4 drive=3  FC=484 BR=511 MER=510
+  lead=1.49BW  drive=1.44BW  flags=[]
+[trial 620/624] Fastball RH 10.c3d  (2023-08-09)
+  plates: lead=1 drive=3  FC=327 BR=347 MER=346
+  lead=1.45BW  drive=1.56BW  flags=[]
+[trial 621/624] Fastball RH 12.c3d  (2023-08-09)
+  plates: lead=1 drive=3  FC=371 BR=378 MER=377
+  lead=0.23BW  drive=1.60BW  flags=['short_trial']
+[trial 622/624] Fastball RH 2.c3d  (2023-08-09)
+  plates: lead=1 drive=3  FC=347 BR=375 MER=374
+  lead=1.70BW  drive=1.51BW  flags=[]
+[trial 623/624] Fastball RH 3.c3d  (2023-08-09)
+  plates: lead=1 drive=3  FC=324 BR=372 MER=355
+  lead=2.04BW  drive=1.52BW  flags=[]
+[trial 624/624] Fastball RH 5.c3d  (2023-08-09)
+  plates: lead=1 drive=3  FC=321 BR=371 MER=349
+  lead=2.01BW  drive=1.54BW  flags=[]
+
+[DONE] 624/624 processed | errors=0
