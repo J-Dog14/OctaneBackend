@@ -108,7 +108,14 @@ export async function GET(request: NextRequest) {
     ];
     const domains = allDomains.filter((d) => d.dates.length > 0);
 
-    return success({ domains });
+    const athleteRow = await prisma.d_athletes.findUnique({
+      where: { athlete_uuid: athleteUuid },
+      select: { app_db_last_sent_sessions: true },
+    });
+    const lastSentSessions =
+      (athleteRow?.app_db_last_sent_sessions as Record<string, string> | null) ?? {};
+
+    return success({ domains, lastSentSessions });
   } catch (error) {
     if (error instanceof Response) return error;
     console.error("Error in GET /api/dashboard/athlete-tracking/sessions:", error);

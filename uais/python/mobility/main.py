@@ -41,6 +41,44 @@ except ImportError:
     GOOGLE_DRIVE_AVAILABLE = False
 
 
+MOBILITY_COLUMNS: frozenset = frozenset({
+    # Cervical
+    "cervical_rotation_r_rom", "cervical_rotation_l_rom", "cervical_flexion_rom",
+    "cervical_extension_rom", "cervical_lateral_flexion_r_rom", "cervical_lateral_flexion_l_rom",
+    # Shoulder Mobility
+    "horizontal_abduction_rom", "back_to_wall_shoulder_flexion",
+    "dominant_shoulder_ir", "dominant_shoulder_er", "non_dominant_shoulder_ir", "non_dominant_shoulder_er",
+    # Shoulder Stability
+    "hawkins_kennedy_test", "shoulder_stability_flexion_mmt", "shoulder_stability_abduction_mmt",
+    "shoulder_stability_er_at_0_deg_horiz_abduction_mmt", "shoulder_stability_ir_at_0_deg_horiz_abduction_mmt",
+    "mid_trap_mmt", "low_trap_mmt", "scap_winging",
+    # Elbow
+    "elbow_extension_rom", "elbow_flexion_rom", "elbow_pronation_rom", "elbow_supination_rom",
+    "radial_nerve_glide", "ulnar_nerve_glide",
+    # Spine / Core
+    "pelvic_tilt_against_wall", "backbend",
+    "sittiing_t_spine_pvc_r", "sittiing_t_spine_pvc_l", "slump_test", "isa_rom",
+    # Hip Mobility
+    "thomas_test_hip_flexor_r", "thomas_test_hip_flexor_l",
+    "r_hamstring_stretch_rom", "l_hamstring_stretch_rom",
+    "r_hip_abduction_rom", "l_hip_abduction_rom",
+    "young_stretch_passive", "hip_pinch",
+    "r_hip_flexion_rom", "l_hip_flexion_rom",
+    "r_prone_hip_ir", "r_prone_hip_er", "l_prone_hip_ir", "l_prone_hip_er",
+    # Hip Stability
+    "seated_r_hip_ir_mmt", "seated_l_hip_ir_mmt", "seated_r_hip_er_mmt", "seated_l_hip_er_mmt",
+    "r_prone_hamstring_raise_mmt", "l_prone_hamstring_raise_mmt",
+    "r_prone_glute_raise_mmt", "l_prone_glute_raise_mmt",
+    "r_hip_abduction_mmt", "l_hip_adduction_mmt", "r_hip_adduction_mmt", "l_hip_abduction_mmt",
+    # Ankle
+    "r_ankle_dorsiflexion_to_wall_rom", "l_ankle_dorsiflexion_to_wall_rom",
+    "r_ankle_dorsiflexion_mmt", "r_ankle_inversion_mmt", "r_ankle_eversion_mmt",
+    "l_ankle_dorsiflexion_mmt", "l_ankle_inversion_mmt", "l_ankle_eversion_mmt",
+    # Grip Strength
+    "grip_strength_r", "gs_l", "grip_strength_r_at_90", "gs_l_at_90",
+})
+
+
 def to_float_or_none(x: Any) -> Optional[float]:
     """
     Convert a value to float, or return None if it can't be converted.
@@ -248,68 +286,111 @@ def extract_demographic_data(ws) -> Dict[str, Any]:
         data['email'] = extract_after_prefix(email_cell, "Gmail: ")
     except:
         data['email'] = None
-    
-    # C7: Entire string
+
+    # C7: Primary Position (new format). Keep c7_value populated for backwards compat.
     try:
         c7_value = ws['C7'].value
-        data['c7_value'] = str(c7_value).strip() if c7_value is not None else None
+        raw = str(c7_value).strip() if c7_value is not None else None
+        data['c7_value'] = raw
+        data['primary_position'] = extract_after_prefix(c7_value, "Primary Position: ") if c7_value else None
     except:
         data['c7_value'] = None
-    
+        data['primary_position'] = None
+
+    # D6: Throwing Velo Max
+    try:
+        data['throwing_velo_max'] = to_float_or_none(
+            extract_after_prefix(ws['D6'].value, "Throwing Velo Max: ")
+        )
+    except:
+        data['throwing_velo_max'] = None
+
+    # D7: Hitting Velo Max
+    try:
+        data['hitting_velo_max'] = to_float_or_none(
+            extract_after_prefix(ws['D7'].value, "Hitting Velo Max: ")
+        )
+    except:
+        data['hitting_velo_max'] = None
+
+    # E6: Hitting Side
+    try:
+        data['hitting_side'] = extract_after_prefix(ws['E6'].value, "Hitting Side: ")
+    except:
+        data['hitting_side'] = None
+
+    # E7: Throwing Side
+    try:
+        data['throwing_side'] = extract_after_prefix(ws['E7'].value, "Throwing Side: ")
+    except:
+        data['throwing_side'] = None
+
     return data
 
 
 def extract_assessment_data(ws) -> Dict[str, Any]:
     """
-    Extract assessment data from cells A10:A54 (column names) and B10:B54 (values).
-    Also extracts Medical History from C10.
-    
-    Args:
-        ws: openpyxl worksheet object
-        
+    Extract assessment data from cells A11:A80 (movement names), B11:B80 (values),
+    and C11:C80 (optimal ranges where present).
+    Medical history is read from the merged cell D11:D18 (openpyxl returns value from D11).
+
     Returns:
-        Dictionary with assessment data:
-        - 'metrics': Dict mapping column names (from A10:A54) to values (from B10:B54)
-        - 'medical_history': String from C10
+        Dictionary with:
+        - 'metrics': Dict mapping sanitized column names to float values (or None)
+        - 'medical_history': String from D11, or None
+        - 'optimal_ranges': Dict mapping sanitized column names to range strings for rows
+          where column C has a non-empty value
     """
     metrics = {}
+    optimal_ranges = {}
     medical_history = None
-    
-    # Extract column names from A10:A54 and values from B10:B54
-    for row_num in range(10, 55):  # Rows 10-54 (1-indexed in Excel, but openpyxl uses 1-indexed)
+
+    for row_num in range(11, 81):  # Rows 11-80 inclusive
         try:
-            # Get column name from column A
-            col_name_cell = ws[f'A{row_num}']
-            col_name = col_name_cell.value
-            
-            # Get value from column B
-            value_cell = ws[f'B{row_num}']
-            value = value_cell.value
-            
-            # Only process if column name exists
-            if col_name is not None and str(col_name).strip():
-                col_name_clean = str(col_name).strip()
-                # Sanitize column name for SQL
-                col_name_sql = sanitize_column_name(col_name_clean)
-                
-                # Convert value to appropriate type
-                # Use numeric coercion helper - returns None for non-numeric strings
-                metrics[col_name_sql] = to_float_or_none(value)
-        except Exception as e:
-            # Skip this row if there's an error
+            col_name = ws[f'A{row_num}'].value
+            if col_name is None or not str(col_name).strip():
+                continue
+
+            col_name_sql = sanitize_column_name(str(col_name).strip())
+
+            # Hawkins Kennedy: text "Negative"/"Positive" → 0.0/1.0
+            if col_name_sql == "hawkins_kennedy_test":
+                raw_text = str(ws[f'B{row_num}'].value or "").strip().lower()
+                metrics[col_name_sql] = 0.0 if "negative" in raw_text else (1.0 if "positive" in raw_text else None)
+                c_val = ws[f'C{row_num}'].value
+                if c_val is not None:
+                    c_str = str(c_val).strip()
+                    if c_str:
+                        optimal_ranges[col_name_sql] = c_str
+                continue
+
+            metrics[col_name_sql] = to_float_or_none(ws[f'B{row_num}'].value)
+
+            # Column C: optimal range (store as string if present)
+            c_val = ws[f'C{row_num}'].value
+            if c_val is not None:
+                c_str = str(c_val).strip()
+                if c_str:
+                    optimal_ranges[col_name_sql] = c_str
+        except Exception:
             continue
-    
-    # Extract Medical History from C10
+
+    # Medical history lives in the merged region D11:D18; openpyxl returns the
+    # value from the top-left cell of a merged range, so reading D11 is correct.
     try:
-        medical_history_cell = ws['C10']
-        if medical_history_cell.value is not None:
-            medical_history = str(medical_history_cell.value).strip()
-    except:
+        d11 = ws['D11'].value
+        if d11 is not None:
+            medical_history = str(d11).strip() or None
+    except Exception:
         pass
-    
+
+    metrics = {k: v for k, v in metrics.items() if k in MOBILITY_COLUMNS}
+    optimal_ranges = {k: v for k, v in optimal_ranges.items() if k in MOBILITY_COLUMNS}
+
     return {
         'metrics': metrics,
-        'medical_history': medical_history
+        'medical_history': medical_history,
+        'optimal_ranges': optimal_ranges,
     }
 
 
@@ -528,9 +609,26 @@ def process_mobility_file(file_path: str, conn, athlete_uuid: str = None) -> Dic
         demo_data = extract_demographic_data(ws)
         
         if not demo_data.get('name'):
-            print(f"   [SKIP] Skipping {file_name} - no name found")
-            return {'success': False, 'error': 'No name found'}
-        
+            # Fall back to the filename — strip known suffixes to get the athlete name.
+            stem = os.path.splitext(file_name)[0]
+            for suffix in [
+                " Mobility Assessment", " Assessment Key", " Remote Assessment",
+                " Mobility Strength", " Mobility-Strength", " Mobility/Strength",
+                " Mobility", " Assessment",
+            ]:
+                if stem.lower().endswith(suffix.lower()):
+                    stem = stem[: -len(suffix)].strip()
+                    break
+            # Also strip trailing dates like "5 6 2026" or "5 15"
+            stem = re.sub(r'\s+\d{1,2}\s+\d{1,2}(\s+\d{4})?$', '', stem).strip()
+            # Skip if what's left is still a generic template name or empty
+            skip_names = {'mobility', 'updated mobility assessment template', 'assessment template', ''}
+            if stem.lower() in skip_names:
+                print(f"   [SKIP] Skipping {file_name} - template or no identifiable name")
+                return {'success': False, 'error': 'No name found'}
+            demo_data['name'] = stem
+            print(f"   No name in cell A6 — using filename: {stem}")
+
         name = demo_data['name']
         print(f"   Found athlete: {name}")
         
@@ -538,12 +636,20 @@ def process_mobility_file(file_path: str, conn, athlete_uuid: str = None) -> Dic
         assessment_data = extract_assessment_data(ws)
         metrics = assessment_data['metrics']
         medical_history = assessment_data['medical_history']
-        
+        optimal_ranges = assessment_data['optimal_ranges']
+
         if not metrics:
             print(f"   [SKIP] Skipping {file_name} - no assessment metrics found")
             return {'success': False, 'error': 'No assessment metrics found'}
-        
-        print(f"   Found {len(metrics)} assessment metrics")
+
+        # Guard: if most column names are numeric placeholders (col_NNN) the file isn't a
+        # mobility assessment — it's a non-template spreadsheet that landed in the folder.
+        numeric_cols = sum(1 for k in metrics if k.startswith('col_'))
+        if numeric_cols > len(metrics) // 2:
+            print(f"   [SKIP] Skipping {file_name} - does not look like a mobility assessment ({numeric_cols}/{len(metrics)} columns are numeric)")
+            return {'success': False, 'error': 'Not a mobility assessment file'}
+
+        print(f"   Found {len(metrics)} assessment metrics, {len(optimal_ranges)} optimal ranges")
         
         source_athlete_id = extract_source_athlete_id(name)
         if athlete_uuid:
@@ -569,29 +675,35 @@ def process_mobility_file(file_path: str, conn, athlete_uuid: str = None) -> Dic
             print(f"   Warning: Could not update athlete flag: {flag_error}")
             # Continue processing - flag update is not critical
         
-        # Determine session_date (use today if not available, or extract from file)
-        # For now, use file modification date or today
-        try:
-            file_mtime = os.path.getmtime(file_path)
-            session_date = datetime.fromtimestamp(file_mtime).date()
-        except:
-            session_date = date.today()
+        # Determine session_date — prefer the Drive createdTime sidecar written during
+        # download, fall back to file mtime (which equals today for freshly downloaded files).
+        date_sidecar = file_path + '.date'
+        if os.path.exists(date_sidecar):
+            try:
+                session_date = date.fromisoformat(open(date_sidecar).read().strip())
+            except Exception:
+                session_date = date.today()
+        else:
+            try:
+                session_date = datetime.fromtimestamp(os.path.getmtime(file_path)).date()
+            except Exception:
+                session_date = date.today()
         
         # Ensure source_file column exists
         ensure_column_exists(conn, 'f_mobility', 'source_file', 'TEXT')
-        
+
         # Ensure medical_history column exists
         if medical_history:
             ensure_column_exists(conn, 'f_mobility', 'medical_history', 'TEXT')
-        
+
         # Ensure c7_value column exists if we have C7 data
         if demo_data.get('c7_value'):
             ensure_column_exists(conn, 'f_mobility', 'c7_value', 'TEXT')
-        
+
         # Ensure all metric columns exist
         for col_name in metrics.keys():
             ensure_column_exists(conn, 'f_mobility', col_name, 'DECIMAL')
-        
+
         # Prepare data for insertion
         insert_data = {
             'athlete_uuid': uuid_to_use,
@@ -600,15 +712,30 @@ def process_mobility_file(file_path: str, conn, athlete_uuid: str = None) -> Dic
             'source_athlete_id': source_athlete_id,
             'source_file': file_path,
         }
-        
+
         # Add medical history if present
         if medical_history:
             insert_data['medical_history'] = medical_history
-        
-        # Add C7 value if present
+
+        # Add C7 value if present (kept for backwards compat)
         if demo_data.get('c7_value'):
             insert_data['c7_value'] = demo_data['c7_value']
-        
+
+        # New-format demographic fields — only include when present
+        for field in ('primary_position', 'throwing_side', 'hitting_side'):
+            val = demo_data.get(field)
+            if val is not None:
+                insert_data[field] = val
+
+        for field in ('throwing_velo_max', 'hitting_velo_max'):
+            val = demo_data.get(field)
+            if val is not None:
+                insert_data[field] = val
+
+        # Optimal ranges as JSON (only include when there is data)
+        if optimal_ranges:
+            insert_data['optimal_ranges'] = json.dumps(optimal_ranges)
+
         # Add all metrics
         insert_data.update(metrics)
         
@@ -623,14 +750,18 @@ def process_mobility_file(file_path: str, conn, athlete_uuid: str = None) -> Dic
         # This ensures that if one file fails, it doesn't affect others
         try:
             with conn.cursor() as cur:
-                # Check if record already exists (by athlete_uuid, session_date, and source_file)
+                # Check if record already exists. Match on (athlete_uuid, session_date, source_file)
+                # first; fall back to (athlete_uuid, session_date) so old rows that pre-date the
+                # source_file column (stored as NULL) are treated as updates, not new inserts.
                 cur.execute("""
                     SELECT id FROM public.f_mobility
-                    WHERE athlete_uuid = %s 
-                    AND session_date = %s 
-                    AND source_file = %s
-                """, (uuid_to_use, session_date, file_path))
-                
+                    WHERE athlete_uuid = %s
+                    AND session_date = %s
+                    AND (source_file = %s OR source_file IS NULL)
+                    ORDER BY (source_file = %s) DESC NULLS LAST
+                    LIMIT 1
+                """, (uuid_to_use, session_date, file_path, file_path))
+
                 existing = cur.fetchone()
                 
                 if existing:

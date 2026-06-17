@@ -499,32 +499,64 @@ def update_fact_tables_only(old_uuids: List[str], new_uuid: str, conn) -> None:
     
     with conn.cursor() as cur:
         for table in fact_tables:
+            # Use a savepoint per table so one failure doesn't abort the whole transaction
+            cur.execute(f"SAVEPOINT merge_{table}")
             try:
                 # Check if table exists and has athlete_uuid column
                 cur.execute('''
-                    SELECT COUNT(*) 
-                    FROM information_schema.columns 
-                    WHERE table_schema = 'public' 
-                    AND table_name = %s 
+                    SELECT COUNT(*)
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                    AND table_name = %s
                     AND column_name = 'athlete_uuid'
                 ''', (table,))
-                
+
                 if cur.fetchone()[0] == 0:
+                    cur.execute(f"RELEASE SAVEPOINT merge_{table}")
                     continue
-                
-                # Update athlete_uuid in this table for all old UUIDs
+
                 placeholders = ','.join(['%s'] * len(old_uuids))
+
+                # Check if this table has a trial_id column (only some tables do)
+                cur.execute('''
+                    SELECT COUNT(*)
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                    AND table_name = %s
+                    AND column_name = 'trial_id'
+                ''', (table,))
+                has_trial_id = cur.fetchone()[0] > 0
+
+                if has_trial_id:
+                    # Delete duplicate rows that would conflict with existing canonical rows.
+                    # The canonical already has the data, so the duplicate rows are safe to drop.
+                    cur.execute(f'''
+                        DELETE FROM public.{table} dup
+                        USING public.{table} canon
+                        WHERE dup.athlete_uuid IN ({placeholders})
+                          AND canon.athlete_uuid = %s
+                          AND dup.session_date = canon.session_date
+                          AND dup.trial_id = canon.trial_id
+                    ''', old_uuids + [new_uuid])
+                    deleted = cur.rowcount
+                    if deleted > 0:
+                        logger.info(f"    Dropped {deleted} conflicting row(s) from {table} (canonical already has this data)")
+
+                # Update remaining duplicate rows to use the canonical UUID
                 cur.execute(f'''
                     UPDATE public.{table}
                     SET athlete_uuid = %s
                     WHERE athlete_uuid IN ({placeholders})
                 ''', [new_uuid] + old_uuids)
-                
+
                 rows_updated = cur.rowcount
                 if rows_updated > 0:
                     logger.info(f"    Updated {table}: {rows_updated} row(s)")
-                    
+
+                cur.execute(f"RELEASE SAVEPOINT merge_{table}")
+
             except Exception as e:
+                cur.execute(f"ROLLBACK TO SAVEPOINT merge_{table}")
                 logger.warning(f"    Error updating {table}: {e}")
                 continue
 

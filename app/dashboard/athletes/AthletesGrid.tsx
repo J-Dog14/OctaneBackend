@@ -30,10 +30,22 @@ type AthleteRow = {
 const fetcher = (url: string) =>
   fetch(url).then((r) => r.json()).then((d) => d.items ?? []);
 
+type SyncResult = {
+  total: number;
+  checked: number;
+  matched: number;
+  alreadyLinked: number;
+  notFound: number;
+  errors: number;
+  errorDetails?: { name: string; email: string; error: string }[];
+};
+
 export function AthletesGrid() {
   const gridRef = useRef<AgGridReact<AthleteRow>>(null);
   const [filterText, setFilterText] = useState("");
   const [filterNonApp, setFilterNonApp] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
 
   const { data: rowData = null, isLoading: loading } = useSWR<AthleteRow[]>(
     "/api/dashboard/athletes?limit=10000",
@@ -111,6 +123,18 @@ export function AthletesGrid() {
 
   const onGridReady = useCallback(() => {}, []);
 
+  const runBulkEmailMatch = useCallback(async () => {
+    setSyncing(true);
+    setSyncResult(null);
+    try {
+      const res = await fetch("/api/dashboard/athletes/bulk-email-match", { method: "POST" });
+      const data = await res.json();
+      setSyncResult(data);
+    } finally {
+      setSyncing(false);
+    }
+  }, []);
+
   const isExternalFilterPresent = useCallback(() => filterNonApp, [filterNonApp]);
 
   const doesExternalFilterPass = useCallback(
@@ -143,6 +167,28 @@ export function AthletesGrid() {
             setTimeout(() => gridRef.current?.api?.onFilterChanged(), 0);
           }}
         />
+        <button
+          type="button"
+          className="btn-ghost"
+          onClick={runBulkEmailMatch}
+          disabled={syncing}
+          style={{ padding: "0.35rem 0.75rem", fontSize: "13px" }}
+        >
+          {syncing ? "Syncing…" : "Sync Octane Match"}
+        </button>
+        {syncResult && (
+          <span style={{ fontSize: "13px", color: "var(--text-muted)" }}>
+            {syncResult.matched} matched · {syncResult.notFound} not found · {syncResult.alreadyLinked} already linked
+            {syncResult.errors > 0 && ` · ${syncResult.errors} errors`}
+          </span>
+        )}
+        {syncResult?.errorDetails && syncResult.errorDetails.length > 0 && (
+          <div style={{ fontSize: "12px", color: "var(--color-error, #e03131)", marginTop: "0.25rem", width: "100%" }}>
+            {syncResult.errorDetails.map((e, i) => (
+              <div key={i}>{e.name} ({e.email}): {e.error}</div>
+            ))}
+          </div>
+        )}
       </Group>
 
       <div style={{ height: "calc(100vh - 300px)", minHeight: 400 }}>

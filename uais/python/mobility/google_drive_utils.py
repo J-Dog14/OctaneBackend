@@ -27,7 +27,7 @@ SCOPES = [
 ]
 
 
-def get_google_credentials(credentials_path: str, token_path: Optional[str] = None) -> Optional[Credentials]:
+def get_google_credentials(credentials_path: str, token_path: Optional[str] = None) -> "Optional[Credentials]":
     """
     Authenticate with Google using OAuth 2.0.
     
@@ -152,7 +152,7 @@ def extract_sheet_id_from_gsheet(gsheet_path: str) -> Optional[str]:
     return None
 
 
-def download_google_sheet_as_excel(credentials: Credentials, sheet_id: str, output_path: str) -> bool:
+def download_google_sheet_as_excel(credentials: "Credentials", sheet_id: str, output_path: str) -> bool:
     """
     Download a Google Sheet as an Excel file using Google Drive API.
     
@@ -220,6 +220,42 @@ def find_gsheet_file_by_name(gsheet_name: str, gsheet_directory: str) -> Optiona
     return None
 
 
+def _find_drive_folder_id(service, folder_name: str, parent_id: str = 'root') -> Optional[str]:
+    """Find a Drive folder by name under a parent, return its ID."""
+    q = (
+        f"name='{folder_name}'"
+        f" and mimeType='application/vnd.google-apps.folder'"
+        f" and '{parent_id}' in parents"
+        f" and trashed=false"
+    )
+    resp = service.files().list(q=q, fields='files(id, name)').execute()
+    files = resp.get('files', [])
+    return files[0]['id'] if files else None
+
+
+def _list_sheets_in_folder(service, folder_id: str) -> list:
+    """Return [{id, name}, ...] for every Google Sheet in folder_id."""
+    results = []
+    page_token = None
+    while True:
+        q = (
+            f"'{folder_id}' in parents"
+            f" and mimeType='application/vnd.google-apps.spreadsheet'"
+            f" and trashed=false"
+        )
+        resp = service.files().list(
+            q=q,
+            spaces='drive',
+            fields='nextPageToken, files(id, name, createdTime)',
+            pageToken=page_token
+        ).execute()
+        results.extend(resp.get('files', []))
+        page_token = resp.get('nextPageToken')
+        if not page_token:
+            break
+    return results
+
+
 def download_missing_sheets(
     excel_directory: str,
     gsheet_directory: str,
@@ -227,15 +263,16 @@ def download_missing_sheets(
 ) -> Dict[str, Any]:
     """
     Download missing Google Sheets as Excel files.
-    
-    Compares .gsheet files in gsheet_directory with .xlsx files in excel_directory,
-    and downloads any missing ones.
-    
+
+    Uses the Drive API to list files in the folder — bypasses reading local
+    .gsheet files, which cannot be opened on Windows Google Drive for Desktop.
+
     Args:
         excel_directory: Directory where Excel files should be stored
-        gsheet_directory: Directory containing .gsheet files
+        gsheet_directory: Path to the synced Google Drive folder (used to
+            derive the folder name for the Drive API search)
         credentials_path: Path to Google API credentials JSON file
-        
+
     Returns:
         Dictionary with download results
     """
@@ -246,7 +283,7 @@ def download_missing_sheets(
             'downloaded': 0,
             'failed': 0
         }
-    
+
     # Authenticate
     print("Authenticating with Google...")
     creds = get_google_credentials(credentials_path)
@@ -258,81 +295,84 @@ def download_missing_sheets(
             'failed': 0
         }
     print("[OK] Authentication successful")
-    
-    # Get list of existing Excel files
-    excel_dir = Path(excel_directory)
-    existing_excel = set()
-    if excel_dir.exists():
-        for file in excel_dir.glob("*.xlsx"):
-            # Remove extension for matching
-            name_without_ext = file.stem
-            existing_excel.add(name_without_ext.lower())
-    
-    # Get list of .gsheet files
-    gsheet_dir = Path(gsheet_directory)
-    if not gsheet_dir.exists():
+
+    # Build Drive service
+    service = build('drive', 'v3', credentials=creds)
+
+    # Find the folder in Drive by name.
+    # gsheet_directory is something like "G:\My Drive\Data\Mobility Assessments"
+    # We search from the root for the leaf folder name.
+    folder_name = Path(gsheet_directory).name  # "Mobility Assessments"
+    print(f"Searching Drive for folder: {folder_name}")
+
+    folder_id = _find_drive_folder_id(service, folder_name)
+    if not folder_id:
+        # Try searching under "Data" parent if top-level search fails
+        parent_name = Path(gsheet_directory).parent.name  # "Data"
+        parent_id = _find_drive_folder_id(service, parent_name)
+        if parent_id:
+            folder_id = _find_drive_folder_id(service, folder_name, parent_id)
+
+    if not folder_id:
         return {
             'success': False,
-            'error': f'Google Sheets directory not found: {gsheet_directory}',
+            'error': f'Could not find Drive folder "{folder_name}" via API',
             'downloaded': 0,
             'failed': 0
         }
-    
-    gsheet_files = list(gsheet_dir.glob("*.gsheet"))
-    
-    print(f"\nFound {len(gsheet_files)} .gsheet files")
-    print(f"Found {len(existing_excel)} existing Excel files")
-    
-    # Find missing files
-    missing_files = []
-    for gsheet_file in gsheet_files:
-        name_without_ext = gsheet_file.stem.lower()
-        if name_without_ext not in existing_excel:
-            missing_files.append(gsheet_file)
-    
-    if not missing_files:
+
+    print(f"[OK] Found Drive folder ID: {folder_id}")
+
+    # Get existing Excel files in the cache directory
+    excel_dir = Path(excel_directory)
+    excel_dir.mkdir(parents=True, exist_ok=True)
+    existing_excel = {f.stem.lower() for f in excel_dir.glob("*.xlsx")}
+
+    # List all Sheets in the Drive folder via API (no local file reading)
+    drive_files = _list_sheets_in_folder(service, folder_id)
+    print(f"\nFound {len(drive_files)} Google Sheets in Drive folder")
+    print(f"Found {len(existing_excel)} existing Excel files in cache")
+
+    # Only download files we don't have yet (compare using sanitized name since that's what's on disk)
+    def _safe(n: str) -> str:
+        return n.replace('/', '-').replace('\\', '-').replace(':', '-').lower()
+
+    missing = [
+        f for f in drive_files
+        if _safe(f['name']) not in existing_excel
+        and 'template' not in f['name'].lower()
+    ]
+
+    if not missing:
         print("All files already downloaded")
-        return {
-            'success': True,
-            'downloaded': 0,
-            'failed': 0,
-            'message': 'All files already exist'
-        }
-    
-    print(f"\nDownloading {len(missing_files)} missing files...")
-    
-    # Download missing files
+        return {'success': True, 'downloaded': 0, 'failed': 0, 'message': 'All files already exist'}
+
+    print(f"\nDownloading {len(missing)} missing files...")
+
     downloaded = 0
     failed = 0
     errors = []
-    
-    for gsheet_file in missing_files:
-        print(f"\nProcessing: {gsheet_file.name}")
-        
-        # Extract sheet ID
-        sheet_id = extract_sheet_id_from_gsheet(str(gsheet_file))
-        if not sheet_id:
-            print(f"   [FAIL] Could not extract sheet ID from .gsheet file")
-            failed += 1
-            errors.append(f"{gsheet_file.name}: Could not extract sheet ID")
-            continue
-        
-        print(f"   Found sheet ID: {sheet_id}")
-        
-        # Determine output filename (use .gsheet name but with .xlsx extension)
-        output_filename = gsheet_file.stem + ".xlsx"
-        output_path = excel_dir / output_filename
-        
-        # Download
-        print(f"   Downloading to: {output_filename}")
-        if download_google_sheet_as_excel(creds, sheet_id, str(output_path)):
+
+    for drive_file in missing:
+        name = drive_file['name']
+        file_id = drive_file['id']
+        # Sanitize name for Windows filesystem — "/" is illegal in filenames
+        safe_name = name.replace('/', '-').replace('\\', '-').replace(':', '-')
+        output_path = excel_dir / (safe_name + '.xlsx')
+        print(f"\nProcessing: {name}")
+
+        if download_google_sheet_as_excel(creds, file_id, str(output_path)):
             print(f"   [OK] Downloaded successfully")
             downloaded += 1
+            # Write sidecar with Drive createdTime so ingestion uses the real assessment date
+            created_date = drive_file.get('createdTime', '')[:10]  # "2026-01-15"
+            if created_date:
+                (output_path.parent / (output_path.name + '.date')).write_text(created_date)
         else:
             print(f"   [FAIL] Download failed")
             failed += 1
-            errors.append(f"{gsheet_file.name}: Download failed")
-    
+            errors.append(f"{name}: Download failed")
+
     return {
         'success': True,
         'downloaded': downloaded,

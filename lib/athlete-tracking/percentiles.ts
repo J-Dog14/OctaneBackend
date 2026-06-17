@@ -14,7 +14,6 @@ import {
   buildProteusPitcherPayload,
   buildProteusHitterPayload,
 } from "@/lib/octane/proteusPayload";
-import { MOBILITY_CATEGORY_MAX } from "@/lib/octane/mobilityPayload";
 import {
   computePercentileRank,
   metricKey,
@@ -307,22 +306,11 @@ export async function getMobilityWithPercentiles(
       getCachedMobilityPopulation(),
     ]);
     const withPercentiles = attachPercentiles(payload.metrics, population, athleteUuid);
-    const maxForCategory = (name: string) => {
-      const max = MOBILITY_CATEGORY_MAX[name];
-      return max !== Number.POSITIVE_INFINITY ? max : null;
-    };
-    const metrics = withPercentiles.map((m) => {
-      const keepPercentile =
-        m.category === "Grip Strength" ||
-        (m.mobilityMetricKind === "GROUP" && m.category === "Shoulder Mobility") ||
-        (m.mobilityMetricKind === "COMPONENT" &&
-          (m.name === "shoulder_ir" || m.name === "shoulder_er"));
-      const noPercentile = keepPercentile ? m : { ...m, percentile: null };
-      return {
-        ...noPercentile,
-        max: m.mobilityMetricKind === "GROUP" ? maxForCategory(m.category) : null,
-      };
-    });
+    const metrics = withPercentiles.map((m) => ({
+      ...m,
+      // All GROUP scores are 0-100; set max=100 so metricsToRadarData renders correctly
+      max: m.mobilityMetricKind === "GROUP" ? 100 : null,
+    }));
     return { metrics, sessionDate: payload.sessionDate ?? null };
   } catch {
     return null;

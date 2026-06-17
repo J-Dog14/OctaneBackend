@@ -155,7 +155,7 @@ export function formatValueWithUnit(
   if (max != null && max > 0) {
     return { valuePart: Number(value).toFixed(0), unitPart: ` / ${max}` };
   }
-  const valuePart = Number(value).toFixed(2);
+  const valuePart = String(parseFloat(Number(value).toFixed(2)));
   const unitKey = String(valueUnit).toUpperCase().trim();
   const unitLabel = unitKey === "NUMBER" || unitKey === "" ? "" : (UNIT_LABELS[unitKey] ?? toTitleCase(String(valueUnit).replace(/_/g, " ")));
   return { valuePart, unitPart: unitLabel ? ` ${unitLabel}` : "" };

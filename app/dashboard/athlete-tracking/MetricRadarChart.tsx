@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import {
   Radar,
   RadarChart as RechartsRadarChart,
@@ -136,6 +137,20 @@ export function MetricRadarChart({
   title,
   valueLabel,
 }: MetricRadarChartProps) {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 639px)");
+    const handler = () => setIsMobile(mq.matches);
+    handler();
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
+  const chartHeight = isMobile ? 260 : 360;
+  const chartMargin = isMobile
+    ? { top: 15, right: 20, bottom: 15, left: 20 }
+    : { top: 30, right: 60, bottom: 30, left: 60 };
+
   const useMulti = dataSeries && dataSeries.length > 0;
   const singleData = useMulti ? [] : data;
   const hasSingle = singleData.length > 0;
@@ -146,7 +161,7 @@ export function MetricRadarChart({
 
   if (!hasSingle && !hasMulti) {
     return (
-      <div className="card" style={{ minHeight: 360 }}>
+      <div className="card" style={{ minHeight: chartHeight }}>
         {title && (
           <h3 style={{ margin: "0 0 1rem", fontSize: "1rem" }}>{title}</h3>
         )}
@@ -158,14 +173,14 @@ export function MetricRadarChart({
   const chartData = useMulti ? mergedData : singleData;
 
   return (
-    <div className="card" style={{ minHeight: 360 }}>
+    <div className="card" style={{ minHeight: chartHeight }}>
       {title && (
         <h3 style={{ margin: "0 0 1rem", fontSize: "1rem" }}>{title}</h3>
       )}
-      <ResponsiveContainer width="100%" height={360}>
+      <ResponsiveContainer width="100%" height={chartHeight}>
         <RechartsRadarChart
           data={chartData}
-          margin={{ top: 30, right: 60, bottom: 30, left: 60 }}
+          margin={chartMargin}
         >
           <PolarGrid stroke="var(--border)" />
           <PolarAngleAxis

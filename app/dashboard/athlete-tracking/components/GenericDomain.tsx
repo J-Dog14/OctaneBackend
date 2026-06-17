@@ -10,12 +10,11 @@ import {
   formatMetricValueParts,
   getMetricByKey,
   getMetricInsight,
-  isShoulderRomMetric,
-  getMobilityComponentScoreValue,
-  scoreOutOfThreeFromPercentile,
   formatMobilityComponentLabel,
   formatMobilityComponentValue,
+  getMobilityRangeColor,
   buildMobilityGroupSections,
+  condenseMobilityOptimalRange,
 } from "../domainHelpers";
 import { buildPitchingDisplayCells, buildHittingDisplayCells } from "../displayBuilders";
 import { formatMetricDisplayName } from "@/lib/athlete-tracking/displayNames";
@@ -522,7 +521,7 @@ export function GenericDomain({
         </>
       ) : domain.domainId === "mobility" ? (
         <div className="card">
-          <table style={{ borderCollapse: "collapse" }}>
+          <table style={{ borderCollapse: "collapse", width: "100%" }}>
             <tbody>
               {domain.sessionDate ? (
                 <tr>
@@ -536,33 +535,12 @@ export function GenericDomain({
                 </tr>
               ) : null}
               {buildMobilityGroupSections(domain.metrics).map((section, idx) => {
-                const derivedScoreValue =
-                  section.group.category === "Shoulder Mobility"
-                    ? section.components.reduce((sum, component) => {
-                        const score = getMobilityComponentScoreValue(component);
-                        return score == null ? sum : sum + score;
-                      }, 0)
-                    : null;
                 const scoreValue =
-                  derivedScoreValue != null
-                    ? derivedScoreValue
-                    : section.group.value != null && Number.isFinite(section.group.value)
-                      ? Math.round(section.group.value)
-                      : null;
-                const scoreText =
-                  scoreValue != null
-                    ? section.group.max != null && section.group.max > 0
-                      ? `${scoreValue}/${section.group.max}`
-                      : `${scoreValue}`
-                    : "—";
-                const percentText =
-                  scoreValue != null && section.group.max != null && section.group.max > 0
-                    ? `${Math.round((scoreValue / section.group.max) * 100)}%`
-                    : section.group.category === "Grip Strength" &&
-                        section.group.percentile != null &&
-                        Number.isFinite(section.group.percentile)
-                      ? `${Math.round(section.group.percentile)}th %ile`
-                      : "—";
+                  section.group.value != null && Number.isFinite(section.group.value)
+                    ? Math.round(section.group.value)
+                    : null;
+                // All groups now score 0-100 (range compliance %)
+                const scoreText = scoreValue != null ? `${scoreValue}%` : "—";
                 const isGripStrength = section.group.category === "Grip Strength";
                 const isExpanded = Boolean(expandedMobilityGroups[section.group.category]);
                 return (
@@ -601,18 +579,7 @@ export function GenericDomain({
                         </div>
                       </td>
                       <td
-                        style={{
-                          textAlign: "center",
-                          fontSize: "1.08rem",
-                          fontWeight: 700,
-                          whiteSpace: "nowrap",
-                          padding: "0.55rem 2.5rem 0.4rem",
-                          borderBottom: "none",
-                        }}
-                      >
-                        {scoreText}
-                      </td>
-                      <td
+                        colSpan={2}
                         style={{
                           textAlign: "right",
                           fontSize: "1.08rem",
@@ -622,7 +589,7 @@ export function GenericDomain({
                           borderBottom: "none",
                         }}
                       >
-                        {percentText}
+                        {scoreText}
                       </td>
                     </tr>
                     {section.components.length > 0 && isExpanded ? (
@@ -631,64 +598,66 @@ export function GenericDomain({
                           <div
                             style={{
                               display: "grid",
-                              gridTemplateColumns: "repeat(auto-fit, minmax(165px, 1fr))",
+                              gridTemplateColumns: "repeat(auto-fill, minmax(175px, 1fr))",
                               columnGap: "0.75rem",
                               rowGap: "0.55rem",
                               width: "100%",
                             }}
                           >
-                            {section.components.map((component) => (
-                              isShoulderRomMetric(component) ? (
-                                <div
-                                  key={`mobility-comp-${section.group.category}-${component.name}`}
-                                  style={{
-                                    whiteSpace: "nowrap",
-                                    border: "1px solid var(--border)",
-                                    borderRadius: 999,
-                                    background: "var(--bg-tertiary)",
-                                    padding: "6px 10px",
-                                    display: "grid",
-                                    gridTemplateColumns: "1fr auto auto",
-                                    alignItems: "center",
-                                    gap: "0.6rem",
-                                  }}
-                                >
-                                  <span style={{ marginRight: "0.3rem", color: "var(--text-secondary)", fontSize: "0.84rem" }}>
-                                    {formatMobilityComponentLabel(component, domain.domainId)}
+                            {section.components.map((component) => {
+                              const shortRange = condenseMobilityOptimalRange(component.name, component.mobilityOptimalRange ?? null);
+                              const effectiveScore =
+                                component.mobilityRangeScore ??
+                                (component.name.endsWith("_mmt") ? (component.percentile ?? null) : null);
+                              return (
+                              <div
+                                key={`mobility-comp-${section.group.category}-${component.name}`}
+                                style={{
+                                  border: `1px solid ${getMobilityRangeColor(effectiveScore)}`,
+                                  borderRadius: 999,
+                                  background: "var(--bg-tertiary)",
+                                  padding: "6px 10px",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "space-between",
+                                  gap: "0.6rem",
+                                  minWidth: 0,
+                                  overflow: "hidden",
+                                }}
+                              >
+                                <span style={{
+                                  color: "var(--text-secondary)",
+                                  fontSize: "0.84rem",
+                                  flex: "1 1 0",
+                                  minWidth: 0,
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap",
+                                }}>
+                                  {formatMobilityComponentLabel(component, domain.domainId)}
+                                </span>
+                                <strong style={{ fontSize: "0.9rem", flexShrink: 0, whiteSpace: "nowrap" }}>
+                                  {formatMobilityComponentValue(component)}
+                                  {component.mobilityRangeScore != null && (
+                                    <span
+                                      style={{
+                                        fontSize: "0.75rem",
+                                        color: getMobilityRangeColor(component.mobilityRangeScore),
+                                        marginLeft: "3px",
+                                      }}
+                                    >
+                                      ({component.mobilityRangeScore}%)
+                                    </span>
+                                  )}
+                                </strong>
+                                {shortRange ? (
+                                  <span style={{ color: "var(--text-secondary)", fontSize: "0.78rem", flexShrink: 0, whiteSpace: "nowrap" }}>
+                                    {shortRange}
                                   </span>
-                                  <strong style={{ fontSize: "0.9rem", justifySelf: "center" }}>
-                                    {formatMobilityComponentValue(component)}
-                                  </strong>
-                                  <strong style={{ fontSize: "0.82rem" }}>
-                                    {scoreOutOfThreeFromPercentile(component.percentile)}
-                                  </strong>
-                                </div>
-                              ) : (
-                                <div
-                                  key={`mobility-comp-${section.group.category}-${component.name}`}
-                                  style={{
-                                    whiteSpace: "nowrap",
-                                    border: "1px solid var(--border)",
-                                    borderRadius: 999,
-                                    background: "var(--bg-tertiary)",
-                                    padding: "6px 10px",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "space-between",
-                                    gap: "0.6rem",
-                                  }}
-                                >
-                                  <span style={{ marginRight: "0.3rem", color: "var(--text-secondary)", fontSize: "0.84rem" }}>
-                                    {formatMobilityComponentLabel(component, domain.domainId)}
-                                  </span>
-                                  <strong style={{ fontSize: "0.9rem" }}>
-                                    {isGripStrength
-                                      ? formatMobilityComponentValue({ ...component, mobilityOutOf: null })
-                                      : formatMobilityComponentValue(component)}
-                                  </strong>
-                                </div>
-                              )
-                            ))}
+                                ) : null}
+                              </div>
+                              );
+                            })}
                           </div>
                         </td>
                       </tr>

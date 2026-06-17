@@ -1042,8 +1042,7 @@ def power_curve(ax, df, pop_df=None, power_files_dir=None, athlete_name=None, se
                 cached = power_data_dict[trial_name]
                 if len(cached) > 0:
                     t_norm = np.linspace(0, 1, len(cached))
-                    p_norm = (cached - cached.min()) / (cached.max() - cached.min() + 1e-10)
-                    curves.append((t_norm, p_norm))
+                    curves.append((t_norm, cached))
                     print(f"[PowerCurve] Using cached data for {trial_name}")
                 continue
 
@@ -1078,8 +1077,7 @@ def power_curve(ax, df, pop_df=None, power_files_dir=None, athlete_name=None, se
                     power_data = load_power_txt(power_file)
                     if len(power_data) > 0:
                         t_normalized = np.linspace(0, 1, len(power_data))
-                        power_normalized = (power_data - power_data.min()) / (power_data.max() - power_data.min() + 1e-10)
-                        curves.append((t_normalized, power_normalized))
+                        curves.append((t_normalized, power_data))
                         print(f"[PowerCurve] Loaded real data: {power_file}")
                 except Exception as e:
                     print(f"[PowerCurve] SYNTHETIC fallback for {trial_name} (load error: {e})")
@@ -1206,8 +1204,7 @@ def slv_power_curve(ax, left_df, right_df, pop_df=None, power_files_dir=None, at
                 cached = power_data_dict[trial_name]
                 if len(cached) > 0:
                     t_norm = np.linspace(0, 1, len(cached))
-                    p_norm = (cached - cached.min()) / (cached.max() - cached.min() + 1e-10)
-                    curves.append((t_norm, p_norm))
+                    curves.append((t_norm, cached))
                     print(f"[PowerCurve SLV {side_name}] Using cached data for {trial_name}")
                 continue
 
@@ -1241,8 +1238,7 @@ def slv_power_curve(ax, left_df, right_df, pop_df=None, power_files_dir=None, at
                     power_data = load_power_txt(power_file)
                     if len(power_data) > 0:
                         t_normalized = np.linspace(0, 1, len(power_data))
-                        power_normalized = (power_data - power_data.min()) / (power_data.max() - power_data.min() + 1e-10)
-                        curves.append((t_normalized, power_normalized))
+                        curves.append((t_normalized, power_data))
                         print(f"[PowerCurve SLV {side_name}] Loaded real data: {power_file}")
                 except Exception as e:
                     print(f"[PowerCurve SLV {side_name}] SYNTHETIC fallback for {trial_name} (load error: {e})")

@@ -5,18 +5,9 @@ import { AgGridReact } from "ag-grid-react";
 import { ModuleRegistry, AllCommunityModule, type ColDef } from "ag-grid-community";
 import Link from "next/link";
 import { octaneTheme } from "./ag-grid-theme";
+import type { RecentAthlete } from "@/lib/dashboard/athletes";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
-
-type RecentAthlete = {
-  athlete_uuid: string;
-  name: string;
-  gender: string | null;
-  age_group: string | null;
-  pitching_session_count: number;
-  athletic_screen_session_count: number;
-  updated_at: Date | string | null;
-};
 
 export function RecentAthletesGrid({ athletes }: { athletes: RecentAthlete[] }) {
   const [mounted, setMounted] = useState(false);
@@ -60,10 +51,10 @@ export function RecentAthletesGrid({ athletes }: { athletes: RecentAthlete[] }) 
         minWidth: 130,
       },
       {
-        headerName: "Last Modified",
-        field: "updated_at",
+        headerName: "Last Data Added",
+        field: "last_data_at",
         flex: 1,
-        minWidth: 120,
+        minWidth: 130,
         valueFormatter: ({ value }) =>
           value ? new Date(value as Date | string).toLocaleDateString() : "—",
       },

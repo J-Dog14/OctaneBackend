@@ -35,6 +35,7 @@ type OctaneLookupUser = {
 };
 
 type DomainInfo = { domainId: string; dates: string[] };
+type LastSentSessions = Record<string, string>;
 
 const DOMAIN_LABELS: Record<string, string> = {
   pitching: "Pitching",
@@ -63,6 +64,8 @@ function SendPayloadContent() {
 
   const [domains, setDomains] = useState<DomainInfo[]>([]);
   const [domainsLoading, setDomainsLoading] = useState(false);
+  const [selectedDates, setSelectedDates] = useState<Record<string, string>>({});
+  const [lastSentSessions, setLastSentSessions] = useState<LastSentSessions>({});
 
   const [sendStatus, setSendStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
   const [sendError, setSendError] = useState<string | null>(null);
@@ -88,6 +91,8 @@ function SendPayloadContent() {
   useEffect(() => {
     if (!athleteSelected) {
       setDomains([]);
+      setSelectedDates({});
+      setLastSentSessions({});
       setSendStatus("idle");
       setSendError(null);
       return;
@@ -95,7 +100,17 @@ function SendPayloadContent() {
     setDomainsLoading(true);
     fetch(`/api/dashboard/athlete-tracking/sessions?athleteUuid=${athleteSelected.athlete_uuid}`)
       .then((r) => r.json())
-      .then((d) => setDomains((d.domains as DomainInfo[]) ?? []))
+      .then((d) => {
+        const loaded = (d.domains as DomainInfo[]) ?? [];
+        setDomains(loaded);
+        // Default each domain to its most recent session date
+        const defaults: Record<string, string> = {};
+        for (const domain of loaded) {
+          if (domain.dates.length > 0) defaults[domain.domainId] = domain.dates[0];
+        }
+        setSelectedDates(defaults);
+        setLastSentSessions((d.lastSentSessions as LastSentSessions) ?? {});
+      })
       .finally(() => setDomainsLoading(false));
   }, [athleteSelected]);
 
@@ -107,7 +122,10 @@ function SendPayloadContent() {
       const res = await fetch("/api/dashboard/send-to-octane", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ athleteUuid: athleteSelected.athlete_uuid }),
+        body: JSON.stringify({
+          athleteUuid: athleteSelected.athlete_uuid,
+          sessionDates: selectedDates,
+        }),
       });
       const data = (await res.json()) as { ok?: boolean; error?: string };
       if (!res.ok) {
@@ -115,12 +133,14 @@ function SendPayloadContent() {
         setSendError(data.error ?? "Unknown error");
       } else {
         setSendStatus("success");
+        // Update local lastSentSessions to reflect what was just sent
+        setLastSentSessions((prev) => ({ ...prev, ...selectedDates }));
       }
     } catch (err) {
       setSendStatus("error");
       setSendError(err instanceof Error ? err.message : "Network error");
     }
-  }, [athleteSelected]);
+  }, [athleteSelected, selectedDates]);
 
   const runOctaneLookup = async () => {
     const email = octaneLookupEmail.trim();
@@ -178,8 +198,9 @@ function SendPayloadContent() {
     <div>
       <h1 style={{ marginBottom: "0.5rem", fontSize: "1.75rem" }}>Send to App</h1>
       <p className="text-muted" style={{ marginBottom: "1.5rem" }}>
-        Search for an athlete, review their available assessment data, then push all domains to
-        their Octane account. Always sends the most recent session per domain.
+        Search for an athlete, choose which session to send per domain, then push to their Octane
+        account. Domains with multiple sessions show a date dropdown. A yellow badge appears if the
+        selected session was already sent.
       </p>
 
       {/* Athlete Search + Send */}
@@ -204,28 +225,81 @@ function SendPayloadContent() {
                 No assessment data found for this athlete.
               </p>
             ) : (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-                {domains.map((d) => (
-                  <div
-                    key={d.domainId}
-                    style={{
-                      padding: "4px 10px",
-                      borderRadius: 20,
-                      border: "1px solid var(--accent)",
-                      fontSize: "12px",
-                      color: "var(--accent)",
-                    }}
-                  >
-                    <strong>{DOMAIN_LABELS[d.domainId] ?? d.domainId}</strong>
-                    {" — "}
-                    {formatDate(d.dates[0])}
-                    {d.dates.length > 1 && (
-                      <span style={{ color: "var(--text-muted)", marginLeft: 4 }}>
-                        +{d.dates.length - 1} more
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                {domains.map((d) => {
+                  const chosen = selectedDates[d.domainId] ?? d.dates[0];
+                  const alreadySent = lastSentSessions[d.domainId] === chosen;
+                  return (
+                    <div
+                      key={d.domainId}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.5rem",
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      <span
+                        style={{
+                          padding: "4px 10px",
+                          borderRadius: 20,
+                          border: "1px solid var(--accent)",
+                          fontSize: "12px",
+                          color: "var(--accent)",
+                          whiteSpace: "nowrap",
+                          minWidth: 110,
+                          textAlign: "center",
+                        }}
+                      >
+                        <strong>{DOMAIN_LABELS[d.domainId] ?? d.domainId}</strong>
                       </span>
-                    )}
-                  </div>
-                ))}
+                      {d.dates.length > 1 ? (
+                        <select
+                          value={chosen}
+                          onChange={(e) =>
+                            setSelectedDates((prev) => ({
+                              ...prev,
+                              [d.domainId]: e.target.value,
+                            }))
+                          }
+                          style={{
+                            fontSize: "12px",
+                            padding: "3px 6px",
+                            borderRadius: 6,
+                            border: "1px solid var(--border)",
+                            background: "var(--bg-secondary)",
+                            color: "var(--text-primary)",
+                          }}
+                        >
+                          {d.dates.map((date) => (
+                            <option key={date} value={date}>
+                              {formatDate(date)}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span style={{ fontSize: "12px", color: "var(--text-primary)" }}>
+                          {formatDate(d.dates[0])}
+                        </span>
+                      )}
+                      {alreadySent && (
+                        <span
+                          style={{
+                            fontSize: "11px",
+                            padding: "2px 8px",
+                            borderRadius: 20,
+                            background: "#ffe066",
+                            color: "#7a5900",
+                            fontWeight: 600,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          Already sent
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

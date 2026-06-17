@@ -758,7 +758,19 @@ def process_txt_files(folder_path: str, dry_run: bool = False, athlete_uuid: str
                 update_athlete_age_group_from_insert(athlete_uuid, age_group, conn=pg_conn)
                 # Commit the transaction (this automatically releases all savepoints)
                 pg_conn.commit()
-                
+
+                # Cross-insert CMJ/PPU into readiness screen tables so the readiness
+                # baseline is populated from the initial intake session.
+                if movement_type in {'CMJ', 'PPU'}:
+                    try:
+                        _cross_insert_to_readiness_screen(
+                            pg_conn, athlete_uuid, date_str,
+                            movement_type, parsed_data.get('trial_name', ''), insert_data,
+                        )
+                    except Exception as _ce:
+                        print(f"Warning: cross-insert to readiness screen failed for "
+                              f"{parsed_data.get('trial_name', file_name)}: {_ce}")
+
                 # Move processed file and corresponding Power.txt file to "Processed txt Files" subdirectory
                 try:
                     processed_dir = os.path.join(folder_path, "Processed txt Files")
@@ -912,6 +924,93 @@ def process_txt_files(folder_path: str, dry_run: bool = False, athlete_uuid: str
         print("Successful run and upload.")
     
     return [(name, uuid) for name, uuid, _ in processed]
+
+
+def _cross_insert_to_readiness_screen(
+    pg_conn, athlete_uuid: str, date_str: str,
+    movement_type: str, trial_name: str, insert_data: dict,
+) -> None:
+    """
+    Write an athletic screen CMJ/PPU row into the corresponding readiness screen
+    fact table so the readiness dashboard and scoring baseline are populated from
+    the initial intake session.  Phase/force columns are NULL — athletic screen
+    does not process *_Force.txt files.  Safe to call inside a try/except; any
+    failure is logged but never propagates to the caller.
+    """
+    import re as _re
+    rs_table = (
+        'f_readiness_screen_cmj' if movement_type == 'CMJ'
+        else 'f_readiness_screen_ppu'
+    )
+    _m = _re.search(r'(\d+)\s*$', trial_name or '')
+    trial_id = int(_m.group(1)) if _m else 1
+
+    rs_data = {
+        'athlete_uuid':         athlete_uuid,
+        'session_date':         date_str,
+        'source_system':        'athletic_screen',
+        'source_athlete_id':    insert_data.get('source_athlete_id'),
+        'trial_name':           trial_name,
+        'trial_id':             trial_id,
+        'age_at_collection':    insert_data.get('age_at_collection'),
+        'age_group':            insert_data.get('age_group'),
+        'jump_height':          insert_data.get('jh_in'),       # column rename
+        'peak_power':           insert_data.get('peak_power'),
+        'peak_force':           None,
+        'pp_w_per_kg':          insert_data.get('pp_w_per_kg'),
+        'pp_forceplate':        insert_data.get('pp_forceplate'),
+        'force_at_pp':          insert_data.get('force_at_pp'),
+        'vel_at_pp':            insert_data.get('vel_at_pp'),
+        # Power-curve metrics — same column names in both tables
+        'peak_power_w':         insert_data.get('peak_power_w'),
+        'time_to_peak_s':       insert_data.get('time_to_peak_s'),
+        'rpd_max_w_per_s':      insert_data.get('rpd_max_w_per_s'),
+        'time_to_rpd_max_s':    insert_data.get('time_to_rpd_max_s'),
+        'rise_time_10_90_s':    insert_data.get('rise_time_10_90_s'),
+        'fwhm_s':               insert_data.get('fwhm_s'),
+        'auc_j':                insert_data.get('auc_j'),
+        'work_early_pct':       insert_data.get('work_early_pct'),
+        'decay_90_10_s':        insert_data.get('decay_90_10_s'),
+        't_com_norm_0to1':      insert_data.get('t_com_norm_0to1'),
+        'skewness':             insert_data.get('skewness'),
+        'kurtosis':             insert_data.get('kurtosis'),
+        'spectral_centroid_hz': insert_data.get('spectral_centroid_hz'),
+        # Phase + force: NULL — not computed by athletic screen
+        'contraction_time_s':    None, 'eccentric_duration_s':    None,
+        'concentric_duration_s': None, 'ecc_con_duration_ratio':  None,
+        'eccentric_mean_power_w': None, 'eccentric_peak_power_w': None,
+        'eccentric_auc_j':       None, 'concentric_auc_j':        None,
+        'mrsi':                  None,
+        'peak_grf_n':            None, 'peak_grf_bw_ratio':       None,
+        'rfd_0_100ms':           None, 'concentric_impulse_ns':   None,
+    }
+
+    update_cols = [c for c in rs_data
+                   if c not in ('athlete_uuid', 'session_date', 'trial_name')]
+
+    with pg_conn.cursor() as cur:
+        cur.execute(
+            f"SELECT 1 FROM public.{rs_table} "
+            "WHERE athlete_uuid = %s AND session_date = %s "
+            "AND trial_name IS NOT DISTINCT FROM %s LIMIT 1",
+            (athlete_uuid, date_str, trial_name),
+        )
+        if cur.fetchone():
+            set_clause = ', '.join(f"{c} = %s" for c in update_cols)
+            cur.execute(
+                f"UPDATE public.{rs_table} SET {set_clause} "
+                "WHERE athlete_uuid = %s AND session_date = %s "
+                "AND trial_name IS NOT DISTINCT FROM %s",
+                [rs_data[c] for c in update_cols] + [athlete_uuid, date_str, trial_name],
+            )
+        else:
+            cols = list(rs_data.keys())
+            cur.execute(
+                f"INSERT INTO public.{rs_table} ({', '.join(cols)}) "
+                f"VALUES ({', '.join(['%s'] * len(cols))})",
+                [rs_data[c] for c in cols],
+            )
+    pg_conn.commit()
 
 
 def main():

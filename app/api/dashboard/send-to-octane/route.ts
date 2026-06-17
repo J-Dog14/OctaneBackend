@@ -5,11 +5,15 @@ import { prisma } from "@/lib/db/prisma";
 import { lookupOctaneUserByEmail } from "@/lib/octane/octaneUserLookup";
 import { requireRole } from "@/lib/auth/requireAuth";
 import { deriveLevelFromAthlete } from "@/lib/octane/utils";
+import type { DomainId } from "@/lib/athlete-tracking/types";
 
 export async function POST(request: NextRequest) {
   await requireRole("admin");  // ← moved outside try block, actually called
   try {
-    const { athleteUuid } = await request.json();
+    const { athleteUuid, sessionDates } = await request.json() as {
+      athleteUuid: unknown;
+      sessionDates?: Partial<Record<DomainId, string>>;
+    };
 
     if (!athleteUuid || typeof athleteUuid !== "string") {
       return badRequest("athleteUuid is required");
@@ -17,7 +21,7 @@ export async function POST(request: NextRequest) {
 
     // Fetch athlete — need email and app_db_uuid
     const athlete = await prisma.d_athletes.findUnique({
-      where: { athlete_uuid: athleteUuid },
+      where: { athlete_uuid: athleteUuid as string },
       select: {
         athlete_uuid: true,
         name: true,
@@ -56,7 +60,7 @@ export async function POST(request: NextRequest) {
 
 
     // Build full tracking report (all domains with pre-computed percentiles)
-    const report = await buildAthleteTrackingReport(athleteUuid);
+    const report = await buildAthleteTrackingReport(athleteUuid as string, sessionDates);
 
     if (report.domains.length === 0) {
       return badRequest(
@@ -97,6 +101,24 @@ export async function POST(request: NextRequest) {
         `Octane rejected the payload (${res.status}): ${body}`
       );
     }
+
+    // Record which session dates were just sent per domain
+    const sentSessions: Record<string, string> = {};
+    for (const domain of report.domains) {
+      const chosen = sessionDates?.[domain.domainId as DomainId] ?? null;
+      if (chosen) {
+        sentSessions[domain.domainId] = chosen;
+      }
+    }
+    await prisma.d_athletes.update({
+      where: { athlete_uuid: athleteUuid as string },
+      data: {
+        app_db_synced_at: new Date(),
+        ...(Object.keys(sentSessions).length > 0
+          ? { app_db_last_sent_sessions: sentSessions }
+          : {}),
+      },
+    });
 
     return success({
       ok: true,

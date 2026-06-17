@@ -532,8 +532,7 @@ def _load_session_power_curves(df: pd.DataFrame, power_files_dir: Optional[str])
                 power_data = load_power_txt(power_file)
                 if len(power_data) > 0:
                     t_norm = np.linspace(0, 1, len(power_data))
-                    p_norm = (power_data - power_data.min()) / (power_data.max() - power_data.min() + 1e-10)
-                    curves.append((t_norm, p_norm))
+                    curves.append((t_norm, power_data))
                     continue
             except Exception:  # pragma: no cover - fallback to synthesized
                 pass

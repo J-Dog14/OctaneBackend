@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/db/prisma";
+import { Prisma } from "@prisma/client";
 import { notFound } from "@/lib/responses";
-import { decimalToNumber, deriveLevelFromAthlete } from "@/lib/octane/utils";
+import { deriveLevelFromAthlete } from "@/lib/octane/utils";
+import { SCALE_3_COLUMNS, NON_SCORING_COLUMNS } from "@/lib/octane/mobilityColumnTypes";
 
 type Orientation = "HIGHER_IS_BETTER" | "LOWER_IS_BETTER";
 type ValueUnit = "NUMBER" | "DEGREES";
@@ -14,7 +16,12 @@ export type MobilityPayloadMetric = {
   mobilityMetricKind?: "GROUP" | "COMPONENT";
   mobilityGroup?: string;
   mobilityDisplayLabel?: string;
+  /** For GROUP metrics: always 100 (scores are 0–100). For COMPONENT: null. */
   mobilityOutOf?: number | null;
+  /** Optimal range string for display, e.g. "80-90°". COMPONENT only. */
+  mobilityOptimalRange?: string | null;
+  /** 0–100 score for this component against its optimal range. COMPONENT only. */
+  mobilityRangeScore?: number | null;
 };
 
 export type MobilityPayload = {
@@ -25,175 +32,279 @@ export type MobilityPayload = {
   sessionDate?: string | null;
 };
 
-/** Max possible score per category (Grip Strength has no max - raw sum). */
-export const MOBILITY_CATEGORY_MAX: Record<string, number> = {
-  "Hip Mobility": 21,
-  "Hip Stability": 12,
-  "Shoulder Mobility": Number.POSITIVE_INFINITY,
-  "Shoulder Stability": 12,
-  "Trunk": 18,
-  "Elbow": 18,
-  "Grip Strength": Number.POSITIVE_INFINITY,
-};
+// ---------------------------------------------------------------------------
+// Groups
+// ---------------------------------------------------------------------------
 
-/** Group name -> list of f_mobility column names (snake_case) for group score sum */
+/** 9 radar groups. All GROUP metric scores are 0–100 (average of component scores). */
 const MOBILITY_GROUPS: Array<{
   groupName: string;
-  columns: Array<{ key: keyof MobilityRow; label: string }>;
+  columns: Array<{ key: string; label: string }>;
 }> = [
   {
-    groupName: "Hip Mobility",
+    groupName: "Cervical",
     columns: [
-      { key: "l_prone_hip_ir", label: "L IR" },
-      { key: "l_prone_hip_er", label: "L ER" },
-      { key: "r_prone_hip_ir", label: "R IR" },
-      { key: "r_prone_hip_er", label: "R ER" },
-      { key: "thomas_test_hip_flexor_l", label: "Thomas Test L" },
-      { key: "thomas_test_hip_flexor_r", label: "Thomas Test R" },
-      { key: "hamstring_stretch", label: "Hamstring" },
-    ],
-  },
-  {
-    groupName: "Hip Stability",
-    columns: [
-      { key: "hip_pinch", label: "Hip Pinch" },
-      { key: "pelvic_tilt_against_wall", label: "Pelvic Tilt Wall" },
-      { key: "glute_strength_test_prone_hammy_push", label: "Glute Strength" },
-      { key: "prone_hamstring_raise", label: "Prone Ham Raise" },
+      { key: "cervical_rotation_r_rom", label: "Rotation R" },
+      { key: "cervical_rotation_l_rom", label: "Rotation L" },
+      { key: "cervical_flexion_rom", label: "Flexion" },
+      { key: "cervical_extension_rom", label: "Extension" },
+      { key: "cervical_lateral_flexion_r_rom", label: "Lateral Flexion R" },
+      { key: "cervical_lateral_flexion_l_rom", label: "Lateral Flexion L" },
     ],
   },
   {
     groupName: "Shoulder Mobility",
     columns: [
-      { key: "shoulder_ir", label: "Shoulder IR" },
-      { key: "shoulder_er", label: "Shoulder ER" },
-      { key: "young_stretch_passive", label: "Young Stretch + Passive" },
-      { key: "shoulder_total_arc", label: "Shoulder Total Arc" },
-      { key: "horizontal_abduction", label: "Horizontal Abduction" },
-      { key: "back_to_wall_shoulder_flexion", label: "Back to Wall Shoulder Flexion" },
+      { key: "horizontal_abduction_rom", label: "Horizontal Abduction" },
+      { key: "back_to_wall_shoulder_flexion", label: "Back to Wall Flexion" },
+      { key: "dominant_shoulder_ir", label: "Dominant IR" },
+      { key: "dominant_shoulder_er", label: "Dominant ER" },
+      { key: "non_dominant_shoulder_ir", label: "Non-Dom IR" },
+      { key: "non_dominant_shoulder_er", label: "Non-Dom ER" },
+      { key: "young_stretch_passive", label: "Young Stretch" },
     ],
   },
   {
     groupName: "Shoulder Stability",
     columns: [
-      { key: "shoulder_stability_flexion", label: "Shoulder stability-flexion" },
-      { key: "shoulder_stability_abduction", label: "Shoulder stability-abduction" },
-      { key: "shoulder_stability_er_at_0_deg_horiz_abuduction", label: "Shoulder stability-ER at 0 deg. Horiz. Abduction" },
-      { key: "shoulder_stability_ir_at_0_deg_horiz_abduction", label: "Shoulder stability-IR at 0 deg. Horiz. abduction" },
-    ],
-  },
-  {
-    groupName: "Trunk",
-    columns: [
-      { key: "backbend", label: "Backbend" },
-      { key: "sittiing_t_spine_pvc_r", label: "Sitting T-spine PVC (R)" },
-      { key: "sittiing_t_spine_pvc_l", label: "Sitting T-spine PVC (L)" },
-      { key: "slump_test", label: "Slump Test" },
-      { key: "mid_trap", label: "Mid Trap" },
-      { key: "low_trap", label: "Low Trap" },
+      { key: "hawkins_kennedy_test", label: "Hawkins Kennedy" },
+      { key: "shoulder_stability_flexion_mmt", label: "Stability Flexion" },
+      { key: "shoulder_stability_abduction_mmt", label: "Stability Abduction" },
+      { key: "shoulder_stability_er_at_0_deg_horiz_abduction_mmt", label: "Stability ER" },
+      { key: "shoulder_stability_ir_at_0_deg_horiz_abduction_mmt", label: "Stability IR" },
+      { key: "mid_trap_mmt", label: "Mid Trap" },
+      { key: "low_trap_mmt", label: "Low Trap" },
+      { key: "scap_winging", label: "Scap Winging" },
     ],
   },
   {
     groupName: "Elbow",
     columns: [
-      { key: "elbow_extension_rom", label: "Elbow-extension (ROM)" },
-      { key: "elbow_flexion_rom", label: "Elbow-flexion (ROM)" },
-      { key: "elbow_pronation_rom", label: "Elbow-pronation (ROM)" },
-      { key: "elbow_supination_rom", label: "Elbow-supination (ROM)" },
-      { key: "radial_nerve_glide", label: "Radial Nerve glide" },
+      { key: "elbow_extension_rom", label: "Extension" },
+      { key: "elbow_flexion_rom", label: "Flexion" },
+      { key: "elbow_pronation_rom", label: "Pronation" },
+      { key: "elbow_supination_rom", label: "Supination" },
+      { key: "radial_nerve_glide", label: "Radial Nerve Glide" },
       { key: "ulnar_nerve_glide", label: "Ulnar Nerve Glide" },
+    ],
+  },
+  {
+    groupName: "Spine / Core",
+    columns: [
+      { key: "pelvic_tilt_against_wall", label: "Pelvic Tilt Wall" },
+      { key: "backbend", label: "Backbend" },
+      { key: "sittiing_t_spine_pvc_r", label: "T-Spine PVC R" },
+      { key: "sittiing_t_spine_pvc_l", label: "T-Spine PVC L" },
+      { key: "slump_test", label: "Slump Test" },
+      { key: "isa_rom", label: "ISA" },
+    ],
+  },
+  {
+    groupName: "Hip Mobility",
+    columns: [
+      { key: "thomas_test_hip_flexor_r", label: "Thomas Test R" },
+      { key: "thomas_test_hip_flexor_l", label: "Thomas Test L" },
+      { key: "r_hamstring_stretch_rom", label: "Hamstring R" },
+      { key: "l_hamstring_stretch_rom", label: "Hamstring L" },
+      { key: "r_hip_abduction_rom", label: "Hip Abduction R" },
+      { key: "l_hip_abduction_rom", label: "Hip Abduction L" },
+      { key: "hip_pinch", label: "Hip Pinch" },
+      { key: "r_hip_flexion_rom", label: "Hip Flexion R" },
+      { key: "l_hip_flexion_rom", label: "Hip Flexion L" },
+      { key: "r_prone_hip_ir", label: "Prone Hip IR R" },
+      { key: "r_prone_hip_er", label: "Prone Hip ER R" },
+      { key: "l_prone_hip_ir", label: "Prone Hip IR L" },
+      { key: "l_prone_hip_er", label: "Prone Hip ER L" },
+    ],
+  },
+  {
+    groupName: "Hip Stability",
+    columns: [
+      { key: "seated_r_hip_ir_mmt", label: "Seated Hip IR R" },
+      { key: "seated_l_hip_ir_mmt", label: "Seated Hip IR L" },
+      { key: "seated_r_hip_er_mmt", label: "Seated Hip ER R" },
+      { key: "seated_l_hip_er_mmt", label: "Seated Hip ER L" },
+      { key: "r_prone_hamstring_raise_mmt", label: "Hamstring Raise R" },
+      { key: "l_prone_hamstring_raise_mmt", label: "Hamstring Raise L" },
+      { key: "r_prone_glute_raise_mmt", label: "Glute Raise R" },
+      { key: "l_prone_glute_raise_mmt", label: "Glute Raise L" },
+      { key: "r_hip_abduction_mmt", label: "Hip Abduction R" },
+      { key: "l_hip_adduction_mmt", label: "Hip Adduction L" },
+      { key: "r_hip_adduction_mmt", label: "Hip Adduction R" },
+      { key: "l_hip_abduction_mmt", label: "Hip Abduction L" },
+    ],
+  },
+  {
+    groupName: "Ankle",
+    columns: [
+      { key: "r_ankle_dorsiflexion_to_wall_rom", label: "Dorsiflexion R" },
+      { key: "l_ankle_dorsiflexion_to_wall_rom", label: "Dorsiflexion L" },
+      { key: "r_ankle_dorsiflexion_mmt", label: "Dorsiflexion MMT R" },
+      { key: "r_ankle_inversion_mmt", label: "Inversion R" },
+      { key: "r_ankle_eversion_mmt", label: "Eversion R" },
+      { key: "l_ankle_dorsiflexion_mmt", label: "Dorsiflexion MMT L" },
+      { key: "l_ankle_inversion_mmt", label: "Inversion L" },
+      { key: "l_ankle_eversion_mmt", label: "Eversion L" },
     ],
   },
   {
     groupName: "Grip Strength",
     columns: [
-      { key: "grip_strength_r", label: "Grip Strength (R)" },
-      { key: "gs_l", label: "GS (L)" },
-      { key: "grip_strength_r_at_90", label: "Grip Strength (R) at 90" },
-      { key: "gs_l_at_90", label: "GS (L) at 90" },
+      { key: "grip_strength_r", label: "Grip Strength R" },
+      { key: "gs_l", label: "Grip Strength L" },
+      { key: "grip_strength_r_at_90", label: "GS R at 90°" },
+      { key: "gs_l_at_90", label: "GS L at 90°" },
     ],
   },
 ];
 
-type MobilityRow = {
-  r_prone_hip_ir: unknown;
-  l_prone_hip_ir: unknown;
-  r_prone_hip_er: unknown;
-  l_prone_hip_er: unknown;
-  thomas_test_hip_flexor_r: unknown;
-  thomas_test_hip_flexor_l: unknown;
-  hamstring_stretch: unknown;
-  hip_pinch: unknown;
-  pelvic_tilt_against_wall: unknown;
-  glute_strength_test_prone_hammy_push: unknown;
-  prone_hamstring_raise: unknown;
-  shoulder_ir: unknown;
-  shoulder_er: unknown;
-  young_stretch_passive: unknown;
-  shoulder_total_arc: unknown;
-  horizontal_abduction: unknown;
-  back_to_wall_shoulder_flexion: unknown;
-  shoulder_stability_flexion: unknown;
-  shoulder_stability_abduction: unknown;
-  shoulder_stability_er_at_0_deg_horiz_abuduction: unknown;
-  shoulder_stability_ir_at_0_deg_horiz_abduction: unknown;
-  backbend: unknown;
-  sittiing_t_spine_pvc_r: unknown;
-  sittiing_t_spine_pvc_l: unknown;
-  slump_test: unknown;
-  mid_trap: unknown;
-  low_trap: unknown;
-  elbow_extension_rom: unknown;
-  elbow_flexion_rom: unknown;
-  elbow_pronation_rom: unknown;
-  elbow_supination_rom: unknown;
-  radial_nerve_glide: unknown;
-  ulnar_nerve_glide: unknown;
-  grip_strength_r: unknown;
-  gs_l: unknown;
-  grip_strength_r_at_90: unknown;
-  gs_l_at_90: unknown;
+// ---------------------------------------------------------------------------
+// Scoring
+// ---------------------------------------------------------------------------
+
+/** Override stored optimal ranges for columns whose DB value fails to parse. */
+const RANGE_OVERRIDES: Record<string, string> = {};
+
+/**
+ * Hardcoded reference ranges for columns that have no stored optimal range
+ * but can be reasonably scored.
+ */
+const FALLBACK_RANGES: Record<string, string> = {
+  grip_strength_r: "> 50",
+  gs_l: "> 50",
+  grip_strength_r_at_90: "> 40",
+  gs_l_at_90: "> 40",
+  hawkins_kennedy_test: "negative",  // stored as 0=Negative(pass), 1=Positive(fail)
 };
 
-const MOBILITY_SELECT = {
-  r_prone_hip_ir: true,
-  l_prone_hip_ir: true,
-  r_prone_hip_er: true,
-  l_prone_hip_er: true,
-  thomas_test_hip_flexor_r: true,
-  thomas_test_hip_flexor_l: true,
-  hamstring_stretch: true,
-  hip_pinch: true,
-  pelvic_tilt_against_wall: true,
-  glute_strength_test_prone_hammy_push: true,
-  prone_hamstring_raise: true,
-  shoulder_ir: true,
-  shoulder_er: true,
-  young_stretch_passive: true,
-  shoulder_total_arc: true,
-  horizontal_abduction: true,
-  back_to_wall_shoulder_flexion: true,
-  shoulder_stability_flexion: true,
-  shoulder_stability_abduction: true,
-  shoulder_stability_er_at_0_deg_horiz_abuduction: true,
-  shoulder_stability_ir_at_0_deg_horiz_abduction: true,
-  backbend: true,
-  sittiing_t_spine_pvc_r: true,
-  sittiing_t_spine_pvc_l: true,
-  slump_test: true,
-  mid_trap: true,
-  low_trap: true,
-  elbow_extension_rom: true,
-  elbow_flexion_rom: true,
-  elbow_pronation_rom: true,
-  elbow_supination_rom: true,
-  radial_nerve_glide: true,
-  ulnar_nerve_glide: true,
-  grip_strength_r: true,
-  gs_l: true,
-  grip_strength_r_at_90: true,
-  gs_l_at_90: true,
-} as const;
+type ParsedRange =
+  | { kind: "range"; min: number; max: number }
+  | { kind: "min"; min: number }
+  | { kind: "max"; max: number }
+  | { kind: "target"; target: number }
+  | { kind: "negative" };
+
+function parseOptimalRange(rangeStr: string): ParsedRange | null {
+  const s = rangeStr.trim().replace(/°/g, "").replace(/\s+/g, " ");
+
+  if (s.toLowerCase() === "negative") return { kind: "negative" };
+
+  // "X-Y" or "X–Y"
+  const rangeMatch = s.match(/^(\d+\.?\d*)\s*[-–]\s*(\d+\.?\d*)$/);
+  if (rangeMatch) {
+    return { kind: "range", min: parseFloat(rangeMatch[1]), max: parseFloat(rangeMatch[2]) };
+  }
+
+  // ">= X" or "> X"
+  const minMatch = s.match(/^>=?\s*(\d+\.?\d*)$/);
+  if (minMatch) return { kind: "min", min: parseFloat(minMatch[1]) };
+
+  // "<= X" or "< X"
+  const maxMatch = s.match(/^<=?\s*(\d+\.?\d*)$/);
+  if (maxMatch) return { kind: "max", max: parseFloat(maxMatch[1]) };
+
+  // Bare number target (e.g. "3" for MMT)
+  const numMatch = s.match(/^(\d+\.?\d*)$/);
+  if (numMatch) return { kind: "target", target: parseFloat(numMatch[1]) };
+
+  return null;
+}
+
+/** Score a value against a range string. Returns 0–100. */
+function scoreAgainstRange(value: number, rangeStr: string): number {
+  const parsed = parseOptimalRange(rangeStr);
+  if (!parsed) return 0;
+
+  switch (parsed.kind) {
+    case "negative":
+      if (value <= 1) return 100;
+      if (value <= 2) return 50;
+      return 0;
+
+    case "range": {
+      const { min, max } = parsed;
+      if (value >= min && value <= max) return 100;
+      const width = Math.max(max - min, 1);
+      const dist = value < min ? min - value : value - max;
+      return Math.max(0, Math.round((1 - dist / width) * 100));
+    }
+
+    case "min":
+      if (value >= parsed.min) return 100;
+      return Math.max(0, Math.round((value / parsed.min) * 100));
+
+    case "max":
+      if (value <= parsed.max) return 100;
+      return Math.max(0, Math.round((parsed.max / value) * 100));
+
+    case "target":
+      if (value >= parsed.target) return 100;
+      return Math.max(0, Math.round((value / parsed.target) * 100));
+  }
+}
+
+/**
+ * Score a single component. Returns 0–100, or null if the column has no
+ * applicable scoring method (raw measurement with no range reference).
+ */
+function scoreComponent(
+  key: string,
+  value: number | null,
+  optimalRanges: Record<string, string>
+): number | null {
+  if (value == null || !Number.isFinite(value)) return null;
+
+  // 3-point scale columns: score as value / 3 — use floor for exact 33/66/100
+  if (SCALE_3_COLUMNS.has(key)) {
+    return Math.min(100, Math.max(0, Math.floor((value / 3) * 100)));
+  }
+
+  // T-spine PVC: tiered — <70 red, 70-79 yellow, 80+ green
+  if (key === "sittiing_t_spine_pvc_r" || key === "sittiing_t_spine_pvc_l") {
+    if (value >= 80) return 100;
+    if (value >= 70) return 65;
+    return Math.min(44, Math.round((value / 70) * 44));
+  }
+
+  // Stored range: overrides take precedence over DB-stored range, then fallback
+  const rangeStr = RANGE_OVERRIDES[key] ?? optimalRanges[key] ?? FALLBACK_RANGES[key] ?? null;
+  if (rangeStr) return scoreAgainstRange(value, rangeStr);
+
+  // Force measurement columns (_mmt suffix) are dynamometer readings in lbs.
+  // No reference population data available — leave unscored rather than using
+  // the wrong scale.
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// Raw value helper
+// ---------------------------------------------------------------------------
+
+function toNumber(v: unknown): number | null {
+  if (v == null) return null;
+  if (typeof v === "number") return Number.isFinite(v) ? v : null;
+  if (typeof v === "string") {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const a = v as any;
+  if (typeof a.toNumber === "function") return a.toNumber() as number;
+  if (typeof a.toString === "function") {
+    const n = Number(a.toString());
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+function getOrientation(key: string): Orientation {
+  if (key === "elbow_extension_rom") return "LOWER_IS_BETTER";
+  return "HIGHER_IS_BETTER";
+}
+
+// ---------------------------------------------------------------------------
+// Payload builder
+// ---------------------------------------------------------------------------
 
 export async function buildMobilityPayload(
   athleteUuid: string,
@@ -204,71 +315,89 @@ export async function buildMobilityPayload(
     select: { athlete_uuid: true, age_group: true },
   });
 
-  if (!athlete) {
-    throw notFound("Athlete not found");
-  }
+  if (!athlete) throw notFound("Athlete not found");
 
-  const row = await prisma.f_mobility.findFirst({
-    where: {
-      athlete_uuid: athleteUuid,
-      ...(sessionDate ? { session_date: new Date(sessionDate) } : {}),
-    },
-    orderBy: { session_date: "desc" },
-    select: { ...MOBILITY_SELECT, session_date: true },
-  });
+  // Use raw SQL so we can select dynamically-added columns that aren't in the
+  // Prisma schema (the 70 measurement columns are added via ensure_column_exists
+  // in the Python ingestion, not via Prisma migrations).
+  const whereClause = sessionDate
+    ? Prisma.sql`WHERE athlete_uuid = ${athleteUuid} AND session_date = ${new Date(sessionDate)}::date`
+    : Prisma.sql`WHERE athlete_uuid = ${athleteUuid}`;
 
-  if (!row) {
-    throw notFound("No mobility data found for athlete");
-  }
+  const rows = await prisma.$queryRaw<Array<Record<string, unknown>>>(
+    Prisma.sql`
+      SELECT *
+      FROM public.f_mobility
+      ${whereClause}
+      ORDER BY session_date DESC, created_at DESC
+      LIMIT 1
+    `
+  );
+
+  if (!rows.length) throw notFound("No mobility data found for athlete");
+
+  const row = rows[0];
+
+  // optimal_ranges is JSONB → already a JS object when returned from the driver
+  const optimalRanges: Record<string, string> =
+    row.optimal_ranges != null && typeof row.optimal_ranges === "object"
+      ? (row.optimal_ranges as Record<string, string>)
+      : {};
 
   const metrics: MobilityPayloadMetric[] = [];
-  const orientation: Orientation = "HIGHER_IS_BETTER";
-  const valueUnit: ValueUnit = "NUMBER";
 
   for (const { groupName, columns } of MOBILITY_GROUPS) {
-    let groupSum = 0;
-    for (const { key } of columns) {
-      const val = decimalToNumber((row as MobilityRow)[key]);
-      if (val !== null && Number.isFinite(val)) {
-        groupSum += val;
-      }
-    }
-    const max = MOBILITY_CATEGORY_MAX[groupName];
-    const value =
-      max === Number.POSITIVE_INFINITY
-        ? groupSum
-        : Math.min(groupSum, max);
-    metrics.push({
-      category: groupName,
-      name: groupName,
-      value: groupSum > 0 ? value : null,
-      valueUnit,
-      orientation,
-      mobilityMetricKind: "GROUP",
-      mobilityGroup: groupName,
-      mobilityDisplayLabel: groupName,
-      mobilityOutOf: max !== Number.POSITIVE_INFINITY ? max : null,
-    });
+    const componentMetrics: MobilityPayloadMetric[] = [];
+    const scores: number[] = [];
 
     for (const { key, label } of columns) {
-      const componentValue = decimalToNumber((row as MobilityRow)[key]);
-      metrics.push({
+      const rawVal = toNumber(row[key]);
+      const rangeStr = optimalRanges[key] ?? FALLBACK_RANGES[key] ?? null;
+      const rangeScore = scoreComponent(key, rawVal, optimalRanges);
+
+      if (rangeScore != null && !NON_SCORING_COLUMNS.has(key)) scores.push(rangeScore);
+
+      componentMetrics.push({
         category: groupName,
-        name: String(key),
-        value: componentValue,
-        valueUnit,
-        orientation,
+        name: key,
+        value: rawVal,
+        valueUnit: "NUMBER",
+        orientation: getOrientation(key),
         mobilityMetricKind: "COMPONENT",
         mobilityGroup: groupName,
         mobilityDisplayLabel: label,
-        mobilityOutOf: groupName === "Grip Strength" ? null : 3,
+        mobilityOutOf: null,
+        mobilityOptimalRange: rangeStr,
+        mobilityRangeScore: rangeScore,
       });
     }
+
+    const groupScore =
+      scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
+
+    metrics.push({
+      category: groupName,
+      name: groupName,
+      value: groupScore,
+      valueUnit: "NUMBER",
+      orientation: "HIGHER_IS_BETTER",
+      mobilityMetricKind: "GROUP",
+      mobilityGroup: groupName,
+      mobilityDisplayLabel: groupName,
+      mobilityOutOf: 100,
+    });
+
+    metrics.push(...componentMetrics);
   }
 
-  const sessionDateStr = row && "session_date" in row && row.session_date
-    ? new Date(row.session_date as Date).toISOString().split("T")[0]
-    : null;
+  const rawSessionDate = row.session_date;
+  const sessionDateStr =
+    rawSessionDate instanceof Date
+      ? rawSessionDate.toISOString().split("T")[0]
+      : typeof rawSessionDate === "string"
+        ? rawSessionDate.split("T")[0]
+        : null;
+
   return {
     athleteUuid: athlete.athlete_uuid,
     level: deriveLevelFromAthlete({ age_group: athlete.age_group ?? null }),

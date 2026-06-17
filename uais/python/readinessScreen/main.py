@@ -21,9 +21,11 @@ from common.age_utils import (
     parse_date,
 )
 from common.athlete_manager import get_warehouse_connection, get_or_create_athlete, update_athlete_age_group_from_insert, verify_athlete_uuid, normalize_name_for_matching
+from common.athlete_cleanup import clean_and_normalize_name
 from common.athlete_matcher import update_athlete_data_flag
 from common.athlete_utils import extract_source_athlete_id
 from common.duplicate_detector import check_and_merge_duplicates
+import numpy as np
 import psycopg2
 from psycopg2.extras import execute_values
 from datetime import datetime
@@ -32,15 +34,31 @@ from database import initialize_database, insert_participant, insert_trial_data,
 from file_parsers import (
     find_session_xml, parse_xml_file, parse_ascii_file, parse_txt_file,
     extract_name, extract_date, read_first_numeric_row_values,
-    select_folder_dialog, ASCII_FILES, find_cmj_ppu_trial_files
+    select_folder_dialog, ASCII_FILES, find_cmj_ppu_trial_files,
+    peek_file_date,
 )
 from athleticScreen.power_analysis import load_power_txt, analyze_power_curve_advanced
+from force_analysis import load_force_txt, analyze_phase_metrics_from_force
 from common.session_duplicate_prompt import prompt_duplicate_session
 from common.session_xml import normalize_gender
 from database_utils import reorder_all_tables
 from dashboard import run_dashboard
 
 # Map movement types to PostgreSQL table names
+POWER_CURVE_COLS = [
+    "peak_power_w", "time_to_peak_s", "rpd_max_w_per_s", "time_to_rpd_max_s",
+    "rise_time_10_90_s", "fwhm_s", "auc_j", "work_early_pct", "decay_90_10_s",
+    "t_com_norm_0to1", "skewness", "kurtosis", "spectral_centroid_hz",
+]
+PHASE_COLS = [
+    "contraction_time_s", "eccentric_duration_s", "concentric_duration_s",
+    "ecc_con_duration_ratio", "eccentric_mean_power_w", "eccentric_peak_power_w",
+    "eccentric_auc_j", "concentric_auc_j", "mrsi",
+]
+FORCE_COLS = [
+    "peak_grf_n", "peak_grf_bw_ratio", "rfd_0_100ms", "concentric_impulse_ns",
+]
+
 MOVEMENT_TO_PG_TABLE = {
     "I": "f_readiness_screen_i",
     "Y": "f_readiness_screen_y",
@@ -52,18 +70,19 @@ MOVEMENT_TO_PG_TABLE = {
 
 
 def _safe_convert(v):
-    """Convert numpy scalar types to Python native types for psycopg2 compatibility."""
+    """Convert numpy scalar types to Python native types for psycopg2 compatibility.
+    Also converts NaN → None so psycopg2 doesn't reject numeric columns."""
     if v is None:
         return None
     try:
-        import numpy as np
-        if isinstance(v, np.integer):
-            return int(v)
-        if isinstance(v, np.floating):
-            return float(v)
+        import math
+        if isinstance(v, (np.integer, np.floating)):
+            v = v.item()
+        if isinstance(v, float) and math.isnan(v):
+            return None
         if isinstance(v, np.ndarray):
             return v.tolist()
-    except ImportError:
+    except (ImportError, TypeError):
         pass
     return v
 
@@ -251,7 +270,7 @@ def process_txt_files(output_path: str, athlete_uuid: str = None, profile: dict 
                 )
                 row = cur.fetchone()
                 if row:
-                    expected_normalized_name = normalize_name_for_matching(row[0])
+                    expected_normalized_name = clean_and_normalize_name(row[0])
                     print(f"Name guard active: only files matching '{row[0]}' will be processed")
         except Exception as e:
             print(f"Warning: Could not fetch athlete name for name guard: {e}")
@@ -267,16 +286,33 @@ def process_txt_files(output_path: str, athlete_uuid: str = None, profile: dict 
 
     cmj_ppu = find_cmj_ppu_trial_files(output_path)
     for movement_type, trial_files in cmj_ppu.items():
-        for trial_id, file_path in enumerate(trial_files, start=1):
-            files_to_process.append((movement_type, file_path, trial_id))
+        for file_path in trial_files:
+            files_to_process.append((movement_type, file_path, None))
 
     if not files_to_process:
         print("No txt files found in Output Files directory.")
         pg_conn.close()
         return []
 
+    # Date filtering: process only today's files if any exist,
+    # else the most-recent date found, else all files.
+    all_file_dates = {fp: peek_file_date(fp) for (_, fp, _) in files_to_process}
+    unique_dates = {d for d in all_file_dates.values() if d}
+    from datetime import date as _date_cls
+    today_str = _date_cls.today().strftime("%Y-%m-%d")
+    if today_str in unique_dates:
+        target_date = today_str
+        print(f"Date filter: today ({target_date})")
+    elif unique_dates:
+        target_date = max(unique_dates)
+        print(f"Date filter: most recent ({target_date})")
+    else:
+        target_date = None
+        print("Date filter: none (could not determine dates)")
+
     # Parse session XML once for gender (default Male if missing)
     session_gender = "Male"
+    xml_data = None
     xml_file_path = find_session_xml(output_path)
     if xml_file_path:
         try:
@@ -284,8 +320,26 @@ def process_txt_files(output_path: str, athlete_uuid: str = None, profile: dict 
             session_gender = normalize_gender(xml_data.get("gender"))
         except Exception:
             pass
-    
+
     print(f"Processing {len(files_to_process)} files")
+
+    # Pre-estimate body weight from first available CMJ Force file.
+    # PPU quiet standing ≠ full BW (upper body only), so BW must come from CMJ.
+    athlete_body_weight_n: float = None
+    for _mvt, _fp, _ in files_to_process:
+        if _mvt == "CMJ":
+            _base = os.path.splitext(os.path.basename(_fp))[0]
+            _cf = os.path.join(output_path, f"{_base}_Force.txt")
+            if os.path.isfile(_cf):
+                try:
+                    _fa = load_force_txt(_cf)
+                    _qn = max(10, int(0.05 * 1000.0))
+                    athlete_body_weight_n = float(np.mean(_fa[:_qn]))
+                    print(f"BW estimated from {_base}_Force.txt: "
+                          f"{athlete_body_weight_n:.1f} N ({athlete_body_weight_n / 9.81:.1f} kg)")
+                except Exception:
+                    pass
+                break
 
     # Process each txt file - extract name and date from first line
     processed_athletes = {}  # Track athletes by (name, date) -> athlete_uuid
@@ -297,10 +351,23 @@ def process_txt_files(output_path: str, athlete_uuid: str = None, profile: dict 
     updated_count = 0
     successfully_processed_files = []  # files to delete after the loop
 
-    for movement_type, file_path, trial_id in files_to_process:
+    import re as _re
+    for movement_type, file_path, _unused_trial_id in files_to_process:
         try:
+            # Date filter — skip files not from the target session
+            if target_date is not None:
+                file_date = all_file_dates.get(file_path)
+                if file_date != target_date:
+                    print(f"Skipping {os.path.basename(file_path)}: date {file_date} != {target_date}")
+                    continue
+
+            # Derive trial_id from filename suffix (CMJ1 → 1, PPU2 → 2)
+            _base_name = os.path.splitext(os.path.basename(file_path))[0]
+            _m = _re.search(r"(\d+)\s*$", _base_name)
+            trial_id = int(_m.group(1)) if _m else 1
+
             # Parse txt file - extracts name and date from first line
-            parsed_data = parse_txt_file(file_path, movement_type)
+            parsed_data = parse_txt_file(file_path, movement_type, folder_path=output_path)
             
             if not parsed_data:
                 print(f"Warning: Skipping {file_path} - failed to parse")
@@ -311,7 +378,7 @@ def process_txt_files(output_path: str, athlete_uuid: str = None, profile: dict 
 
             # Name guard: when athlete_uuid is provided, skip files that belong to someone else
             if existing_athlete_flow and expected_normalized_name:
-                file_norm = normalize_name_for_matching(name)
+                file_norm = clean_and_normalize_name(name)
                 if not (file_norm == expected_normalized_name or
                         file_norm.startswith(expected_normalized_name)):
                     print(f"Skipping {os.path.basename(file_path)}: "
@@ -381,82 +448,109 @@ def process_txt_files(output_path: str, athlete_uuid: str = None, profile: dict 
                 print(f"Warning: No PostgreSQL table mapping for {movement_type}")
                 continue
 
-            # Power analysis (CMJ/PPU only) — run before upsert so phase cols are included
-            pa = {}
+            trial_name = parsed_data.get('trial_name', '') if movement_type in {"CMJ", "PPU"} else ''
+
+            # Power analysis (CMJ/PPU only) — populates power_metrics and initial phase_metrics
+            power_metrics = {}
+            phase_metrics = {}
             power_file = None
             if movement_type in {"CMJ", "PPU"}:
-                trial_name = parsed_data.get('trial_name', '')
                 power_file = os.path.join(output_path, f"{trial_name}_Power.txt")
                 if os.path.exists(power_file):
                     try:
-                        power_data = load_power_txt(power_file)
+                        pw_arr = load_power_txt(power_file)
                         jh_m = inches_to_meters(parsed_data.get('JH_IN'))
                         pa = analyze_power_curve_advanced(
-                            power_data, fs_hz=1000.0,
+                            pw_arr, fs_hz=1000.0,
                             jump_height_m=jh_m,
                             movement_type=movement_type,
                         )
+                        power_metrics = {k: _safe_convert(pa.get(k)) for k in POWER_CURVE_COLS}
+                        phase_metrics = {k: _safe_convert(pa.get(k)) for k in PHASE_COLS}
                     except Exception as e:
                         print(f"Warning: Power file analysis failed for {trial_name}_Power.txt: {e}")
 
+            # Force analysis (CMJ/PPU only) — overrides phase_metrics with GRF-derived values
+            force_metrics = {}
+            force_file = None
+            if movement_type in {"CMJ", "PPU"}:
+                force_file = os.path.join(output_path, f"{trial_name}_Force.txt")
+                if os.path.exists(force_file):
+                    try:
+                        frc_arr = load_force_txt(force_file)
+                        jh_m_f = inches_to_meters(parsed_data.get('JH_IN'))
+                        fp = analyze_phase_metrics_from_force(
+                            frc_arr, fs_hz=1000.0,
+                            jump_height_m=jh_m_f,
+                            movement_type=movement_type,
+                            body_weight_n=athlete_body_weight_n,
+                        )
+                        # Force file overrides power-file phase metrics (full trial captured)
+                        phase_metrics = {k: _safe_convert(fp.get(k)) for k in PHASE_COLS}
+                        force_metrics = {k: _safe_convert(fp.get(k)) for k in FORCE_COLS}
+                    except Exception as e:
+                        print(f"Warning: Force analysis failed for {trial_name}_Force.txt: {e}")
+
             # Prepare data for insertion
+            src_id = extract_source_athlete_id(name)
             if movement_type in {"CMJ", "PPU"}:
                 insert_data = {
-                    'athlete_uuid': athlete_uuid,
-                    'session_date': date_str,
-                    'source_system': 'readiness_screen',
-                    'source_athlete_id': extract_source_athlete_id(name),
-                    'trial_id': trial_id,
+                    'athlete_uuid':      athlete_uuid,
+                    'session_date':      date_str,
+                    'source_system':     'readiness_screen',
+                    'source_athlete_id': src_id,
+                    'trial_name':        trial_name,
+                    'trial_id':          trial_id,
                     'age_at_collection': age_at_collection,
-                    'age_group': age_group,
-                    'jump_height': _safe_convert(parsed_data.get('JH_IN')),
-                    'pp_w_per_kg': _safe_convert(parsed_data.get('PP_W_per_kg')),
-                    'pp_forceplate': _safe_convert(parsed_data.get('PP_FORCEPLATE')),
-                    'force_at_pp': _safe_convert(parsed_data.get('Force_at_PP')),
-                    'vel_at_pp': _safe_convert(parsed_data.get('Vel_at_PP')),
-                    # Phase metrics from power analysis (None if no power file)
-                    'contraction_time_s': _safe_convert(pa.get('contraction_time_s')),
-                    'eccentric_duration_s': _safe_convert(pa.get('eccentric_duration_s')),
-                    'concentric_duration_s': _safe_convert(pa.get('concentric_duration_s')),
-                    'ecc_con_duration_ratio': _safe_convert(pa.get('ecc_con_duration_ratio')),
-                    'eccentric_mean_power_w': _safe_convert(pa.get('eccentric_mean_power_w')),
-                    'eccentric_peak_power_w': _safe_convert(pa.get('eccentric_peak_power_w')),
-                    'eccentric_auc_j': _safe_convert(pa.get('eccentric_auc_j')),
-                    'concentric_auc_j': _safe_convert(pa.get('concentric_auc_j')),
-                    'mrsi': _safe_convert(pa.get('mrsi')),
+                    'age_group':         age_group,
+                    'jump_height':       _safe_convert(parsed_data.get('JH_IN')),
+                    'peak_power':        _safe_convert(parsed_data.get('Peak_Power')),
+                    'peak_force':        None,
+                    'pp_w_per_kg':       _safe_convert(parsed_data.get('PP_W_per_kg')),
+                    'pp_forceplate':     _safe_convert(parsed_data.get('PP_FORCEPLATE')),
+                    'force_at_pp':       _safe_convert(parsed_data.get('Force_at_PP')),
+                    'vel_at_pp':         _safe_convert(parsed_data.get('Vel_at_PP')),
+                    **power_metrics,
+                    **phase_metrics,
+                    **force_metrics,
                 }
             else:
                 # Y, IR90 columns
                 insert_data = {
-                    'athlete_uuid': athlete_uuid,
-                    'session_date': date_str,
-                    'source_system': 'readiness_screen',
-                    'source_athlete_id': extract_source_athlete_id(name),
+                    'athlete_uuid':      athlete_uuid,
+                    'session_date':      date_str,
+                    'source_system':     'readiness_screen',
+                    'source_athlete_id': src_id,
                     'age_at_collection': age_at_collection,
-                    'age_group': age_group,
-                    'avg_force': parsed_data.get('Avg_Force'),
-                    'avg_force_norm': parsed_data.get('Avg_Force_Norm'),
-                    'max_force': parsed_data.get('Max_Force'),
-                    'max_force_norm': parsed_data.get('Max_Force_Norm'),
-                    'time_to_max': parsed_data.get('Time_to_Max')
+                    'age_group':         age_group,
+                    'avg_force':         parsed_data.get('Avg_Force'),
+                    'avg_force_norm':    parsed_data.get('Avg_Force_Norm'),
+                    'max_force':         parsed_data.get('Max_Force'),
+                    'max_force_norm':    parsed_data.get('Max_Force_Norm'),
+                    'time_to_max':       parsed_data.get('Time_to_Max'),
                 }
 
-            # Build WHERE clause — CMJ/PPU key includes trial_id; ISO uses (athlete, date) only
+            # Build WHERE clause
             if movement_type in {"CMJ", "PPU"}:
-                where_clause = "athlete_uuid = %s AND session_date = %s AND trial_id = %s"
-                where_params = (athlete_uuid, date_str, trial_id)
-                update_cols = [
-                    'jump_height', 'pp_w_per_kg', 'pp_forceplate', 'force_at_pp',
-                    'vel_at_pp', 'age_at_collection', 'age_group',
-                    'contraction_time_s', 'eccentric_duration_s', 'concentric_duration_s',
-                    'ecc_con_duration_ratio', 'eccentric_mean_power_w', 'eccentric_peak_power_w',
-                    'eccentric_auc_j', 'concentric_auc_j', 'mrsi',
+                # NULL-safe match on trial_name (IS NOT DISTINCT FROM treats NULL = NULL as TRUE)
+                where_clause = "athlete_uuid = %s AND session_date = %s AND trial_name IS NOT DISTINCT FROM %s"
+                where_params = (athlete_uuid, date_str, trial_name)
+                base_update = [
+                    'source_athlete_id', 'trial_id',
+                    'jump_height', 'peak_power', 'peak_force',
+                    'pp_w_per_kg', 'pp_forceplate', 'force_at_pp', 'vel_at_pp',
+                    'age_at_collection', 'age_group',
                 ]
+                update_cols = [c for c in base_update + POWER_CURVE_COLS + PHASE_COLS + FORCE_COLS
+                               if c in insert_data]
             else:
                 where_clause = "athlete_uuid = %s AND session_date = %s"
                 where_params = (athlete_uuid, date_str)
-                update_cols = ['avg_force', 'avg_force_norm', 'max_force', 'max_force_norm',
-                               'time_to_max', 'age_at_collection', 'age_group']
+                update_cols = [
+                    'source_athlete_id',
+                    'avg_force', 'avg_force_norm', 'max_force', 'max_force_norm',
+                    'time_to_max', 'age_at_collection', 'age_group',
+                ]
 
             # Safeguard (Existing Athlete only): prompt before overwriting an existing row
             if existing_athlete_flow:
@@ -515,45 +609,18 @@ def process_txt_files(output_path: str, athlete_uuid: str = None, profile: dict 
                 pg_conn.commit()
                 successfully_processed_files.append(file_path)
 
-            # Power curve upsert for CMJ/PPU (uses pa computed above)
-            if movement_type in {"CMJ", "PPU"} and pa:
+            # Power curve upsert for CMJ/PPU (uses power_metrics + phase_metrics)
+            if movement_type in {"CMJ", "PPU"} and power_metrics:
                 try:
                     pc_data = {
-                        'athlete_uuid': athlete_uuid,
-                        'session_date': date_str,
+                        'athlete_uuid':  athlete_uuid,
+                        'session_date':  date_str,
                         'movement_type': movement_type,
-                        'trial_id': trial_id,
-                        'source_file': power_file,
-                        'fs_hz': 1000,
-                        'n_samples': _safe_convert(pa.get('n_samples')),
-                        'peak_power_w': _safe_convert(pa.get('peak_power_w')),
-                        'time_to_peak_s': _safe_convert(pa.get('time_to_peak_s')),
-                        'rise_time_10_90_s': _safe_convert(pa.get('rise_time_10_90_s')),
-                        'rise_slope_w_per_s': _safe_convert(pa.get('rise_slope_w_per_s')),
-                        'fwhm_s': _safe_convert(pa.get('fwhm_s')),
-                        'auc_j': _safe_convert(pa.get('auc_j')),
-                        't_com_s': _safe_convert(pa.get('t_com_s')),
-                        't_com_norm_0to1': _safe_convert(pa.get('t_com_norm_0to1')),
-                        'cv_local_peak': _safe_convert(pa.get('cv_local_peak')),
-                        'rpd_max_w_per_s': _safe_convert(pa.get('rpd_max_w_per_s')),
-                        'time_to_rpd_max_s': _safe_convert(pa.get('time_to_rpd_max_s')),
-                        'auc_pre_j': _safe_convert(pa.get('auc_pre_j')),
-                        'auc_post_j': _safe_convert(pa.get('auc_post_j')),
-                        'work_early_pct': _safe_convert(pa.get('work_early_pct')),
-                        'decay_90_10_s': _safe_convert(pa.get('decay_90_10_s')),
-                        'skewness': _safe_convert(pa.get('skewness')),
-                        'kurtosis': _safe_convert(pa.get('kurtosis')),
-                        'spectral_centroid_hz': _safe_convert(pa.get('spectral_centroid_hz')),
-                        # Phase metrics
-                        'contraction_time_s': _safe_convert(pa.get('contraction_time_s')),
-                        'eccentric_duration_s': _safe_convert(pa.get('eccentric_duration_s')),
-                        'concentric_duration_s': _safe_convert(pa.get('concentric_duration_s')),
-                        'ecc_con_duration_ratio': _safe_convert(pa.get('ecc_con_duration_ratio')),
-                        'eccentric_mean_power_w': _safe_convert(pa.get('eccentric_mean_power_w')),
-                        'eccentric_peak_power_w': _safe_convert(pa.get('eccentric_peak_power_w')),
-                        'eccentric_auc_j': _safe_convert(pa.get('eccentric_auc_j')),
-                        'concentric_auc_j': _safe_convert(pa.get('concentric_auc_j')),
-                        'mrsi': _safe_convert(pa.get('mrsi')),
+                        'trial_id':      trial_id,
+                        'source_file':   power_file,
+                        'fs_hz':         1000,
+                        **power_metrics,
+                        **phase_metrics,
                     }
                     with pg_conn.cursor() as cur:
                         cur.execute("""
@@ -607,6 +674,9 @@ def process_txt_files(output_path: str, athlete_uuid: str = None, profile: dict 
                 _pw = os.path.join(output_path, f"{_base}_Power.txt")
                 if os.path.exists(_pw):
                     os.remove(_pw)
+                _ff = os.path.join(output_path, f"{_base}_Force.txt")
+                if os.path.exists(_ff):
+                    os.remove(_ff)
             except Exception as _de:
                 print(f"Warning: Could not delete {os.path.basename(_fp)}: {_de}")
 
@@ -673,10 +743,10 @@ def main():
     try:
         raw_paths = get_raw_paths()
         base_dir = raw_paths.get('readiness_screen', os.getenv('READINESS_SCREEN_DATA_DIR', 'D:/Readiness Screen 3/Data/'))
-        output_path = raw_paths.get('readiness_screen_output', os.getenv('READINESS_SCREEN_OUTPUT_DIR', 'D:/Readiness Screen 3/Output Files/'))
+        output_path = raw_paths.get('readiness_screen_output', os.getenv('READINESS_SCREEN_OUTPUT_DIR', 'D:/Athletic Screen 2.0/Output Files/Readiness Output Files/'))
     except:
         base_dir = os.getenv('READINESS_SCREEN_DATA_DIR', 'D:/Readiness Screen 3/Data/')
-        output_path = os.getenv('READINESS_SCREEN_OUTPUT_DIR', 'D:/Readiness Screen 3/Output Files/')
+        output_path = os.getenv('READINESS_SCREEN_OUTPUT_DIR', 'D:/Athletic Screen 2.0/Output Files/Readiness Output Files/')
     
     # Database is in the parent directory (following notebook)
     # Use the standard path from the notebook: D:/Readiness Screen 3/Readiness_Screen_Data_v2.db

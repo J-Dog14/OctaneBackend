@@ -46,12 +46,12 @@ $settings = New-ScheduledTaskSettingsSet `
     -RestartInterval (New-TimeSpan -Minutes 1)
 
 # Create the principal
-# IMPORTANT: Use "ServiceAccount" or "S4U" logon type to run when locked
-# "Interactive" requires user to be logged in
-# "S4U" (Service for User) allows running when locked but uses user's credentials
+# Interactive logon type runs in the user's actual session, so mapped drives
+# (including Google Drive G:) are accessible. The task only runs when the user
+# is already logged on — which is fine since G: requires an active session anyway.
 $principal = New-ScheduledTaskPrincipal `
     -UserId $env:USERNAME `
-    -LogonType S4U `
+    -LogonType Interactive `
     -RunLevel Highest
 
 # Register the task

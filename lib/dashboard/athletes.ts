@@ -111,23 +111,42 @@ export const getAthletesList = unstable_cache(
   { revalidate: 30 }
 );
 
-// A minimal select for the dashboard "recently modified" list.
-const recentAthleteSelect = {
-  athlete_uuid: true,
-  name: true,
-  gender: true,
-  age_group: true,
-  pitching_session_count: true,
-  athletic_screen_session_count: true,
-  updated_at: true,
-} as const;
+export type RecentAthlete = {
+  athlete_uuid: string;
+  name: string;
+  gender: string | null;
+  age_group: string | null;
+  pitching_session_count: number;
+  athletic_screen_session_count: number;
+  last_data_at: Date;
+};
 
-async function _getRecentAthletes(limit: number) {
-  return prisma.d_athletes.findMany({
-    orderBy: { updated_at: "desc" },
-    take: limit,
-    select: recentAthleteSelect,
-  });
+async function _getRecentAthletes(limit: number): Promise<RecentAthlete[]> {
+  return prisma.$queryRaw<RecentAthlete[]>`
+    SELECT
+      a.athlete_uuid,
+      a.name,
+      a.gender,
+      a.age_group,
+      a.pitching_session_count,
+      a.athletic_screen_session_count,
+      COALESCE(MAX(f.latest_insert), a.created_at) AS last_data_at
+    FROM analytics.d_athletes a
+    LEFT JOIN (
+      SELECT athlete_uuid, MAX(created_at) AS latest_insert FROM public.f_pitching_trials    GROUP BY athlete_uuid UNION ALL
+      SELECT athlete_uuid, MAX(created_at) AS latest_insert FROM public.f_athletic_screen     GROUP BY athlete_uuid UNION ALL
+      SELECT athlete_uuid, MAX(created_at) AS latest_insert FROM public.f_readiness_screen    GROUP BY athlete_uuid UNION ALL
+      SELECT athlete_uuid, MAX(created_at) AS latest_insert FROM public.f_mobility            GROUP BY athlete_uuid UNION ALL
+      SELECT athlete_uuid, MAX(created_at) AS latest_insert FROM public.f_proteus             GROUP BY athlete_uuid UNION ALL
+      SELECT athlete_uuid, MAX(created_at) AS latest_insert FROM public.f_arm_action          GROUP BY athlete_uuid UNION ALL
+      SELECT athlete_uuid, MAX(created_at) AS latest_insert FROM public.f_hitting_trials      GROUP BY athlete_uuid
+    ) f ON f.athlete_uuid = a.athlete_uuid
+    GROUP BY
+      a.athlete_uuid, a.name, a.gender, a.age_group,
+      a.pitching_session_count, a.athletic_screen_session_count, a.created_at
+    ORDER BY last_data_at DESC
+    LIMIT ${limit}
+  `;
 }
 
 export const getRecentAthletes = unstable_cache(

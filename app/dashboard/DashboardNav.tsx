@@ -14,6 +14,7 @@ const TABS = [
   { href: "/dashboard/uais-maintenance", label: "UAIS Maintenance", adminOnly: true },
   { href: "/dashboard/reports", label: "PDF Reports", adminOnly: true },
   { href: "/dashboard/settings", label: "Settings", adminOnly: true },
+  { href: "/dashboard/audit", label: "DB Audit", adminOnly: true },
 ] as const;
 
 const clerkConfigured = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;

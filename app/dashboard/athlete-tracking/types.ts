@@ -15,6 +15,8 @@ export type MetricWithPercentile = {
   mobilityGroup?: string;
   mobilityDisplayLabel?: string;
   mobilityOutOf?: number | null;
+  mobilityOptimalRange?: string | null;
+  mobilityRangeScore?: number | null;
 };
 
 export type DomainWithMetrics = {

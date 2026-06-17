@@ -67,6 +67,16 @@ def extract_name(line: str) -> Optional[str]:
     return None
 
 
+def peek_file_date(file_path: str) -> Optional[str]:
+    """Read only line 0 of a txt file and return its YYYY-MM-DD date, or None."""
+    try:
+        with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+            first_line = f.readline()
+        return extract_date(first_line)
+    except OSError:
+        return None
+
+
 def extract_date(line: str) -> Optional[str]:
     """
     Extract date from file path line.
@@ -142,6 +152,10 @@ def find_cmj_ppu_trial_files(folder_path: str) -> Dict:
                 continue
             if '_power' in fname.lower():
                 continue
+            if '_force' in fname.lower():
+                continue
+            if '_data' in fname.lower():
+                continue
             upper = fname.upper()
             if upper.startswith('CMJ'):
                 result['CMJ'].append(os.path.join(folder_path, fname))
@@ -150,6 +164,36 @@ def find_cmj_ppu_trial_files(folder_path: str) -> Dict:
     except Exception:
         pass
     return result
+
+
+def peak_power_from_pow_file(trial_name_base: str, folder_path: str) -> Optional[float]:
+    """Return the maximum power value from {trial_name_base}_Power.txt, or None."""
+    from math import inf
+    power_file = os.path.join(folder_path, f"{trial_name_base}_Power.txt")
+    if not os.path.exists(power_file):
+        return None
+    peak = -inf
+    try:
+        with open(power_file, "r", encoding="utf-8", errors="ignore") as pf:
+            in_numeric = False
+            for line in pf:
+                line = line.strip()
+                if not line:
+                    continue
+                if re.match(r"^\d+\s+", line):
+                    in_numeric = True
+                if in_numeric:
+                    parts = line.split()
+                    if len(parts) >= 2:
+                        try:
+                            val = float(parts[1])
+                            if val > peak:
+                                peak = val
+                        except ValueError:
+                            pass
+    except Exception:
+        return None
+    return None if peak == -inf else peak
 
 
 def find_session_xml(folder_path: str) -> Optional[str]:
@@ -246,7 +290,7 @@ def parse_ascii_file(file_path: str, movement_type: str) -> pd.DataFrame:
     return df
 
 
-def parse_txt_file(file_path: str, movement_type: str) -> Optional[Dict]:
+def parse_txt_file(file_path: str, movement_type: str, folder_path: Optional[str] = None) -> Optional[Dict]:
     """
     Parse a txt file and extract participant info and data.
     Similar to Athletic Screen's parse_movement_file.
@@ -315,12 +359,14 @@ def parse_txt_file(file_path: str, movement_type: str) -> Optional[Dict]:
 
                 # trial_name is the filename without extension (e.g. "CMJ1.txt" -> "CMJ1")
                 trial_name = os.path.splitext(os.path.basename(file_path))[0]
+                peak_power = peak_power_from_pow_file(trial_name, folder_path) if folder_path else None
 
                 data = {
                     'name': name,
                     'date': date,
                     'movement_type': movement_type,
                     'trial_name': trial_name,
+                    'Peak_Power': peak_power,
                     'JH_IN': v[0] if len(v) > 0 else None,
                     'PP_FORCEPLATE': v[1] if len(v) > 1 else None,
                     'Force_at_PP': v[2] if len(v) > 2 else None,

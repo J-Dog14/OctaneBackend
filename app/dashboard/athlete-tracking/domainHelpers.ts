@@ -3,6 +3,7 @@ import type { MetricWithPercentile, DomainWithMetrics, MobilityGroupMetric, Mobi
 import { PITCHING_RADAR_ALLOWLIST, HITTING_RADAR_ALLOWLIST, HIGHLIGHTS_EXCLUDE_KEYS } from "./constants";
 import { formatMetricDisplayName, formatValueWithUnit } from "@/lib/athlete-tracking/displayNames";
 import type { RadarMetric } from "./MetricRadarChart";
+import { SCALE_3_COLUMNS, isRomDegreeColumn } from "@/lib/octane/mobilityColumnTypes";
 
 /** One point per unique metric; value is percentile or normalized (value/max*100). */
 export function metricsToRadarData(metrics: MetricWithPercentile[], domainId?: string): RadarMetric[] {
@@ -11,7 +12,16 @@ export function metricsToRadarData(metrics: MetricWithPercentile[], domainId?: s
   for (const m of metrics) {
     let chartValue: number;
     let displaySuffix: string;
-    if (m.percentile != null && Number.isFinite(m.percentile)) {
+    // Mobility GROUP scores are already 0-100 range-compliance values — always use
+    // value/max so the radar reflects actual group performance, not a population
+    // percentile that can be near-zero when the population is small.
+    if (
+      m.mobilityMetricKind === "GROUP" &&
+      m.max != null && m.value != null && m.max > 0
+    ) {
+      chartValue = (m.value / m.max) * 100;
+      displaySuffix = `${Math.round(m.value)}%`;
+    } else if (m.percentile != null && Number.isFinite(m.percentile)) {
       chartValue = m.percentile;
       displaySuffix = `${Math.round(m.percentile)}th %ile`;
     } else if (m.max != null && m.value != null && m.max > 0) {
@@ -224,16 +234,64 @@ export function scoreOutOfThreeFromPercentile(percentile: number | null): string
 }
 
 export function formatMobilityComponentLabel(m: MetricWithPercentile, domainId?: string): string {
+  if (m.mobilityDisplayLabel) return m.mobilityDisplayLabel;
   return formatMetricDisplayName(m.name, m.category, domainId);
 }
 
 export function formatMobilityComponentValue(m: MetricWithPercentile): string {
-  const { valuePart, unitPart } = formatValueWithUnit(m.value, m.valueUnit, m.mobilityOutOf ?? m.max);
-  if (valuePart === "—") return "—";
-  if (m.mobilityOutOf != null && m.mobilityOutOf > 0 && m.value != null) {
-    return `${valuePart}/${m.mobilityOutOf}`;
-  }
-  return `${valuePart}${unitPart}`;
+  const key = m.name;
+  const raw = m.value != null ? Number(m.value) : NaN;
+  const valid = Number.isFinite(raw);
+  const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
+
+  if (SCALE_3_COLUMNS.has(key))        return valid ? `${fmt(raw)}/3` : "—";
+  if (key === "hawkins_kennedy_test")   return valid ? (raw === 0 ? "Negative" : "Positive") : "—";
+  if (key.endsWith("_mmt"))            return valid ? fmt(raw) : "—";
+  if (isRomDegreeColumn(key))          return valid ? `${fmt(raw)}°` : "—";
+
+  const { valuePart, unitPart } = formatValueWithUnit(m.value, m.valueUnit, null);
+  return valuePart === "—" ? "—" : `${valuePart}${unitPart}`;
+}
+
+/** Returns a compact optimal-range string for the pill, or null if no range should be shown. */
+export function condenseMobilityOptimalRange(key: string, raw: string | null): string | null {
+  if (!raw) return null;
+
+  // 3-point scale: "X/3" display makes range redundant
+  if (SCALE_3_COLUMNS.has(key)) return null;
+
+  // Categorical
+  if (key === "hawkins_kennedy_test") return "Negative";
+
+  // T-spine PVC: tiered range — show average zone only
+  if (key === "sittiing_t_spine_pvc_r" || key === "sittiing_t_spine_pvc_l") return "70-80";
+
+  // Grip L comparison
+  if (key === "gs_l" || key === "gs_l_at_90") return "R ±10%";
+
+  // "80+" bare → "≥80"
+  if (/^\d+\+$/.test(raw.trim())) return `≥${raw.trim().slice(0, -1)}`;
+
+  // "Within X% of dominant..." → "R ±X%"
+  const withinDom = raw.match(/within\s+(\d+(?:[-–]\d+)?)\s*%.*dominant/i);
+  if (withinDom) return `R ±${withinDom[1]}%`;
+
+  // "Within X-Y% of..." generic → "±X-Y%"
+  const withinPct = raw.match(/within\s+(\d+[-–]\d+)\s*%/i);
+  if (withinPct) return `±${withinPct[1]}%`;
+
+  // Already short: use as-is
+  if (raw.trim().length <= 12) return raw.trim();
+
+  return raw.trim().slice(0, 10) + "…";
+}
+
+/** Border color for a component pill based on its 0–100 range score. */
+export function getMobilityRangeColor(rangeScore: number | null | undefined): string {
+  if (rangeScore == null) return "var(--border)";
+  if (rangeScore >= 80) return "#16a34a";
+  if (rangeScore >= 50) return "#f59e0b";
+  return "var(--accent-secondary)";
 }
 
 export function buildMobilityGroupSections(metrics: MetricWithPercentile[]): Array<{

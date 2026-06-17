@@ -3,28 +3,31 @@
 # For interactive folder selection, use main.R instead.
 
 # ==== Minimal deps ====
-library(xml2)
-library(purrr)
-library(dplyr)
-library(readr)
-library(stringr)
-library(tibble)
-library(tidyr)
-library(DBI)
-library(RSQLite)
-# Try to load RPostgres, fall back to RPostgreSQL if not available
+options(warn = -1)
+suppressPackageStartupMessages({
+  library(xml2)
+  library(purrr)
+  library(dplyr)
+  library(readr)
+  library(stringr)
+  library(tibble)
+  library(tidyr)
+  library(DBI)
+  library(RSQLite)
+})
 if (!requireNamespace("RPostgres", quietly = TRUE)) {
   if (requireNamespace("RPostgreSQL", quietly = TRUE)) {
-    library(RPostgreSQL)
-    # RPostgreSQL uses different connection function, we'll handle this in get_warehouse_connection
+    suppressPackageStartupMessages(library(RPostgreSQL))
   } else {
     warning("Neither RPostgres nor RPostgreSQL is installed. Install with: install.packages('RPostgres')")
   }
 } else {
-  library(RPostgres)
+  suppressPackageStartupMessages(library(RPostgres))
 }
-library(uuid)
-library(tools)
+suppressPackageStartupMessages({
+  library(uuid)
+  library(tools)
+})
 
 # Load common utilities
 # Try multiple paths to find the common utilities
@@ -71,15 +74,16 @@ find_and_source_common()
 # ---------- Helpers ----------
 # Progress logging helper (timestamp removed for cleaner output)
 log_progress <- function(...) {
-  # Use do.call to handle arguments properly, including any sep= arguments
   args <- list(...)
-  # Remove sep if present (we'll ignore it)
   args <- args[names(args) != "sep"]
   message <- do.call(paste0, args)
-  # Force output immediately
-  cat(message, "\n", sep = "")
-  flush.console()  # Force output to console immediately
+  if (length(message) > 1) message <- paste(message, collapse = "")
+  if (isTRUE(HITTING_VERBOSE || grepl("\\[ERROR\\]|\\[WARNING\\]", message))) {
+    cat(message, "\n", sep = "")
+    flush.console()
+  }
 }
+HITTING_VERBOSE <- identical(Sys.getenv("HITTING_VERBOSE", ""), "1")
 
 `%||%` <- function(a, b) if (!is.null(a)) a else b
 nzchr <- function(x) ifelse(is.na(x) | x == "", NA_character_, x)
@@ -761,6 +765,7 @@ process_all_files <- function(data_root = NULL) {
       log_progress("Using local SQLite database as fallback")
     } else {
       log_progress("Connected to warehouse database")
+      tryCatch(DBI::dbExecute(con, "SET client_min_messages = WARNING"), error = function(e) NULL)
     }
   } else {
     # Use local SQLite database
@@ -1607,15 +1612,13 @@ process_all_files <- function(data_root = NULL) {
         log_progress("  [SUCCESS] Created f_kinematics_hitting table")
       } else {
         # Check if table has the right structure
-        log_progress("  Table exists, checking structure...")
         table_info <- DBI::dbGetQuery(con, "
-          SELECT column_name, data_type 
-          FROM information_schema.columns 
-          WHERE table_schema = 'public' 
+          SELECT column_name, data_type
+          FROM information_schema.columns
+          WHERE table_schema = 'public'
           AND table_name = 'f_kinematics_hitting'
           ORDER BY ordinal_position
         ")
-        log_progress("  Current columns:", paste(table_info$column_name, collapse = ", "))
         
         # Check if metric_name column exists
         if (!"metric_name" %in% table_info$column_name) {
@@ -1647,24 +1650,13 @@ process_all_files <- function(data_root = NULL) {
             log_progress("  [WARNING] Could not add unique constraint:", conditionMessage(e))
             log_progress("  This may cause issues with ON CONFLICT. You may need to manually add the constraint.")
           })
-        } else {
-          log_progress("  Unique constraint exists")
         }
       }
-      
-      # Write data (append mode for warehouse)
-      log_progress("  Attempting to write data...")
-      log_progress("  warehouse_df dimensions:", nrow(warehouse_df), "rows,", ncol(warehouse_df), "columns")
-      log_progress("  warehouse_df columns:", paste(names(warehouse_df), collapse = ", "))
-      if (nrow(warehouse_df) > 0) {
-        log_progress("  First few rows sample:")
-        print(head(warehouse_df, 3))
-      } else {
-        log_progress("  [WARNING] warehouse_df is EMPTY - no data to write!")
-        log_progress("  This means no metric data was extracted from the XML files")
-        log_progress("  Check if metric_data_list has data before transformation")
+
+      if (nrow(warehouse_df) == 0) {
+        log_progress("  [WARNING] No metric data to write — check XML extraction.")
       }
-      
+
       if (nrow(warehouse_df) > 0) {
         tryCatch({
           existing_count <- DBI::dbGetQuery(con, "SELECT COUNT(*) as count FROM f_kinematics_hitting")$count
@@ -1806,7 +1798,6 @@ process_all_files <- function(data_root = NULL) {
               athlete_names_line <- paste(names_res$name, collapse = ", ")
             }
           }
-          cat("\n")
           if (nzchar(athlete_names_line)) cat("Athlete(s):", athlete_names_line, "\n")
           cat("Written to f_hitting_trials:", n_hitting_trials_written, "rows; f_kinematics_hitting:", rows_inserted, "rows\n")
           tryCatch({
