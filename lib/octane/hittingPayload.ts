@@ -325,6 +325,16 @@ const HITTING_METRIC_SPECS: HittingMetricSpec[] = [
       "PROCESSED.Stride_Width@Lead_Foot_Down_MEAN",
     ],
   },
+  {
+    category: "PROCESSED",
+    name: "Lead_Knee_Ang_Vel_ext_max",
+    valueUnit: "DEGREES_PER_SECOND",
+    orientation: "HIGHER_IS_BETTER",
+    metricNameCandidates: [
+      "PROCESSED.Lead_Knee_Ang_Vel_ext_max",
+      "PROCESSED.Lead_Knee_Ang_Vel_ext_max_MEAN",
+    ],
+  },
 ];
 
 const HITTING_METRIC_NAMES = Array.from(
