@@ -25,21 +25,6 @@ export function buildPitchingDisplayCells(
           percentile: null,
         };
       }
-      // Diff FP to Peak / Time to Peak: N/A when LOSS
-      if (
-        item.key === "HIP_SHOULDER_PROGRESS|AMOUNT_TO_PEAK" ||
-        item.key === "ABDUCTION_PROGRESS|AMOUNT_TO_PEAK" ||
-        item.key === "HIP_SHOULDER_PROGRESS|PEAK_AFTER_FOOTSTRIKE_MS" ||
-        item.key === "ABDUCTION_PROGRESS|PEAK_AFTER_FOOTSTRIKE_MS"
-      ) {
-        const gainKey = item.key.startsWith("HIP_SHOULDER_PROGRESS")
-          ? "HIP_SHOULDER_PROGRESS|GAIN_OR_LOSS"
-          : "ABDUCTION_PROGRESS|GAIN_OR_LOSS";
-        const gainMetric = getMetricByKey(metrics, gainKey);
-        if (gainMetric?.value !== 1) {
-          return { key: item.key, label: item.label, valuePart: "N/A", unitPart: "", percentile: null };
-        }
-      }
       // Time to Peak: force ms unit
       if (
         item.key === "HIP_SHOULDER_PROGRESS|PEAK_AFTER_FOOTSTRIKE_MS" ||

@@ -26,6 +26,15 @@
   /* Font */
   --font-sans: "DM Sans", system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  /* Status / band colors */
+  --accent-green:  #3ecf8e;
+  --accent-yellow: #e7b53c;
+  --accent-red:    #f06a6a;
+  /* Inset surface & soft border */
+  --bg-inset:    #0d1117;
+  --border-soft: rgba(255, 255, 255, 0.08);
+  --radius-sm:   8px;
+  --accent-soft: rgba(44, 153, 212, 0.14);
 }
 
 * {
@@ -266,4 +275,245 @@ tr:hover td {
     height: auto !important;
     max-width: 280px;
   }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Readiness screen design system
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* Section dividers */
+.section-head {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin: 2rem 0 0.85rem;
+}
+.section-head .eyebrow {
+  font: 700 0.72rem var(--font-mono);
+  background: var(--accent-soft);
+  color: var(--accent);
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.section-head .section-title {
+  font-size: 1.0rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+.section-head .rule {
+  flex: 1;
+  border: none;
+  border-top: 1px solid var(--border-soft);
+  margin: 0;
+}
+
+/* Card header & subtitle */
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+.card-head h2 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text-primary);
+}
+.card-sub {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* Stat boxes */
+.stat-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.9rem;
+}
+.stat {
+  background: var(--bg-inset);
+  border-radius: var(--radius-sm);
+  padding: 0.45rem 0.7rem 0.45rem 0.9rem;
+  min-width: 100px;
+  position: relative;
+  overflow: hidden;
+  flex: 1 0 auto;
+}
+.stat::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--accent);
+}
+.stat.up::before   { background: var(--accent-green); }
+.stat.down::before { background: var(--accent-red); }
+.stat.flat::before { background: var(--accent-yellow); }
+.stat-label {
+  font-size: 0.67rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.12rem;
+}
+.stat-value {
+  font: 700 1.05rem var(--font-mono);
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+.stat-delta {
+  font-size: 0.67rem;
+  color: var(--text-muted);
+  margin-top: 0.08rem;
+}
+.stat-delta.up   { color: var(--accent-green); }
+.stat-delta.down { color: var(--accent-red); }
+.stat-delta.flat { color: var(--accent-yellow); }
+
+/* Plot frames & grids */
+.plot-frame {
+  background: var(--bg-inset);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.25rem 0.25rem;
+}
+.plot-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+.plot-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+}
+
+/* Band pills */
+.band-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.73rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+.band-pill.ready    { background: rgba(62, 207, 142, 0.15);  color: var(--accent-green);  border: 1px solid rgba(62, 207, 142, 0.3); }
+.band-pill.caution  { background: rgba(231, 181, 60, 0.15);  color: var(--accent-yellow); border: 1px solid rgba(231, 181, 60, 0.3); }
+.band-pill.fatigued { background: rgba(240, 106, 106, 0.15); color: var(--accent-red);    border: 1px solid rgba(240, 106, 106, 0.3); }
+.band-pill.neutral  { background: var(--bg-tertiary);        color: var(--text-muted);    border: 1px solid var(--border); }
+
+/* CSS toggle switch */
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+.switch input { display: none; }
+.switch-track {
+  width: 30px;
+  height: 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  position: relative;
+  flex-shrink: 0;
+  transition: background 0.2s, border-color 0.2s;
+}
+.switch input:checked + .switch-track {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.switch-knob {
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #fff;
+  transition: left 0.2s;
+  pointer-events: none;
+}
+.switch input:checked + .switch-track .switch-knob { left: 16px; }
+
+/* Heatmap table — override global td/th padding & border */
+.heatmap-wrap { overflow-x: auto; }
+.heatmap-table {
+  border-spacing: 3px;
+  border-collapse: separate;
+  font-size: 0.72rem;
+  width: auto;
+}
+.heatmap-table th,
+.heatmap-table td {
+  border-bottom: none;
+  padding: 0;
+}
+.heatmap-metric-label {
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 400;
+  padding: 2px 10px 2px 0 !important;
+  white-space: nowrap;
+  text-align: left;
+  font-size: 0.72rem;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.heatmap-date {
+  color: rgba(255, 255, 255, 0.35);
+  font-weight: 400;
+  padding: 2px 3px !important;
+  text-align: center;
+  white-space: nowrap;
+  font-size: 0.63rem;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.heatmap-cell {
+  width: 42px;
+  height: 20px;
+  border-radius: 4px;
+}
+.heatmap-legend {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.75rem;
+  flex-wrap: wrap;
+}
+.heatmap-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+.heatmap-legend-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+/* ── Readiness screen responsive ─────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .plot-4 { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 640px) {
+  .plot-2 { grid-template-columns: 1fr; }
+  .plot-4 { grid-template-columns: 1fr 1fr; }
+  .section-head { margin: 1.5rem 0 0.7rem; }
 }

@@ -65,6 +65,7 @@ type ProgressionSummary = {
   amountToPeak: number | null;
   peakAfterFootstrikeMs: number | null;
   postPeakLossRate: number | null;
+  signedTimeToMaxMs: number | null;
 };
 
 function computeProgressionSummary(
@@ -74,6 +75,8 @@ function computeProgressionSummary(
     incrementPrefix: string;
     axis: "X" | "Y" | "Z";
     lowerIsGain: boolean;
+    timingMaxKey?: string;
+    timingFootstrikeKey?: string;
   }
 ): ProgressionSummary {
   const footstrike = getFromMap(map, `${opts.footstrikeKey}_${opts.axis}`);
@@ -83,6 +86,7 @@ function computeProgressionSummary(
       amountToPeak: null,
       peakAfterFootstrikeMs: null,
       postPeakLossRate: null,
+      signedTimeToMaxMs: null,
     };
   }
 
@@ -99,24 +103,42 @@ function computeProgressionSummary(
     }
   }
 
-  const amountToPeak = opts.lowerIsGain
-    ? footstrike - peakPoint.value
-    : peakPoint.value - footstrike;
+  const laterPoints = points.filter((p) => p.ms > peakPoint.ms);
+  const lastLaterPoint = laterPoints.length > 0 ? laterPoints[laterPoints.length - 1]! : null;
+
+  // For LOSS (peak at footstrike), amountToPeak reflects the decline to the last measured increment.
+  // For GAIN (peak after footstrike), amountToPeak is the standard footstrike-to-peak gain.
+  const isLoss = peakPoint.ms === 0;
+  const amountToPeak = isLoss && lastLaterPoint != null
+    ? (opts.lowerIsGain ? footstrike - lastLaterPoint.value : lastLaterPoint.value - footstrike)
+    : (opts.lowerIsGain ? footstrike - peakPoint.value : peakPoint.value - footstrike);
 
   const gainOrLoss =
     amountToPeak > 0 ? 1 : amountToPeak < 0 ? -1 : 0;
 
   const peakAfterFootstrikeMs = peakPoint.ms > 0 ? peakPoint.ms : null;
-  const laterPoints = points.filter((p) => p.ms > peakPoint.ms);
 
   let postPeakLossRate: number | null = null;
-  if (laterPoints.length > 0) {
-    const last = laterPoints[laterPoints.length - 1]!;
+  if (lastLaterPoint != null) {
     const loss = opts.lowerIsGain
-      ? last.value - peakPoint.value
-      : peakPoint.value - last.value;
-    const dt = last.ms - peakPoint.ms;
+      ? lastLaterPoint.value - peakPoint.value
+      : peakPoint.value - lastLaterPoint.value;
+    const dt = lastLaterPoint.ms - peakPoint.ms;
     postPeakLossRate = dt > 0 ? loss / dt : null;
+  }
+
+  // Signed time: positive for GAIN (ms after footstrike to peak), negative for LOSS (ms before footstrike to max).
+  let signedTimeToMaxMs: number | null = null;
+  if (peakPoint.ms > 0) {
+    signedTimeToMaxMs = peakPoint.ms;
+  } else if (opts.timingMaxKey && opts.timingFootstrikeKey) {
+    const maxTime = getFromMap(map, opts.timingMaxKey);
+    const footstrikeTime = getFromMap(map, opts.timingFootstrikeKey);
+    signedTimeToMaxMs = maxTime != null && footstrikeTime != null
+      ? roundTo((maxTime - footstrikeTime) * 1000, 2)
+      : 0;
+  } else {
+    signedTimeToMaxMs = 0;
   }
 
   return {
@@ -124,6 +146,7 @@ function computeProgressionSummary(
     amountToPeak,
     peakAfterFootstrikeMs,
     postPeakLossRate,
+    signedTimeToMaxMs,
   };
 }
 
@@ -396,7 +419,9 @@ const PITCHING_METRIC_SPECS: MetricSpec[] = [
         incrementPrefix: "INCREMENT.Pitching_Shoulder_Angle@Footstrike",
         axis: "X",
         lowerIsGain: true,
-      }).peakAfterFootstrikeMs;
+        timingMaxKey: "TIMING.MaxShoulderHorAngleTime_X",
+        timingFootstrikeKey: "TIMING.FootstrikeTime_X",
+      }).signedTimeToMaxMs;
     },
   },
   {
@@ -464,7 +489,7 @@ const PITCHING_METRIC_SPECS: MetricSpec[] = [
         incrementPrefix: "INCREMENT.Hip Shoulders Sep@Footstrike",
         axis: "Z",
         lowerIsGain: false,
-      }).peakAfterFootstrikeMs;
+      }).signedTimeToMaxMs;
     },
   },
   {

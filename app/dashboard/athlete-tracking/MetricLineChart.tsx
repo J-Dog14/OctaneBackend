@@ -98,7 +98,7 @@ export function MetricLineChart({ title, data, unit }: Props) {
             cursor={{ stroke: "rgba(255,255,255,0.15)" }}
           />
           <Line
-            type="monotone"
+            type="linear"
             dataKey="value"
             stroke="var(--accent)"
             strokeWidth={2}

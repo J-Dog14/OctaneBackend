@@ -12,6 +12,7 @@ const TABS = [
   { href: "/dashboard/research", label: "Research", adminOnly: false },
   { href: "/dashboard/send-payload", label: "Send Payload", adminOnly: true },
   { href: "/dashboard/uais-maintenance", label: "UAIS Maintenance", adminOnly: true },
+  { href: "/dashboard/readiness-screen", label: "Readiness Screen", adminOnly: true },
   { href: "/dashboard/reports", label: "PDF Reports", adminOnly: true },
   { href: "/dashboard/settings", label: "Settings", adminOnly: true },
   { href: "/dashboard/audit", label: "DB Audit", adminOnly: true },
