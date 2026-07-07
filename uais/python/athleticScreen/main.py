@@ -258,6 +258,14 @@ def _safe_convert_to_python_type(val):
         return None
 
 
+def _name_similarity_ratio(a: str, b: str) -> float:
+    """Return SequenceMatcher similarity between two normalized name strings."""
+    from difflib import SequenceMatcher
+    if not a or not b:
+        return 0.0
+    return SequenceMatcher(None, a, b).ratio()
+
+
 def _process_txt_files_dry_run(folder_path: str, txt_files: list) -> list:
     """Parse all txt files and print what would be done; no DB or file moves."""
     seen_athletes = set()  # (name, date_str)
@@ -450,6 +458,34 @@ def process_txt_files(folder_path: str, dry_run: bool = False, athlete_uuid: str
                         # If adding height/weight from session XML: convert to imperial first (common.units: meters_to_inches, kg_to_lbs)
                         if profile_updates:
                             update_athlete_in_warehouse(athlete_uuid, conn=pg_conn, **profile_updates)
+
+                        # GUARD: Verify the name in the uploaded files matches the selected athlete.
+                        # If they differ significantly, the wrong athlete UUID was likely chosen.
+                        with pg_conn.cursor() as _nc:
+                            _nc.execute("SELECT name FROM analytics.d_athletes WHERE athlete_uuid = %s", (athlete_uuid,))
+                            _nr = _nc.fetchone()
+                        _db_name = _nr[0] if _nr else None
+                        if _db_name:
+                            _sim = _name_similarity_ratio(normalize_name_for_matching(_db_name), normalize_name_for_matching(name))
+                            if _sim < 0.70:
+                                print(
+                                    f"NAME_MISMATCH_ERROR: File contains athlete '{name}' but selected UUID "
+                                    f"belongs to '{_db_name}' (similarity={_sim:.0%}). "
+                                    f"Aborting — wrong athlete UUID was selected for this upload. "
+                                    f"Re-run with the correct athlete selected."
+                                )
+                                errors.append(f"{file_path}: Name mismatch — file has '{name}', UUID belongs to '{_db_name}'")
+                                with pg_conn.cursor() as _sp:
+                                    _sp.execute("ROLLBACK TO SAVEPOINT file_processing")
+                                    _sp.execute("RELEASE SAVEPOINT file_processing")
+                                savepoint_created = False
+                                continue
+                            elif _sim < 0.90:
+                                print(
+                                    f"NAME_MISMATCH_WARNING: File contains athlete '{name}' but selected UUID "
+                                    f"belongs to '{_db_name}' (similarity={_sim:.0%}). Proceeding, but verify this is correct."
+                                )
+
                         processed_athletes[athlete_key] = athlete_uuid
                         print(f"Athlete: {name}")
                         print("Successful match with athlete in DB")

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from "react";
 import { AdminGuard } from "@/app/dashboard/AdminGuard";
+import { AiSyncSection } from "@/app/dashboard/send-payload/AiSyncSection";
 import { useAthleteSearch } from "@/hooks/useAthleteSearch";
 import { AthleteSearchDropdown } from "@/app/dashboard/reports/components/AthleteSearchDropdown";
 import { AgGridReact } from "ag-grid-react";
@@ -336,6 +337,18 @@ function SendPayloadContent() {
           )}
         </div>
       </div>
+
+      {/* AI program data sync (Athlete Programs generator) */}
+      <AiSyncSection
+        athleteSelected={
+          athleteSelected
+            ? {
+                athlete_uuid: athleteSelected.athlete_uuid,
+                name: athleteSelected.name,
+              }
+            : null
+        }
+      />
 
       {/* Octane user lookup */}
       <div className="card" style={{ marginBottom: "1.5rem" }}>
