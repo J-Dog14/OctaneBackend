@@ -615,145 +615,383 @@ extract_session_date_mappings <- function(path) {
   out
 }
 
-# ---------- Calculate score from metric data ----------
-#' Calculate pitching score from XML document by extracting required metrics
-#' @param doc XML document (session_data.xml)
-#' @param owner_name Owner name to extract metrics for
-#' @param velocity_mph Velocity in MPH (already extracted)
-#' @param weight_kg Body weight in kg (from session.xml); if lead_leg_midpoint > 10, divide by (weight_kg*9.81) to normalize from raw N
-#' @return Numeric score value or NA if insufficient data
-calculate_pitching_score <- function(doc, owner_name, velocity_mph = NA_real_, weight_kg = NA_real_) {
-  if (is.null(doc)) return(NA_real_)
-  
-  root <- xml_root(doc)
-  if (!identical(xml_name(root), "v3d")) return(NA_real_)
-  
-  # Helper function to extract metric value from XML by variable name and component
-  extract_metric_from_xml <- function(var_name, component = NULL) {
-    # Find the owner
-    owners <- xml_find_all(root, paste0("./owner[@value='", owner_name, "']"))
-    if (length(owners) == 0) return(NA_real_)
-    
-    # Try original name first, then try with @Foot_Contact as alias for @Footstrike
-    var_names_to_try <- c(var_name)
-    if (grepl("@Footstrike", var_name)) {
-      var_names_to_try <- c(var_name, sub("@Footstrike", "@Foot_Contact", var_name))
+# ============================================================
+# 8ctane Delivery Score — 1000 pts   (SCORE FORMULA v2)
+#   Velocity 500 | Mechanics 400 | Arm Health 100
+#
+# Replaces the v1 linear-coefficient score (archived in
+# archive/pitching_score_v1_2026-09-09.R).
+#
+# Structure mirrors the reference Python implementation:
+#   pw_interp()                  piecewise-linear anchor interpolation
+#   DELIVERY_ANCHORS             anchor tables (value -> fraction of points)
+#   velo_score()                 500-pt velocity block
+#   delivery_score_from_metrics()  pure math on a named list
+#   extract_delivery_metrics()   session_data.xml -> named list
+#   calculate_delivery_score()   extract + score (full breakdown)
+#   calculate_pitching_score()   back-compatible scalar wrapper
+# ============================================================
+
+DELIVERY_SCORE_VERSION      <- "2.0.0"
+DELIVERY_TRANSIENT_SKIP_MS  <- 20    # ignore heel-strike impact spike after FC
+DELIVERY_INTO_BALL_PCT      <- 0.75  # FC->BR fraction for the "into ball" window
+
+
+# ---------- Piecewise-linear interpolation ----------
+#' @param x       numeric scalar (NA/NULL -> NA)
+#' @param anchors two-column matrix; col1 = metric value (ASCENDING),
+#'                col2 = fraction of points. Clamps at both ends.
+pw_interp <- function(x, anchors) {
+  if (is.null(x) || length(x) != 1 || is.na(x)) return(NA_real_)
+  xs <- anchors[, 1]; ys <- anchors[, 2]
+  if (x <= xs[1])              return(ys[1])
+  if (x >= xs[length(xs)])     return(ys[length(ys)])
+  for (i in seq_len(nrow(anchors) - 1L)) {
+    x0 <- xs[i]; x1 <- xs[i + 1L]
+    if (x0 <= x && x <= x1) {
+      y0 <- ys[i]; y1 <- ys[i + 1L]
+      if (x1 == x0) return(y1)
+      return(y0 + (y1 - y0) * (x - x0) / (x1 - x0))
     }
-    
-    # Find metric types
-    for (own in owners) {
-      metric_types <- xml_find_all(own, "./type[@value='METRIC']")
-      for (mt in metric_types) {
-        folders <- xml_find_all(mt, "./folder")
-        for (fol in folders) {
-          names <- xml_find_all(fol, "./name[@value]")
-          for (nm in names) {
-            metric_name <- xml_attr(nm, "value")
-            if (is.na(metric_name) || !metric_name %in% var_names_to_try) next
-            
-            # Find component
-            comps <- xml_find_all(nm, "./component")
-            for (comp in comps) {
-              comp_val <- xml_attr(comp, "value")
-              if (!is.null(component) && comp_val != component) next
-              
-              # Get data (first value for event-based metrics)
-              data_attr <- xml_attr(comp, "data") %||% xml_text(comp)
-              if (is.na(data_attr) || data_attr == "") next
-              
-              # Parse first value
-              vals <- parse_comma_data(data_attr)
-              if (length(vals) > 0 && !is.na(vals[1])) {
-                return(as.numeric(vals[1]))
-              }
-            }
-          }
-        }
+  }
+  ys[length(ys)]
+}
+
+.anc <- function(...) matrix(c(...), ncol = 2, byrow = TRUE)
+
+# ---------- Age-banded velocity ceiling ----------
+DELIVERY_AGE_BANDS <- list(
+  "15" = c(62, 84), "16" = c(65, 87), "17" = c(67, 90),
+  "18" = c(69, 93), "19" = c(70, 95), "20" = c(70, 95), "21" = c(72, 97)
+)
+
+#' 500 pts. Absolute anchored: 70 mph = 0, 95 mph = 500 (20 pts/mph).
+velo_score <- function(velo_mph, age = NA_real_) {
+  if (is.null(velo_mph) || is.na(velo_mph)) return(NA_real_)
+  if (is.na(age)) return(max(0, min(500, (velo_mph - 70) * 20)))
+  # NB: truncate, do not round — matches int(age) in the reference implementation.
+  a  <- min(max(as.integer(trunc(age)), 15L), 21L)
+  band <- DELIVERY_AGE_BANDS[[as.character(a)]] %||% c(70, 95)
+  lo <- band[1]; hi <- band[2]
+  max(0, min(500, (velo_mph - lo) / (hi - lo) * 500))
+}
+
+# ---------- Anchor tables: (metric_value, fraction_of_points) ----------
+DELIVERY_ANCHORS <- list(
+  # Cyl 1 — Down-the-Mound Engine (70)
+  stride_pct_height  = .anc(70,0, 75,.50, 80,.80, 85,1.0),
+  back_grf_peak_bw   = .anc(1.1,0, 1.3,.50, 1.5,.80, 1.7,1.0),
+
+  # Cyl 2 — Hip-Shoulder Separation (60) — two-sided
+  hss_fs_deg         = .anc(20,0, 32,.50, 42,.80, 50,1.0, 60,1.0, 65,.85, 75,.60),
+
+  # Cyl 3 — Trunk velocity product (60)
+  trunk_vel_product  = .anc(120,0, 200,.50, 300,.80, 380,1.0),
+
+  # Cyl 4 — Front Leg Block, FULL force-plate path (100)
+  # v2 NOTE: into_ball_impulse is the INSTANTANEOUS resultant lead-leg GRF
+  # magnitude at the midpoint of FC->BR (Lead_Leg_GRF_mag_Midpoint_FS_Release),
+  # in bodyweight multiples — NOT a time integral. Anchors rescaled from the
+  # original 0.030-0.080 BW*s table, which did not fit this quantity.
+  into_ball_impulse  = .anc(1.4,0, 1.9,.50, 2.3,.80, 2.7,1.0),
+  peak_resultant_bw  = .anc(1.4,0, 1.8,.50, 2.1,.80, 2.5,1.0),
+  peak_pct_fc_br     = .anc(0,0, 25,.60, 40,1.0, 75,1.0, 85,.50, 95,.20, 100,0),
+  peak_lag_ms_abs    = .anc(20,1.0, 30,.50, 40,.20, 50,0),
+
+  # Cyl 4 — SNAPSHOT fallback (no force-plate session)
+  lead_knee_ext_deg  = .anc(0,0, 8,.40, 12,.65, 15,1.0, 25,1.0, 30,.85),
+  lead_grf_rel_bw    = .anc(1.0,0, 1.3,.50, 1.7,.80, 2.0,1.0),
+
+  # Cyl 5 — Pelvis Stability & Obliquity (30)  [PROVISIONAL — calibrate]
+  pelvis_obliq_swing = .anc(8,1.0, 15,.70, 22,.40, 30,0),
+  pelvis_stop_deg    = .anc(-35,0, -25,.30, -15,.80, -10,1.0, 5,1.0, 15,.70),
+
+  # Cyl 6 — Horizontal Abduction / Arm Trail (50)
+  # v2 NOTE: hzabd_dwell_ms (undefined anywhere in the repo) is replaced by
+  # hzabd_vel_max = |Pitching_Shoulder_AngVel_HzShldAbd_Max| in deg/s — the rate
+  # the arm leaves max horizontal abduction. Anchors PROVISIONAL, uncalibrated.
+  hzabd_vel_max      = .anc(250,0, 350,.50, 450,.80, 550,1.0),
+  hzabd_fs_abs       = .anc(15,0, 25,.50, 35,.80, 45,1.0),
+
+  # Cyl 8 — Posture at Release (30)
+  fwd_flex_rel_deg   = .anc(15,0, 25,.50, 30,1.0, 40,1.0, 50,.80, 60,.50),
+  lat_tilt_rel_deg   = .anc(8,0, 18,.50, 26,.80, 32,1.0, 45,1.0, 55,.85),
+
+  # Cyl 7 — Arm Health (100)
+  er_fs_deg          = .anc(0,.10, 5,.40, 10,1.0, 33,1.0, 45,.80,
+                            60,.60, 80,.35, 100,.15, 121,0),
+  elbow_torque_nm    = .anc(110,1.0, 120,.75, 130,.45, 145,.10, 160,0),
+  stress_per_mph     = .anc(1.20,1.0, 1.275,.70, 1.35,.40, 1.50,.10, 1.65,0),
+  mer_deg            = .anc(145,.30, 155,.55, 165,.80, 170,1.0, 190,1.0,
+                            200,.80, 210,.55, 225,.30)
+)
+
+#' fraction * points, or NA when the metric is missing
+.dsc <- function(key, val, pts) {
+  f <- pw_interp(val, DELIVERY_ANCHORS[[key]])
+  if (is.na(f)) NA_real_ else f * pts
+}
+
+# ---------- Pure scoring ----------
+#' @param m   named list of extracted metrics
+#' @param age age at collection (years) or NA
+delivery_score_from_metrics <- function(m, age = NA_real_) {
+  comp <- list(); missing <- character(0)
+
+  put <- function(name, val) {
+    if (is.na(val)) { missing <<- c(missing, name); comp[[name]] <<- 0 }
+    else comp[[name]] <<- val
+  }
+  g <- function(k) { v <- m[[k]]; if (is.null(v) || length(v) != 1) NA_real_ else as.numeric(v) }
+
+  # ---- Cyl 1 (70) ----
+  put("c1_stride",   .dsc("stride_pct_height", g("stride_pct_height"), 35))
+  put("c1_back_grf", .dsc("back_grf_peak_bw",  g("back_grf_peak_bw"),  35))
+
+  # ---- Cyl 2 (60) ----
+  put("c2_hss", .dsc("hss_fs_deg", g("hss_fs_deg"), 60))
+
+  # ---- Cyl 3 (60) ----
+  prod <- g("trunk_vel_product")
+  if (is.na(prod) && !is.na(g("trunk_lin_vel_y")) && !is.na(g("fwd_flex_rel_deg")))
+    prod <- g("trunk_lin_vel_y") * g("fwd_flex_rel_deg")
+  put("c3_trunk_vel", .dsc("trunk_vel_product", prod, 60))
+
+  # ---- Cyl 4 (100) — full GRF path, else snapshot ----
+  if (!is.na(g("into_ball_impulse"))) {
+    c4_mode <- "full_grf"
+    put("c4_impulse",   .dsc("into_ball_impulse", g("into_ball_impulse"), 40))
+    put("c4_resultant", .dsc("peak_resultant_bw", g("peak_resultant_bw"), 25))
+    put("c4_timing",    .dsc("peak_pct_fc_br",    g("peak_pct_fc_br"),    15))
+    lag <- g("peak_lag_ms")
+    put("c4_stacked",   .dsc("peak_lag_ms_abs", if (is.na(lag)) NA_real_ else abs(lag), 10))
+    n <- g("impulse_peak_count")
+    put("c4_clean", if (is.na(n)) NA_real_ else if (n == 1) 10 else if (n == 2) 3 else 0)
+  } else {
+    c4_mode <- "snapshot"
+    put("c4_knee_ext", .dsc("lead_knee_ext_deg", g("lead_knee_ext_deg"), 50))
+    put("c4_lead_grf", .dsc("lead_grf_rel_bw",   g("lead_grf_rel_bw"),   50))
+  }
+
+  # ---- Cyl 5 (30) ----
+  put("c5_obliquity", .dsc("pelvis_obliq_swing", g("pelvis_obliq_swing"), 15))
+  put("c5_stop_pos",  .dsc("pelvis_stop_deg",    g("pelvis_stop_deg"),    15))
+  pav <- g("pelvis_ang_vel_release")
+  if (!is.na(pav) && pav < 0) comp[["c5_recoil_penalty"]] <- -5
+
+  # ---- Cyl 6 (50) ----
+  put("c6_dwell", .dsc("hzabd_vel_max", g("hzabd_vel_max"), 30))
+  hz <- g("hzabd_fs_deg")
+  put("c6_trail", .dsc("hzabd_fs_abs", if (is.na(hz)) NA_real_ else abs(hz), 20))
+
+  # ---- Cyl 8 (30) ----
+  put("c8_fwd_flex", .dsc("fwd_flex_rel_deg", g("fwd_flex_rel_deg"), 15))
+  put("c8_lat_tilt", .dsc("lat_tilt_rel_deg", g("lat_tilt_rel_deg"), 15))
+
+  # ---- Cyl 7 — Arm Health (100) ----
+  stress <- g("stress_per_mph")
+  if (is.na(stress) && !is.na(g("elbow_torque_nm")) && !is.na(g("velo_mph")))
+    stress <- g("elbow_torque_nm") / g("velo_mph")
+  put("ah_er_fs",  .dsc("er_fs_deg",       g("er_fs_deg"),       35))
+  put("ah_torque", .dsc("elbow_torque_nm", g("elbow_torque_nm"), 30))
+  put("ah_stress", .dsc("stress_per_mph",  stress,               25))
+  put("ah_mer",    .dsc("mer_deg",         g("mer_deg"),         10))
+
+  # ---- Roll up ----
+  nms       <- names(comp)
+  mech_keys <- grepl("^c[1234568]_", nms)
+  mech <- max(0, min(400, sum(unlist(comp[mech_keys]))))
+  arm  <- max(0, min(100, sum(unlist(comp[grepl("^ah_", nms)]))))
+  velo <- velo_score(g("velo_mph"), age)
+  if (is.na(velo)) velo <- 0
+  total <- velo + mech + arm
+
+  grade <- if (total >= 850) "Elite" else if (total >= 750) "Advanced" else
+           if (total >= 650) "Solid" else if (total >= 550) "Developing" else "Foundational"
+
+  list(
+    velocity        = round(velo, 1),
+    mechanics       = round(mech, 1),
+    arm_health      = round(arm, 1),
+    total           = round(total, 1),
+    grade           = grade,
+    efficiency_gap  = round((mech + arm) - velo, 1),
+    c4_mode         = c4_mode,
+    missing_metrics = missing,
+    components      = lapply(comp, function(v) round(v, 1)),
+    version         = DELIVERY_SCORE_VERSION
+  )
+}
+
+# ---------- XML extraction ----------
+.parse_csv_nums <- function(s) {
+  if (is.null(s) || is.na(s) || !nzchar(s)) return(numeric(0))
+  suppressWarnings(as.numeric(trimws(strsplit(s, ",", fixed = TRUE)[[1]])))
+}
+
+#' Extract every v2 metric for one owner from a parsed session_data.xml.
+#' @param doc       xml2 document (session_data.xml)
+#' @param owner_name owner value, e.g. "Fastball RH 2.c3d"
+#' @param weight_kg  body weight in kg (NA -> 180 lb default)
+extract_delivery_metrics <- function(doc, owner_name, weight_kg = NA_real_) {
+  root <- xml2::xml_root(doc)
+  if (!identical(xml2::xml_name(root), "v3d")) return(NULL)
+  own <- xml2::xml_find_first(root, paste0("./owner[@value='", owner_name, "']"))
+  if (inherits(own, "xml_missing")) return(NULL)
+
+  # -- METRIC scalar (first value), with @Foot_Contact alias --
+  met <- function(var, comp) {
+    tries <- var
+    if (grepl("@Footstrike", var)) tries <- c(var, sub("@Footstrike", "@Foot_Contact", var))
+    for (v in tries) {
+      nodes <- xml2::xml_find_all(own, paste0(
+        "./type[@value='METRIC']/folder/name[@value=\"", v, "\"]/component[@value='", comp, "']"))
+      for (nd in nodes) {
+        vals <- .parse_csv_nums(xml2::xml_attr(nd, "data") %||% xml2::xml_text(nd))
+        if (length(vals) && !is.na(vals[1])) return(as.numeric(vals[1]))
       }
     }
-    return(NA_real_)
+    NA_real_
   }
-  
-  # Extract direct variables with component specifications
-  linear_pelvis_speed <- extract_metric_from_xml("MaxPelvisLinearVel_MPH", "Y")
-  lead_leg_midpoint <- extract_metric_from_xml("Lead_Leg_GRF_mag_Midpoint_FS_Release", "X")
-  horizontal_abduction <- extract_metric_from_xml("Pitching_Shoulder_Angle@Footstrike", "X")
-  torso_ang_velo <- extract_metric_from_xml("Thorax_Ang_Vel_max", "X")
-  trunk_ang_fp <- extract_metric_from_xml("Trunk_Angle@Footstrike", "Z")
-  pelvis_ang_fp <- extract_metric_from_xml("Pelvis_Angle@Footstrike", "Z")
-  shld_er_max <- extract_metric_from_xml("Pitching_Shoulder_Angle_Max", "Z")
-  pelvis_ang_velo <- extract_metric_from_xml("Pelvis_Ang_Vel_max", "X")
-  
-  # Extract variables for calculated metrics
-  lead_knee_ang_fp_x <- extract_metric_from_xml("Lead_Knee_Angle@Footstrike", "X")
-  lead_knee_ang_rel_x <- extract_metric_from_xml("Lead_Knee_Angle@Release", "X")
-  pelvis_ang_fp_y <- extract_metric_from_xml("Pelvis_Angle@Footstrike", "Y")
-  pelvis_ang_rel_y <- extract_metric_from_xml("Pelvis_Angle@Release", "Y")
-  lead_knee_ang_fp_y <- extract_metric_from_xml("Lead_Knee_Angle@Footstrike", "Y")
-  lead_knee_ang_rel_y <- extract_metric_from_xml("Lead_Knee_Angle@Release", "Y")
-  
-  # Calculate derived variables
-  front_leg_brace <- NA_real_
-  if (!is.na(lead_knee_ang_fp_x) && !is.na(lead_knee_ang_rel_x)) {
-    front_leg_brace <- lead_knee_ang_fp_x - lead_knee_ang_rel_x
+  # -- time series --
+  ser <- function(type, folder, var, comp) {
+    nd <- xml2::xml_find_first(own, paste0(
+      "./type[@value='", type, "']/folder[@value='", folder, "']/name[@value=\"", var,
+      "\"]/component[@value='", comp, "']"))
+    if (inherits(nd, "xml_missing")) return(numeric(0))
+    .parse_csv_nums(xml2::xml_attr(nd, "data") %||% xml2::xml_text(nd))
   }
-  
-  pelvis_obl <- NA_real_
-  if (!is.na(pelvis_ang_rel_y) && !is.na(pelvis_ang_fp_y)) {
-    pelvis_obl <- pelvis_ang_rel_y - pelvis_ang_fp_y
+  # -- EVENT_LABEL time (seconds, relative to cropped start) --
+  ev <- function(name) {
+    nd <- xml2::xml_find_first(own, paste0(
+      "./type[@value='EVENT_LABEL']/folder/name[@value='", name, "']/component"))
+    if (inherits(nd, "xml_missing")) return(NA_real_)
+    v <- .parse_csv_nums(xml2::xml_attr(nd, "data") %||% xml2::xml_text(nd))
+    if (length(v)) v[1] else NA_real_
   }
-  
-  front_leg_var_val <- NA_real_
-  if (!is.na(lead_knee_ang_fp_y) && !is.na(lead_knee_ang_rel_y)) {
-    front_leg_var_val <- lead_knee_ang_fp_y - lead_knee_ang_rel_y
+
+  fr <- met("Frame_rate", "X"); if (is.na(fr) || fr <= 0) fr <- 300
+  dt <- 1 / fr
+  # local 1-based frame for an EVENT_LABEL time
+  evf <- function(name) { t <- ev(name); if (is.na(t)) NA_integer_ else as.integer(round(t * fr)) + 1L }
+
+  fc <- evf("Footstrike"); br <- evf("Release"); mer <- evf("Max_Shoulder_Rot")
+
+  wkg  <- if (!is.na(weight_kg) && weight_kg > 0) weight_kg else (180 / 2.2046226)
+  BW_n <- wkg * 9.81
+
+  m <- list()
+  m$stride_pct_height      <- met("STRIDE_LENGTH_MEAN_PERCENT", "X")
+  m$back_grf_peak_bw       <- met("Back_Leg_GRF_mag_max", "X")
+  m$hss_fs_deg             <- met("Hip Shoulders Sep@Footstrike", "Z")
+  m$trunk_lin_vel_y        <- met("MaxTrunkLinearVel_MPH", "Y")
+  m$fwd_flex_rel_deg       <- met("Trunk_Angle@Release", "X")
+  m$lat_tilt_rel_deg       <- met("Trunk_Angle@Release", "Y")
+  m$into_ball_impulse      <- met("Lead_Leg_GRF_mag_Midpoint_FS_Release", "X")
+  m$pelvis_stop_deg        <- met("Pelvis_Angle@PelvisRot_Stop", "Z")
+  m$pelvis_ang_vel_release <- met("Pelvis_Ang_Vel@Release", "X")
+  m$hzabd_fs_deg           <- met("Pitching_Shoulder_Angle@Footstrike", "X")
+  m$er_fs_deg              <- met("Pitching_Shoulder_Angle@Footstrike", "Z")
+  m$elbow_torque_nm        <- met("Max_Elbow_Varus_Torque_Nm", "X")
+  m$mer_deg                <- met("Pitching_Shoulder_Angle_Max", "Z")
+
+  hv <- met("Pitching_Shoulder_AngVel_HzShldAbd_Max", "X")
+  m$hzabd_vel_max <- if (is.na(hv)) NA_real_ else abs(hv)
+
+  # BW guard: V3D exports these already BW-normalized; >10 means raw Newtons
+  for (k in c("into_ball_impulse", "back_grf_peak_bw")) {
+    v <- m[[k]]
+    if (!is.na(v)) { v <- abs(v); if (v > 10) v <- v / BW_n; m[[k]] <- v }
   }
-  
-  # Default weight when NULL so score scaling isn't thrown off (e.g. missing athlete demographics)
-  weight_kg_use <- if (!is.na(weight_kg) && weight_kg > 0) weight_kg else (180 / 2.2046226)  # 180 lbs -> kg
-  
-  # Apply absolute values where needed
-  if (!is.na(lead_leg_midpoint)) {
-    lead_leg_midpoint <- abs(lead_leg_midpoint)
-    # If > 10, value is raw Newtons (not BW-normalized); convert to BW multiples
-    if (lead_leg_midpoint > 10) {
-      lead_leg_midpoint <- lead_leg_midpoint / (weight_kg_use * 9.81)
+
+  # derived angles
+  po_r <- met("Pelvis_Angle@Release", "Y"); po_f <- met("Pelvis_Angle@Footstrike", "Y")
+  m$pelvis_obliq_swing <- if (is.na(po_r) || is.na(po_f)) NA_real_ else abs(po_r - po_f)
+  lk_f <- met("Lead_Knee_Angle@Footstrike", "X"); lk_r <- met("Lead_Knee_Angle@Release", "X")
+  m$lead_knee_ext_deg  <- if (is.na(lk_f) || is.na(lk_r)) NA_real_ else lk_f - lk_r
+
+  # ---- Cyl 4 force-plate timing from the Lead_GRF time series ----
+  Fx <- ser("DERIVED", "PROCESSED", "Lead_GRF", "X")
+  Fy <- ser("DERIVED", "PROCESSED", "Lead_GRF", "Y")
+  Fz <- ser("DERIVED", "PROCESSED", "Lead_GRF", "Z")
+  ok <- length(Fx) > 0 && length(Fx) == length(Fy) && length(Fy) == length(Fz) &&
+        !is.na(fc) && !is.na(br) && br > fc && br <= length(Fz)
+
+  m$peak_resultant_bw <- NA_real_; m$peak_pct_fc_br <- NA_real_
+  m$peak_lag_ms <- NA_real_; m$impulse_peak_count <- NA_real_
+  m$lead_grf_rel_bw <- NA_real_
+
+  if (ok) {
+    Fr_ <- sqrt(Fx^2 + Fy^2 + Fz^2)
+    # braking sign over FC->BR
+    w  <- Fy[fc:br]
+    mn <- mean(w[w < 0]); mp <- mean(w[w > 0])
+    if (is.nan(mn) || is.na(mn)) mn <- 0
+    if (is.nan(mp) || is.na(mp)) mp <- 0
+    b_sign <- if (abs(mn) >= abs(mp)) -1 else 1
+    Fb <- b_sign * Fy
+
+    skip <- min(br - 1L, fc + as.integer(round((DELIVERY_TRANSIENT_SKIP_MS / 1000) / dt)))
+    span <- (br - fc) * dt
+
+    pkf <- function(v) { loc <- which.max(v[skip:br]); skip + loc - 1L }
+    pr <- pkf(Fr_); pv <- pkf(Fz); pb <- pkf(Fb)
+
+    m$peak_resultant_bw <- Fr_[pr] / BW_n
+    m$peak_pct_fc_br    <- min(1, max(0, (pr - fc) * dt / span)) * 100
+    m$peak_lag_ms       <- (pv - pb) * dt * 1000
+    m$lead_grf_rel_bw   <- Fr_[br] / BW_n
+
+    # single-impulse detection on vertical, post-transient
+    win <- Fz[skip:br]
+    if (length(win) > 2) {
+      mh <- 0.5 * max(win, na.rm = TRUE)
+      md <- max(1L, as.integer(round(0.05 / dt)))
+      cnt <- 0L; last <- -Inf
+      for (i in seq(2, length(win) - 1)) {
+        if (!is.na(win[i]) && win[i] >= mh && win[i] >= win[i - 1] &&
+            win[i] >= win[i + 1] && (i - last) >= md) { cnt <- cnt + 1L; last <- i }
+      }
+      m$impulse_peak_count <- cnt
     }
   }
-  if (!is.na(horizontal_abduction)) {
-    horizontal_abduction <- abs(horizontal_abduction)
-  }
-  if (!is.na(shld_er_max)) {
-    shld_er_max <- abs(shld_er_max)
-  }
-  
-  # score = velo_part + metric_sum (no offset, no cap). Velo = 2.78 * MPH. Metric part = raw sum; elite mechanics can exceed 250 (e.g. 264). ~500 = top 1%, scores can go slightly above (e.g. 512).
-  VELO_MULT <- 2.78
-  velo_part <- ifelse(!is.na(velocity_mph), VELO_MULT * velocity_mph, 0)
-  # Per-variable coefficients: lead_leg_midpoint=18 base, then +15% on all metrics
-  metric_sum_raw <-
-    ifelse(!is.na(shld_er_max), 0.2415 * shld_er_max, 0) +
-    ifelse(!is.na(lead_leg_midpoint), 20.7 * lead_leg_midpoint, 0) +
-    ifelse(!is.na(horizontal_abduction), 0.7245 * horizontal_abduction, 0) +
-    ifelse(!is.na(torso_ang_velo), 0.0181125 * torso_ang_velo, 0) -
-    ifelse(!is.na(pelvis_ang_fp), 0.2415 * pelvis_ang_fp, 0) +
-    ifelse(!is.na(front_leg_brace), 0.422625 * front_leg_brace, 0) +
-    ifelse(!is.na(trunk_ang_fp), 0.301875 * trunk_ang_fp, 0) -
-    ifelse(!is.na(front_leg_var_val), 0.2415 * abs(front_leg_var_val), 0) +
-    ifelse(!is.na(linear_pelvis_speed), 1.2075 * linear_pelvis_speed, 0) -
-    ifelse(!is.na(pelvis_obl), 0.181125 * abs(pelvis_obl), 0) +
-    ifelse(!is.na(pelvis_ang_velo), 0.0483 * pelvis_ang_velo, 0)
-  metric_sum <- metric_sum_raw  # no scaling; sliding scale so elite performers aren't capped
-  score <- velo_part + metric_sum
-  
-  # Return NA if we couldn't calculate a meaningful score (all inputs were NA)
-  if (is.na(linear_pelvis_speed) && is.na(front_leg_brace) && is.na(lead_leg_midpoint) &&
-      is.na(horizontal_abduction) && is.na(torso_ang_velo) && is.na(pelvis_obl) &&
-      is.na(trunk_ang_fp) && is.na(pelvis_ang_fp) && is.na(shld_er_max) &&
-      is.na(front_leg_var_val) && is.na(pelvis_ang_velo) && is.na(velocity_mph)) {
+
+  m$.frames <- list(fc = fc, br = br, mer = mer, frame_rate = fr,
+                    body_weight_kg = wkg, body_weight_n = BW_n,
+                    grf_series_ok = ok)
+  m
+}
+
+# ---------- Public entry points ----------
+#' Full breakdown for one pitch.
+calculate_delivery_score <- function(doc, owner_name, velocity_mph = NA_real_,
+                                     weight_kg = NA_real_, age = NA_real_) {
+  m <- extract_delivery_metrics(doc, owner_name, weight_kg)
+  if (is.null(m)) return(NULL)
+  m$velo_mph <- velocity_mph
+  # Materialise the two fallback-derived metrics so they are inspectable
+  # rather than being computed silently inside the scorer.
+  if (!is.na(m$trunk_lin_vel_y) && !is.na(m$fwd_flex_rel_deg))
+    m$trunk_vel_product <- m$trunk_lin_vel_y * m$fwd_flex_rel_deg
+  if (!is.na(m$elbow_torque_nm) && !is.na(velocity_mph) && velocity_mph > 0)
+    m$stress_per_mph <- m$elbow_torque_nm / velocity_mph
+  res <- delivery_score_from_metrics(m, age)
+  res$metrics <- m[setdiff(names(m), ".frames")]
+  res$frames  <- m$.frames
+  res
+}
+
+#' Back-compatible scalar wrapper (drop-in for the v1 signature).
+#' Returns NA when nothing usable could be extracted.
+calculate_pitching_score <- function(doc, owner_name, velocity_mph = NA_real_,
+                                     weight_kg = NA_real_, age = NA_real_) {
+  res <- tryCatch(
+    calculate_delivery_score(doc, owner_name, velocity_mph, weight_kg, age),
+    error = function(e) NULL)
+  if (is.null(res)) return(NA_real_)
+  if (length(res$missing_metrics) >= 15 && (is.na(velocity_mph) || is.null(velocity_mph)))
     return(NA_real_)
-  }
-  
-  return(score)
+  res$total
 }
 
 # ---------- Extract time series data from session_data.xml ----------
@@ -1640,7 +1878,12 @@ process_all_files <- function(data_root = NULL) {
           # Calculate score for this pitch; formula expects weight in kg (athlete_info$weight is stored in lbs)
           weight_lb <- if (!is.null(best_match) && "weight" %in% names(best_match) && !is.na(best_match$weight[1])) as.numeric(best_match$weight[1]) else NA_real_
           weight_kg <- lbs_to_kg(weight_lb)
-          pitch_score <- calculate_pitching_score(doc, owner_name, velocity_mph, weight_kg)
+          # v2: age drives the velocity band (AGE_BANDS); NA falls back to the
+          # absolute 70-95 mph anchor.
+          age_at_coll <- if (!is.null(best_match) && "age_at_collection" %in% names(best_match) &&
+                             !is.na(best_match$age_at_collection[1]))
+            as.numeric(best_match$age_at_collection[1]) else NA_real_
+          pitch_score <- calculate_pitching_score(doc, owner_name, velocity_mph, weight_kg, age_at_coll)
           metric_data$score <- pitch_score
           
           if (i <= 3 && !is.na(pitch_score)) {

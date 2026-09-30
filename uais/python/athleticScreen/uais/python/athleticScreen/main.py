@@ -820,31 +820,7 @@ def process_txt_files(folder_path: str, dry_run: bool = False, athlete_uuid: str
                 print(f"Warning: Unhandled movement type {movement_type}")
                 errors.append(f"{file_path}: Unhandled movement type {movement_type}")
                 continue
-
-            # Guard: the force plate occasionally records a 0 for jump height, peak power,
-            # velocity, or force at peak power on an aborted/corrupted trial (e.g. the athlete
-            # stepped off early, or the plate missed the trigger). A 0 here is not a real score
-            # — writing it to the warehouse would silently drag down that athlete's averages
-            # and percentiles. Flag it for the UI (via the errors summary printed at the end
-            # of the run) and skip this trial entirely rather than inserting/updating it.
-            if movement_type in {'CMJ', 'PPU', 'DJ', 'SLV'}:
-                _zero_cols = [
-                    col for col in ('jh_in', 'pp_forceplate', 'force_at_pp', 'vel_at_pp')
-                    if insert_data.get(col) == 0
-                ]
-                if _zero_cols:
-                    _trial_label = parsed_data.get('trial_name') or file_name
-                    print(
-                        f"ZERO_VALUE_WARNING: {name} - {_trial_label} ({date_str}) has 0 for "
-                        f"{', '.join(_zero_cols)} — likely an aborted/corrupted trial. "
-                        f"Excluding this trial from results."
-                    )
-                    errors.append(
-                        f"{file_path}: Trial excluded — 0 value for {', '.join(_zero_cols)} "
-                        f"({name}, {_trial_label}, {date_str})"
-                    )
-                    continue
-
+            
             # Build WHERE clause based on movement type
             if movement_type == 'SLV':
                 # SLV uses athlete_uuid, session_date, trial_name, and side
@@ -1184,7 +1160,6 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="Parse and print what would be done; no DB writes, no file moves")
     parser.add_argument("--report-only", action="store_true", help="Skip data processing; generate PDF reports from existing DB data only")
     parser.add_argument("--athlete", type=str, default=None, metavar="NAME", help="With --report-only: only generate report for this athlete (name substring match)")
-    parser.add_argument("--all", action="store_true", help="With --report-only and no --athlete/ATHLETE_UUID/SESSION_DATE: required to confirm you really want to regenerate reports for every athlete in the warehouse")
     parser.add_argument("--comparison", action="store_true", help="Generate a multi-session comparison report. Reads ATHLETE_UUID and SESSION_DATES (comma-separated YYYY-MM-DD) from the environment, or takes --sessions")
     parser.add_argument("--sessions", type=str, default=None, metavar="DATES", help="With --comparison: comma-separated YYYY-MM-DD session dates. Overrides SESSION_DATES")
     args = parser.parse_args()
@@ -1221,20 +1196,6 @@ def main():
         print("Athletic Screen – report only")
         athlete_uuid_env = os.environ.get("ATHLETE_UUID", "").strip() or None
         session_date_env = os.environ.get("SESSION_DATE", "").strip() or None
-
-        # Guard: the Reports UI always sets ATHLETE_UUID (or SESSION_DATE for a comparison),
-        # so it's unaffected by this check. A bare CLI invocation with none of --athlete /
-        # ATHLETE_UUID / SESSION_DATE would regenerate a full PDF report for every athlete
-        # who has ever had Athletic Screen data — that's almost never intended, and it makes
-        # the run look "stuck" cycling through the same movement search over and over, once
-        # per athlete. Require an explicit --all to confirm the whole-warehouse run.
-        if not (args.athlete or athlete_uuid_env or session_date_env or args.all):
-            print(
-                "ERROR: --report-only with no --athlete, ATHLETE_UUID, or SESSION_DATE would "
-                "regenerate reports for every athlete in the warehouse. Pass --athlete NAME, "
-                "set ATHLETE_UUID/SESSION_DATE, or pass --all to confirm you want all of them."
-            )
-            sys.exit(2)
         try:
             pg_conn = get_warehouse_connection()
             athletes = get_athletes_with_athletic_screen_data(

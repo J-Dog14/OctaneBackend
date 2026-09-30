@@ -300,10 +300,16 @@ def ingest_data(aPlusDataPath: str, aPlusEventsPath: str, dry_run: bool = False,
 def get_current_session_data(conn=None):
     """
     Get current session data from temp table for report generation.
-    
+
+    Note: the temp table only exists on the connection that created it
+    (see init_temp_table), so this must be called with that same, still-open
+    connection. For report generation across separate runs/connections
+    (e.g. --report-only), use get_session_trial_events instead, which reads
+    from the permanent f_arm_action table.
+
     Args:
         conn: Optional database connection (creates new if not provided)
-        
+
     Returns:
         List of dictionaries with current session data
     """
@@ -311,12 +317,12 @@ def get_current_session_data(conn=None):
     if conn is None:
         conn = get_warehouse_connection()
         close_conn = True
-    
+
     try:
         with conn.cursor() as cur:
             cur.execute(f"""
-                SELECT 
-                    participant_name, session_date, movement_type,
+                SELECT
+                    participant_name, session_date, movement_type, filename,
                     foot_contact_frame, release_frame,
                     arm_abduction_at_footplant, max_abduction,
                     shoulder_angle_at_footplant, max_er,
@@ -325,11 +331,51 @@ def get_current_session_data(conn=None):
                 FROM {get_temp_table_name()}
                 ORDER BY id DESC
             """)
-            
+
             columns = [desc[0] for desc in cur.description]
             rows = cur.fetchall()
-            
+
             return [dict(zip(columns, row)) for row in rows]
     finally:
         if close_conn:
             conn.close()
+
+
+def get_session_trial_events(participant_name: str, session_date) -> list[dict]:
+    """
+    Get per-trial event data (movement_type, filename, foot_contact_frame,
+    release_frame) for an athlete's session from the permanent f_arm_action
+    table.
+
+    Unlike get_current_session_data, this reads from a durable table so it
+    works regardless of which connection/process ingested the data -
+    including a later --report-only run.
+
+    Args:
+        participant_name: Athlete name as stored in analytics.d_athletes
+        session_date: The session's date
+
+    Returns:
+        List of dictionaries with movement_type, filename,
+        foot_contact_frame, release_frame
+    """
+    conn = get_warehouse_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT
+                    aa.movement_type, aa.filename,
+                    aa.foot_contact_frame, aa.release_frame
+                FROM public.f_arm_action aa
+                JOIN analytics.d_athletes a ON aa.athlete_uuid = a.athlete_uuid
+                WHERE a.name = %s
+                  AND aa.session_date = %s
+                ORDER BY aa.id DESC
+            """, (participant_name, session_date))
+
+            columns = [desc[0] for desc in cur.description]
+            rows = cur.fetchall()
+
+            return [dict(zip(columns, row)) for row in rows]
+    finally:
+        conn.close()

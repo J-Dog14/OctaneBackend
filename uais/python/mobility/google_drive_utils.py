@@ -5,6 +5,7 @@ import os
 import json
 from pathlib import Path
 from typing import Optional, Dict, Any
+from datetime import datetime, timezone
 import pickle
 
 try:
@@ -246,7 +247,7 @@ def _list_sheets_in_folder(service, folder_id: str) -> list:
         resp = service.files().list(
             q=q,
             spaces='drive',
-            fields='nextPageToken, files(id, name, createdTime)',
+            fields='nextPageToken, files(id, name, createdTime, modifiedTime)',
             pageToken=page_token
         ).execute()
         results.extend(resp.get('files', []))
@@ -323,31 +324,47 @@ def download_missing_sheets(
 
     print(f"[OK] Found Drive folder ID: {folder_id}")
 
-    # Get existing Excel files in the cache directory
+    # Get existing Excel files in the cache directory, keyed by sanitized stem -> local mtime.
+    # Tracking mtime (not just presence) lets us re-pull a Sheet that was reused/edited in place
+    # for a later assessment under the same filename — otherwise that update silently never
+    # reaches the local cache, and the ingestion step has no way to know it exists.
     excel_dir = Path(excel_directory)
     excel_dir.mkdir(parents=True, exist_ok=True)
-    existing_excel = {f.stem.lower() for f in excel_dir.glob("*.xlsx")}
+    existing_excel = {f.stem.lower(): f.stat().st_mtime for f in excel_dir.glob("*.xlsx")}
 
     # List all Sheets in the Drive folder via API (no local file reading)
     drive_files = _list_sheets_in_folder(service, folder_id)
     print(f"\nFound {len(drive_files)} Google Sheets in Drive folder")
     print(f"Found {len(existing_excel)} existing Excel files in cache")
 
-    # Only download files we don't have yet (compare using sanitized name since that's what's on disk)
     def _safe(n: str) -> str:
         return n.replace('/', '-').replace('\\', '-').replace(':', '-').lower()
 
-    missing = [
-        f for f in drive_files
-        if _safe(f['name']) not in existing_excel
-        and 'template' not in f['name'].lower()
-    ]
+    def _drive_timestamp(iso_str: str) -> float:
+        # Drive returns RFC3339, e.g. "2026-09-22T14:23:01.123Z"
+        return datetime.strptime(iso_str[:19], '%Y-%m-%dT%H:%M:%S').replace(
+            tzinfo=timezone.utc
+        ).timestamp()
+
+    missing = []
+    for f in drive_files:
+        if 'template' in f['name'].lower():
+            continue
+        stem = _safe(f['name'])
+        local_mtime = existing_excel.get(stem)
+        if local_mtime is None:
+            missing.append(f)
+            continue
+        drive_modified = f.get('modifiedTime')
+        if drive_modified and _drive_timestamp(drive_modified) > local_mtime + 60:
+            # Drive's copy was edited after our local copy was last pulled -> refresh it
+            missing.append(f)
 
     if not missing:
-        print("All files already downloaded")
+        print("All files already downloaded and up to date")
         return {'success': True, 'downloaded': 0, 'failed': 0, 'message': 'All files already exist'}
 
-    print(f"\nDownloading {len(missing)} missing files...")
+    print(f"\nDownloading {len(missing)} new/updated files...")
 
     downloaded = 0
     failed = 0
@@ -364,10 +381,12 @@ def download_missing_sheets(
         if download_google_sheet_as_excel(creds, file_id, str(output_path)):
             print(f"   [OK] Downloaded successfully")
             downloaded += 1
-            # Write sidecar with Drive createdTime so ingestion uses the real assessment date
-            created_date = drive_file.get('createdTime', '')[:10]  # "2026-01-15"
-            if created_date:
-                (output_path.parent / (output_path.name + '.date')).write_text(created_date)
+            # Write sidecar with Drive's modifiedTime (not createdTime) so a Sheet that's
+            # reused/edited in place for a later assessment records that later date, not the
+            # date the Sheet was originally created.
+            modified_date = drive_file.get('modifiedTime', drive_file.get('createdTime', ''))[:10]
+            if modified_date:
+                (output_path.parent / (output_path.name + '.date')).write_text(modified_date)
         else:
             print(f"   [FAIL] Download failed")
             failed += 1

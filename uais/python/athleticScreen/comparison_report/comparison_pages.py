@@ -38,6 +38,7 @@ if str(_python_dir) not in sys.path:
 from athleticScreen.pdf_report import add_logo  # noqa: E402
 
 from .comparison_plots import (
+    SLV_TABLE_LABEL_BAND,
     comparison_bar_graph,
     comparison_fv_scatter,
     comparison_force_velocity_rings,
@@ -91,22 +92,35 @@ def _add_comparison_header(fig, athlete_name: str, session_dates: List[str],
              fontfamily="sans-serif",
              zorder=1002)
 
-    # Session-date legend strip — small colored squares + dates, in the
-    # white space between the name and the right-hand logo.
-    label_x = 0.39
+    # Session-date legend strip — small colored squares + dates.
+    #
+    # These used to stack vertically at x=0.39, which put them directly
+    # underneath the centered movement title ("Counter Movement Jump"), so
+    # the first date was unreadable on every page. They now run left to
+    # right in the clear band just above the accent line, under the name.
+    fig_w_in, fig_h_in = fig.get_size_inches()
+    swatch_w = 0.012
+    swatch_h = 0.011 * (65.0 / fig_h_in)   # keep the swatch square-ish
+    pitch = 0.075                          # ~4in per entry at 54in wide
+
+    # Centre the row in whatever gap is left between the bottom of the
+    # "Comparison Report" line and the accent rule. Page heights differ, so a
+    # fixed offset from the rule lands on the subtitle on the taller pages.
+    subtitle_bottom = name_y - 0.018 - (42.0 / 72.0) / fig_h_in
+    date_y = (subtitle_bottom + accent_y) / 2.0
     for i, date_str in enumerate(session_dates):
-        y = dates_top_y - i * 0.013
-        # Color swatch
-        fig.add_artist(Rectangle((label_x, y - 0.004), 0.012, 0.011,
+        x = 0.07 + i * pitch
+        fig.add_artist(Rectangle((x, date_y - swatch_h / 2), swatch_w, swatch_h,
                                  transform=fig.transFigure,
                                  facecolor=SESSION_COLORS[
                                      min(i, len(SESSION_COLORS) - 1)],
                                  edgecolor="white", linewidth=1.0,
                                  zorder=1002))
-        fig.text(label_x + 0.018, y,
+        fig.text(x + swatch_w + 0.006, date_y,
                  format_session_label(date_str),
                  fontsize=32, color="white", ha="left", va="center",
                  fontweight="bold", zorder=1002)
+    _ = (dates_top_y, fig_w_in)  # kept for call-site compatibility
 
     # Horizontal accent line
     fig.add_artist(Line2D([0.05, 0.98], [accent_y, accent_y],
@@ -121,6 +135,53 @@ def _set_axes_backgrounds(fig) -> None:
     for ax in fig.get_axes():
         if hasattr(ax, "set_facecolor"):
             ax.set_facecolor(PANEL_BG)
+
+
+# ---------------------------------------------------------------------------
+# Page heights (inches) and table geometry
+# ---------------------------------------------------------------------------
+# Trimmed from 90/65: the tables no longer need a tall block at the foot of
+# the page, so the slack under them came out.
+DJ_FIG_H = 86
+TWO_BAR_FIG_H = 62
+# SLV was 130in, most of which was slack under the table. The bands below are
+# positioned in inches from the top so trimming the page never shifts them.
+SLV_FIG_H = 118
+
+#: The SLV ring grid does not fill the box it is given: its row math
+#: (``row_h = (group_height - 0.05) / 4``, plus 0.005 between rows) leaves
+#: this much of the box unused along the bottom, as a figure fraction.
+#: Without accounting for it, anything placed under the rings sits about
+#: four inches lower than it looks like it should.
+RINGS_TAIL_FRAC = 0.035
+
+#: Vertical space one table row needs, in inches, at the table font sizes in
+#: comparison_plots. Header row included in the caller's ``n_rows``.
+TABLE_ROW_IN = 0.95
+
+
+def _table_rect(fig_h_in: float, left: float, width: float, *,
+                bottom: float, n_rows: int, extra_in: float = 0.0):
+    """Axes rect for a table of ``n_rows``, sized to its content.
+
+    The tables fill their axes exactly (their bbox covers the whole axes), so
+    the axes height IS the table height — set it from the row count instead of
+    picking a block and letting matplotlib stretch the rows to fill it.
+    """
+    height = (n_rows * TABLE_ROW_IN + extra_in) / fig_h_in
+    return [left, bottom, width, height]
+
+
+def _rect_from_top(fig_h_in: float, left: float, width: float, *,
+                   top_in: float, height_in: float):
+    """Axes rect from a distance below the top of the page, in inches.
+
+    Lets the SLV page keep its band spacing unchanged while the page itself
+    gets shorter — the bands stay put relative to the header instead of
+    sliding around when the height changes.
+    """
+    return [left, 1.0 - (top_in + height_in) / fig_h_in,
+            width, height_in / fig_h_in]
 
 
 def _build_sessions_with_avg(per_session_dfs: List[pd.DataFrame],
@@ -149,7 +210,7 @@ def dj_page(pdf, per_session_dfs, pop_df, athlete_name: str,
     if not any(not s["df"].empty for s in sessions):
         return
 
-    fig = plt.figure(figsize=(54, 90), facecolor=PAGE_BG)
+    fig = plt.figure(figsize=(54, DJ_FIG_H), facecolor=PAGE_BG)
     fig.patch.set_facecolor(PAGE_BG)
 
     # 4 histograms on top — JH_IN, PP_W_per_kg, RSI, CT
@@ -184,8 +245,12 @@ def dj_page(pdf, per_session_dfs, pop_df, athlete_name: str,
     ax_power = fig.add_axes([0.50, 0.11, 0.43, 0.13])
     comparison_power_curve(ax_power, sessions, power_files_dir)
 
-    # Performance table
-    ax_table = fig.add_axes([0.435, 0.002, 0.56, 0.10])
+    # Performance table — tucked under the power curve, bottom-aligned with
+    # the radar. Height is sized to its four rows (see TABLE_ROW_IN) rather
+    # than stretched to fill a block, which is what left the old table
+    # mostly whitespace.
+    ax_table = fig.add_axes(_table_rect(DJ_FIG_H, 0.435, 0.56,
+                                        bottom=0.045, n_rows=4))
     comparison_performance_table(ax_table, sessions, "DJ", pop_df)
 
     # FV scatter (left) + rings (right)
@@ -218,7 +283,7 @@ def _generic_two_bar_page(pdf, movement_name: str, per_session_dfs, pop_df,
     if not any(not s["df"].empty for s in sessions):
         return
 
-    fig = plt.figure(figsize=(54, 65), facecolor=PAGE_BG)
+    fig = plt.figure(figsize=(54, TWO_BAR_FIG_H), facecolor=PAGE_BG)
     fig.patch.set_facecolor(PAGE_BG)
 
     # Top: two histograms
@@ -237,8 +302,10 @@ def _generic_two_bar_page(pdf, movement_name: str, per_session_dfs, pop_df,
     ax_power = fig.add_axes([0.50, 0.125, 0.43, 0.16])
     comparison_power_curve(ax_power, sessions, power_files_dir)
 
-    # Performance table
-    ax_table = fig.add_axes([0.435, -0.025, 0.56, 0.17])
+    # Performance table. The old rect started at y=-0.025 — below the figure —
+    # so the last row was clipped off the bottom of the page entirely.
+    ax_table = fig.add_axes(_table_rect(TWO_BAR_FIG_H, 0.435, 0.56,
+                                        bottom=0.05, n_rows=4))
     comparison_performance_table(ax_table, sessions, movement_name, pop_df)
 
     # FV scatter + rings
@@ -287,46 +354,66 @@ def slv_page(pdf, per_session_dfs, pop_df, athlete_name: str,
 
     # SLV needs the most vertical real-estate of any page: histograms,
     # two radars, a full-width power curve, two FV scatters, four rows of
-    # rings (Left/Right × Force/Velocity), and a 6-row × N-col performance
-    # table. We use a tall figure and divide it into clearly stacked bands.
-    fig = plt.figure(figsize=(54, 130), facecolor=PAGE_BG)
+    # rings (Left/Right × Force/Velocity), and the performance table.
+    # We use a tall figure and divide it into clearly stacked bands.
+    fig = plt.figure(figsize=(54, SLV_FIG_H), facecolor=PAGE_BG)
     fig.patch.set_facecolor(PAGE_BG)
+
+    # Bands are placed by inches from the top of the page so that trimming
+    # the page height only removes slack at the bottom — the spacing between
+    # bands stays exactly as it was.
+    H = SLV_FIG_H
 
     # Band 1 — Histograms (top)
     graph_w = 0.38
-    graph_h = 0.115
-    top_bottom = 0.815
     h_spacing = (1.0 - 2 * graph_w) / 3
     for i, metric in enumerate(["JH_IN", "PP_W_per_kg"]):
         x = h_spacing + i * (graph_w + h_spacing)
-        ax = fig.add_axes([x, top_bottom, graph_w, graph_h])
+        ax = fig.add_axes(_rect_from_top(H, x, graph_w,
+                                         top_in=9.1, height_in=14.95))
         slv_comparison_bar_graph(ax, metric, sessions, pop_df)
 
     # Band 2 — Two radars (Left | Right) side-by-side
-    ax_radar_left = fig.add_axes([0.05, 0.625, 0.42, 0.16], polar=True)
+    ax_radar_left = fig.add_axes(
+        _rect_from_top(H, 0.05, 0.42, top_in=27.95, height_in=20.8), polar=True)
     slv_comparison_radar_chart(ax_radar_left, sessions, pop_df, leg="Left")
-    ax_radar_right = fig.add_axes([0.53, 0.625, 0.42, 0.16], polar=True)
+    ax_radar_right = fig.add_axes(
+        _rect_from_top(H, 0.53, 0.42, top_in=27.95, height_in=20.8), polar=True)
     slv_comparison_radar_chart(ax_radar_right, sessions, pop_df, leg="Right")
 
     # Band 3 — Full-width power curve
-    ax_power = fig.add_axes([0.09, 0.51, 0.86, 0.075])
+    ax_power = fig.add_axes(
+        _rect_from_top(H, 0.09, 0.86, top_in=53.95, height_in=9.75))
     slv_comparison_power_curve(ax_power, sessions, power_files_dir)
 
     # Band 4 — Per-leg FV scatters
-    ax_fv_left = fig.add_axes([0.06, 0.36, 0.42, 0.115])
+    ax_fv_left = fig.add_axes(
+        _rect_from_top(H, 0.06, 0.42, top_in=68.25, height_in=14.95))
     slv_comparison_fv_scatter(ax_fv_left, sessions, pop_df, leg="Left")
-    ax_fv_right = fig.add_axes([0.53, 0.36, 0.42, 0.115])
+    ax_fv_right = fig.add_axes(
+        _rect_from_top(H, 0.53, 0.42, top_in=68.25, height_in=14.95))
     slv_comparison_fv_scatter(ax_fv_right, sessions, pop_df, leg="Right")
 
     # Band 5 — 4-row × N-col ring grid
+    rings_top_in, rings_h_in = 86.45, 26.0
     slv_comparison_force_velocity_rings(
         fig, sessions, pop_df,
-        group_left=0.18, group_bottom=0.135,
-        group_width=0.78, group_height=0.20,
+        group_left=0.18,
+        group_bottom=1.0 - (rings_top_in + rings_h_in) / H,
+        group_width=0.78,
+        group_height=rings_h_in / H,
     )
 
-    # Band 6 — Performance table (bottom; needs ~6 rows of vertical room)
-    ax_table = fig.add_axes([0.04, 0.012, 0.92, 0.105])
+    # Band 6 — Performance table. Three rows now (L and R sit side by side
+    # instead of on their own rows), plus a header row and the band that
+    # carries the spanning session labels. It is anchored to where the rings
+    # actually stop, not to the bottom of the box they were given.
+    rings_content_bottom_in = rings_top_in + rings_h_in - RINGS_TAIL_FRAC * H
+    table_h_in = (4 * TABLE_ROW_IN) / (1.0 - SLV_TABLE_LABEL_BAND)
+    ax_table = fig.add_axes(
+        _rect_from_top(H, 0.04, 0.92,
+                       top_in=rings_content_bottom_in + 2.0,
+                       height_in=table_h_in))
     slv_comparison_performance_table(ax_table, sessions, pop_df)
 
     plt.suptitle(MOVEMENT_TITLES["SLV"], fontsize=150,
@@ -334,7 +421,7 @@ def slv_page(pdf, per_session_dfs, pop_df, athlete_name: str,
                  fontfamily="sans-serif", style="italic", y=0.985)
 
     _add_comparison_header(fig, athlete_name, session_dates, logo_path,
-                           name_y=0.975, dates_top_y=0.962, accent_y=0.95)
+                           name_y=0.975, dates_top_y=0.962, accent_y=0.942)
     _set_axes_backgrounds(fig)
     pdf.savefig(fig, facecolor=PAGE_BG, edgecolor="none")
     plt.close(fig)

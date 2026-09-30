@@ -1046,24 +1046,31 @@ def power_curve(ax, df, pop_df=None, power_files_dir=None, athlete_name=None, se
                     print(f"[PowerCurve] Using cached data for {trial_name}")
                 continue
 
-            # Look for Power.txt file - try upload dir first, then local fallback
+            # Look for Power.txt file - try upload dir first, then local fallback.
+            # IMPORTANT: processed_dir and _local_fallback are shared archive folders that
+            # accumulate every athlete's Power.txt files over time. A bare "{trial_name}*_Power.txt"
+            # glob against those dirs is NOT athlete-scoped, so it will happily match a
+            # completely different athlete's file (e.g. an older session left on disk) and
+            # silently plot their data into this athlete's report. Only power_files_dir itself
+            # is safe to search without an athlete-name match, since it's the per-job upload
+            # dir populated with just this run's files.
             power_file = None
             patterns = []
-            # Exact athlete-specific filename first (matches main.py's renamed file in Processed txt Files)
             if athlete_name and session_date:
                 clean_name = athlete_name.replace(',', '').replace(' ', '_')
+                # Exact filename match (matches main.py's renamed file in Processed txt Files)
                 patterns.append(os.path.join(processed_dir, f"{trial_name}_{clean_name}_{session_date}_Power.txt"))
+                # Same athlete, tolerant of a differently formatted date suffix — still scoped
+                # to this athlete's name so it can never pull another athlete's file.
+                patterns.append(os.path.join(processed_dir, f"{trial_name}_{clean_name}_*_Power.txt"))
+                if _local_fallback and _local_fallback != power_files_dir:
+                    _local_processed = os.path.join(_local_fallback, "Processed txt Files")
+                    patterns.append(os.path.join(_local_processed, f"{trial_name}_{clean_name}_{session_date}_Power.txt"))
+                    patterns.append(os.path.join(_local_processed, f"{trial_name}_{clean_name}_*_Power.txt"))
             patterns += [
-                os.path.join(processed_dir, f"{trial_name}_Power.txt"),
-                os.path.join(processed_dir, f"{trial_name}*_Power.txt"),
                 os.path.join(power_files_dir, f"{trial_name}_Power.txt"),
                 os.path.join(power_files_dir, f"{trial_name}*_Power.txt"),
             ]
-            if _local_fallback and _local_fallback != power_files_dir:
-                patterns += [
-                    os.path.join(_local_fallback, f"{trial_name}_Power.txt"),
-                    os.path.join(_local_fallback, f"{trial_name}*_Power.txt"),
-                ]
 
             print(f"[PowerCurve] Searching for {trial_name}_Power.txt in {power_files_dir}")
             for pattern in patterns:
@@ -1209,22 +1216,22 @@ def slv_power_curve(ax, left_df, right_df, pop_df=None, power_files_dir=None, at
                 continue
 
             if (processed_dir or power_files_dir) and trial_name:
+                # See the note in power_curve() above: processed_dir/_local_fallback are
+                # shared multi-athlete archives, so any glob against them must include the
+                # athlete's name — otherwise it can silently load another athlete's file.
                 patterns = []
-                # Exact athlete-specific filename first (matches main.py's renamed file in Processed txt Files)
                 if athlete_name and session_date and processed_dir:
                     clean_name = athlete_name.replace(',', '').replace(' ', '_')
                     patterns.append(os.path.join(processed_dir, f"{trial_name}_{clean_name}_{session_date}_Power.txt"))
+                    patterns.append(os.path.join(processed_dir, f"{trial_name}_{clean_name}_*_Power.txt"))
+                    if _local_fallback and _local_fallback != power_files_dir:
+                        _local_processed = os.path.join(_local_fallback, "Processed txt Files")
+                        patterns.append(os.path.join(_local_processed, f"{trial_name}_{clean_name}_{session_date}_Power.txt"))
+                        patterns.append(os.path.join(_local_processed, f"{trial_name}_{clean_name}_*_Power.txt"))
                 patterns += [
-                    os.path.join(processed_dir, f"{trial_name}_Power.txt") if processed_dir else '',
-                    os.path.join(processed_dir, f"{trial_name}*_Power.txt") if processed_dir else '',
                     os.path.join(power_files_dir, f"{trial_name}_Power.txt") if power_files_dir else '',
                     os.path.join(power_files_dir, f"{trial_name}*_Power.txt") if power_files_dir else '',
                 ]
-                if _local_fallback and _local_fallback != power_files_dir:
-                    patterns += [
-                        os.path.join(_local_fallback, f"{trial_name}_Power.txt"),
-                        os.path.join(_local_fallback, f"{trial_name}*_Power.txt"),
-                    ]
                 patterns = [p for p in patterns if p]
                 print(f"[PowerCurve SLV {side_name}] Searching for {trial_name}_Power.txt")
                 for pattern in patterns:

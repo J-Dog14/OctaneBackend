@@ -23,9 +23,10 @@ if str(python_dir) not in sys.path:
 from common.config import get_warehouse_engine
 from config import (
     OUTPUT_DIR, OUTPUT_DIR_TWO, LOGO_PATH,
-    AP_TORSO_V_FILE, AP_ARM_V_FILE,
+    AP_TORSO_V_FILE, AP_ARM_V_FILE, CAPTURE_RATE,
     IMG_FRONT_FP, IMG_SAG_FP, IMG_SAG_MAXER, IMG_SAG_REL
 )
+from database import get_session_trial_events
 
 
 def get_report_data():
@@ -88,128 +89,151 @@ def get_report_data():
     return participant_name, str(test_date), df
 
 
-def build_velocity_figure_all_frames(
-    torso_txt,
-    arm_txt,
-    foot_contact_row,
-    release_row
-):
+def _read_curve_file_with_trials(txt_path):
     """
-    Plot the entire trial from frame=0 to frame=N-1 for both torso & arm velocity txt files.
-    We skip top 7 lines, then treat columns>=2 as data.
+    Read a Visual3D ASCII curve export that has ONE data column per trial
+    (e.g. Torso_Rot_Velo or the Z-only Pitching_Shoulder_Velo exports used
+    here), keyed by the trial's filename so it can be matched against the
+    per-trial foot_contact_frame/release_frame stored in the warehouse.
 
-    The x-axis is frames from 0..(N-1).
-    We draw vertical gold lines at foot_contact_row-7 and release_row-7 if they're in range.
+    File layout (fixed, matches the rest of this module's "-7" convention):
+      row 0: leading blank cell + one full c3d path per trial column
+      rows 1-3: variable name / LINK_MODEL_BASED / PROCESSED metadata
+      row 4: "ITEM" label row (component labels, e.g. Y/Y/Y/Y)
+      rows 5+: ITEM number in column 0, one value per trial in columns 1..N
 
-    This version sets the figure width=1600 & height=600 to make it wider and a bit taller.
-    
+    Row index 7 of the raw file (0-indexed) is the first data row this
+    module has always treated as "x=0" -- kept as-is here so existing
+    foot_contact_frame/release_frame values (computed elsewhere as
+    event_seconds * CAPTURE_RATE) stay comparable via the same "-7" offset.
+
+    Returns:
+        dict[str, pd.Series]: filename -> velocity series (abs value),
+        indexed 0..N-1 in the same coordinate system as the "-7" offset.
+    """
+    raw = pd.read_csv(txt_path, header=None, sep="\t")
+    filenames_row = raw.iloc[0]
+    data = raw.iloc[7:, :].reset_index(drop=True)
+    data = data.apply(pd.to_numeric, errors="coerce")
+
+    series_by_file = {}
+    # Column 0 is the ITEM/index column -- skip it. Every remaining column
+    # is one trial (previously this code sliced from column 2, which
+    # silently dropped the first trial's curve from the chart).
+    for col in data.columns[1:]:
+        fn = str(filenames_row[col]).strip()
+        if not fn or fn.lower() == "nan":
+            continue
+        series_by_file[fn] = data[col].abs()
+    return series_by_file
+
+
+def build_velocity_figure_aligned(torso_txt, arm_txt, trial_events):
+    """
+    Time-aligned angular velocity chart: every trial's torso & arm curves
+    are shifted so that trial's OWN foot-contact event lands at x=0, then
+    converted to milliseconds via CAPTURE_RATE. This makes trials of
+    different lengths directly comparable, instead of overlaying them on a
+    shared raw-frame axis where each trial's foot contact/release fall at
+    different points.
+
     Args:
         torso_txt: Path to torso velocity text file
         arm_txt: Path to arm velocity text file
-        foot_contact_row: Frame number for foot contact
-        release_row: Frame number for release
-        
+        trial_events: list of dicts with keys 'filename',
+            'foot_contact_frame', 'release_frame' -- one entry per trial in
+            the current session (as returned by database.get_session_trial_events)
+
     Returns:
         plotly.graph_objects.Figure: The velocity figure
     """
-    # 1) Read TORSO (skip top 7 lines)
-    df_torso = pd.read_csv(torso_txt, header=None, sep="\t").iloc[7:,:].copy()
-    torso_data = df_torso.iloc[:, 2:].apply(pd.to_numeric, errors="coerce").abs()
+    torso_by_file = _read_curve_file_with_trials(torso_txt)
+    arm_by_file = _read_curve_file_with_trials(arm_txt)
 
-    # 2) Read ARM
-    df_arm = pd.read_csv(arm_txt, header=None, sep="\t").iloc[7:,:].copy()
-    arm_data = df_arm.iloc[:, 2:].apply(pd.to_numeric, errors="coerce").abs()
+    ms_per_frame = 1000.0 / CAPTURE_RATE
 
-    # 3) Number of total frames
-    total_torso = len(torso_data)
-    total_arm = len(arm_data)
-    total_rows = max(total_torso, total_arm)
-
-    x = np.arange(total_rows)
-
-    def clamp_to_range(n, high):
-        return max(0, min(n, high-1))
-
-    if foot_contact_row is None:
-        foot_contact_row = -9999
-    if release_row is None:
-        release_row = -9999
-
-    foot_line = clamp_to_range(foot_contact_row - 7, total_rows)
-    release_line = clamp_to_range(release_row - 7, total_rows)
-
-    # 4) Build figure
     fig = go.Figure()
-    fig.update_layout(
-        width=1600,   # Widen the figure
-        height=600,
-        template="plotly_dark",
-        title="Angular Velocities (Torso & Arm) – Full Trial Frames",
+    legend_shown = {"Torso": False, "Arm": False}
+    all_y = []
+    release_offsets_ms = []
+
+    for trial in trial_events or []:
+        fn = trial.get("filename")
+        fc = trial.get("foot_contact_frame")
+        rel = trial.get("release_frame")
+        if not fn or fc is None:
+            continue
+
+        # Same "-7" row-offset convention used everywhere else in this module.
+        fc_pos = fc - 7
+
+        for series_map, label, color in (
+            (torso_by_file, "Torso", "#d62728"),
+            (arm_by_file, "Arm", "#2c99d4"),
+        ):
+            series = series_map.get(fn)
+            if series is None or series.empty:
+                continue
+            x_ms = (np.arange(len(series)) - fc_pos) * ms_per_frame
+            y = series.values
+            all_y.append(y)
+            fig.add_trace(go.Scatter(
+                x=x_ms,
+                y=y,
+                mode="lines",
+                name=label if not legend_shown[label] else None,
+                line=dict(color=color),
+                showlegend=not legend_shown[label],
+                opacity=0.75
+            ))
+            legend_shown[label] = True
+
+        if rel is not None:
+            release_offsets_ms.append((rel - fc) * ms_per_frame)
+
+    if all_y:
+        combined = np.concatenate(all_y)
+        y_min = float(np.nanmin(combined))
+        y_max = float(np.nanmax(combined))
+    else:
+        y_min, y_max = 0, 1
+
+    # Foot contact is x=0 for every trial by construction.
+    fig.add_shape(
+        type="line",
+        x0=0, x1=0, y0=y_min, y1=y_max,
+        line=dict(color="gold", dash="dot", width=2)
+    )
+    fig.add_annotation(
+        x=0, y=y_max, text="Foot Contact", showarrow=False,
+        yshift=15, font=dict(color="gold", size=14)
     )
 
-    # TORSO => unify in one legend
-    torso_cols = torso_data.columns
-    for i, col_i in enumerate(torso_cols):
-        y = torso_data[col_i].values
-        show_legend = (i == 0)
-        fig.add_trace(go.Scatter(
-            x=x[:len(y)],
-            y=y,
-            mode="lines",
-            name="Torso" if show_legend else None,
-            line=dict(color="#d62728"),
-            showlegend=show_legend,
-            opacity=0.8
-        ))
-
-    # ARM => unify in one legend
-    arm_cols = arm_data.columns
-    for j, col_j in enumerate(arm_cols):
-        y = arm_data[col_j].values
-        show_legend = (j == 0)
-        fig.add_trace(go.Scatter(
-            x=x[:len(y)],
-            y=y,
-            mode="lines",
-            name="Arm" if show_legend else None,
-            line=dict(color="#2c99d4"),
-            showlegend=show_legend,
-            opacity=0.8
-        ))
-
-    combined = pd.concat([torso_data, arm_data], axis=1)
-    y_min = float(np.nanmin(combined.values)) if not combined.empty else 0
-    y_max = float(np.nanmax(combined.values)) if not combined.empty else 1
-
-    # foot_contact line
-    if 0 <= foot_line < total_rows:
+    # Release timing varies rep to rep, so we mark the average rather than
+    # cluttering the chart with one dashed line per trial.
+    if release_offsets_ms:
+        avg_release_ms = float(np.mean(release_offsets_ms))
         fig.add_shape(
             type="line",
-            x0=foot_line,
-            x1=foot_line,
-            y0=y_min,
-            y1=y_max,
-            line=dict(color="gold", dash="dot", width=2)
+            x0=avg_release_ms, x1=avg_release_ms, y0=y_min, y1=y_max,
+            line=dict(color="gold", dash="dash", width=2)
         )
-
-    # release line
-    if 0 <= release_line < total_rows:
-        fig.add_shape(
-            type="line",
-            x0=release_line,
-            x1=release_line,
-            y0=y_min,
-            y1=y_max,
-            line=dict(color="gold", dash="dash", width=3)
+        fig.add_annotation(
+            x=avg_release_ms, y=y_max, text="Release (avg)", showarrow=False,
+            yshift=15, font=dict(color="gold", size=14)
         )
 
     fig.update_layout(
+        width=1600,
+        height=600,
+        template="plotly_dark",
+        title="Angular Velocities (Torso & Arm) – Aligned to Foot Contact",
         legend=dict(
             orientation="h",
             yanchor="bottom", y=1.02,
             xanchor="left", x=0.05
         ),
-        xaxis_title="Frames (0..end of trial)",
+        xaxis_title="Time relative to Foot Contact (ms)",
         yaxis_title="Velocity (absolute)"
     )
     return fig
@@ -217,42 +241,34 @@ def build_velocity_figure_all_frames(
 
 def generate_movement_report():
     """Generate the PDF movement analysis report."""
-    from common.config import get_warehouse_engine
-    
-    engine = get_warehouse_engine()
-    
-    # --- (A) RETRIEVE DB FRAMES ---
-    # Get the most recent record from warehouse
-    df_frames = pd.read_sql_query(
-        """
-        SELECT foot_contact_frame, release_frame
-        FROM public.f_arm_action
-        ORDER BY id DESC
-        LIMIT 1
-        """,
-        engine
-    )
-
-    if df_frames.empty:
-        foot_contact_row = 0
-        release_row = 0
-    else:
-        foot_contact_row = df_frames.iloc[0]["foot_contact_frame"]
-        release_row = df_frames.iloc[0]["release_frame"]
-        if pd.isna(foot_contact_row):
-            foot_contact_row = 0
-        if pd.isna(release_row):
-            release_row = 0
-
-    # --- (B) GET SUMMARY TABLE DATA ---
+    # --- (A) GET SUMMARY TABLE DATA ---
     participant_name, test_date, summary_df = get_report_data()
 
+    # --- (B) RETRIEVE PER-TRIAL EVENTS FOR THE CURRENT SESSION ---
+    # Each trial in the current session has its own foot_contact_frame /
+    # release_frame, keyed by filename, so the velocity chart can align
+    # every trial to its own foot contact instead of a single shared frame.
+    # Read from the permanent f_arm_action table (not the ingest-time temp
+    # table, which only exists on the connection that created it and is
+    # long closed by the time this runs).
+    session_rows = get_session_trial_events(participant_name, test_date)
+
+    pitch_rows = [r for r in session_rows if r.get("movement_type") == "Pitch"]
+    trial_source_rows = pitch_rows if pitch_rows else session_rows
+    trial_events = [
+        {
+            "filename": r.get("filename"),
+            "foot_contact_frame": r.get("foot_contact_frame"),
+            "release_frame": r.get("release_frame"),
+        }
+        for r in trial_source_rows
+    ]
+
     # --- (C) BUILD & SAVE VELOCITY FIG ---
-    fig_velo = build_velocity_figure_all_frames(
+    fig_velo = build_velocity_figure_aligned(
         AP_TORSO_V_FILE,
         AP_ARM_V_FILE,
-        foot_contact_row,
-        release_row
+        trial_events
     )
     velo_png = "angular_velocity.png"
     
@@ -457,8 +473,9 @@ def generate_movement_report():
         "throughout the pitching motion. The kinematic sequence refers to sequential velocity peaks "
         "in the pelvis, torso, upper arm, forearm, and hand. Higher velocities in the trunk and arm "
         "have been linked to increased performance.\n\n"
-        "This chart displays the entire trial's data (frame 0 through the final frame), with vertical "
-        "gold lines at the foot contact and release frames if they exist."
+        "Every pitch is time-aligned to its own foot contact (gold dotted line at 0 ms), so timing and "
+        "peaks are directly comparable across throws even when each pitch takes a different amount of "
+        "time. The gold dashed line marks the average release time across pitches."
     )
 
     c.setFont("Helvetica", 24)
@@ -538,8 +555,7 @@ def generate_movement_report():
     ha_text = (
         "Horizontal abduction is how far behind the body the arm/elbow gets during the pitching motion. "
         "Commonly referred to as the 'loading' of the arm, horizontal abduction has been linked to both velocity "
-        "and arm health.\n\n"
-        "Front@FP.png      Sag@FP.png"
+        "and arm health."
     )
     draw_text_image_block(ha_title, ha_text, [IMG_FRONT_FP, IMG_SAG_FP], box_height=720)
 
@@ -550,8 +566,7 @@ def generate_movement_report():
         "Shoulder external rotation at footplant is often referred to as 'arm timing.' An on-time arm is between "
         "33 and 77 degrees. Anything lower than 33 is deemed late; above 77 is deemed early.\n\n"
         "Max External rotation (often called layback) is how much the arm externally rotates during "
-        "the pitching motion. A higher max ER has been linked to both arm health and velocity.\n\n"
-        "Sag@MaxER.png      sag@Rel.png"
+        "the pitching motion. A higher max ER has been linked to both arm health and velocity."
     )
     draw_text_image_block(ser_title, ser_text, [IMG_SAG_MAXER, IMG_SAG_REL], box_height=720)
 

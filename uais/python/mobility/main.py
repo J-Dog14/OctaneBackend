@@ -283,7 +283,14 @@ def extract_demographic_data(ws) -> Dict[str, Any]:
     # C6: Gmail/Email
     try:
         email_cell = ws['C6'].value
-        data['email'] = extract_after_prefix(email_cell, "Gmail: ")
+        email_val = extract_after_prefix(email_cell, "Gmail: ")
+        # A blank/unfilled cell still containing just the "Gmail:" label falls through
+        # extract_after_prefix's generic fallback and returns the label itself. That bogus
+        # value previously matched every other athlete with the same blank cell via the
+        # email-first lookup in get_or_create_athlete, merging dozens of unrelated athletes
+        # into whichever profile got created first. Require an "@" so only a real address
+        # is ever treated as this athlete's email.
+        data['email'] = email_val if email_val and '@' in email_val else None
     except:
         data['email'] = None
 
@@ -440,42 +447,32 @@ def ensure_column_exists(conn, table_name: str, column_name: str, column_type: s
                 # else: column exists now, no error
 
 
-def get_processed_files(conn) -> set:
+PROCESSED_STATE_FILE = project_root / "data" / "mobility_processed_state.json"
+
+
+def load_processed_state() -> Dict[str, float]:
     """
-    Get set of already processed file paths from f_mobility table.
-    Uses source_file column if it exists, otherwise returns empty set.
-    
-    Args:
-        conn: PostgreSQL connection
-        
-    Returns:
-        Set of processed file paths
+    Load the {normalized_path: mtime} map of files processed in previous runs.
+
+    Keying on mtime (not just path) means a file that gets overwritten with a newer
+    assessment under the same filename -- e.g. a Google Sheet reused/edited in place --
+    is correctly picked up again instead of being silently skipped forever because its
+    path once appeared in the database.
     """
+    if PROCESSED_STATE_FILE.exists():
+        try:
+            return json.loads(PROCESSED_STATE_FILE.read_text())
+        except Exception:
+            return {}
+    return {}
+
+
+def save_processed_state(state: Dict[str, float]) -> None:
     try:
-        with conn.cursor() as cur:
-            # Check if source_file column exists
-            cur.execute("""
-                SELECT column_name 
-                FROM information_schema.columns 
-                WHERE table_schema = 'public' 
-                AND table_name = 'f_mobility' 
-                AND column_name = 'source_file'
-            """)
-            
-            if cur.fetchone():
-                # Column exists, get all processed files
-                cur.execute("""
-                    SELECT DISTINCT source_file 
-                    FROM public.f_mobility 
-                    WHERE source_file IS NOT NULL
-                """)
-                return {row[0] for row in cur.fetchall()}
-            else:
-                # Column doesn't exist yet, return empty set
-                return set()
+        PROCESSED_STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        PROCESSED_STATE_FILE.write_text(json.dumps(state))
     except Exception as e:
-        print(f"Warning: Could not get processed files: {e}")
-        return set()
+        print(f"Warning: Could not save processed-file state: {e}")
 
 
 def read_gsheet_file(file_path: str) -> Optional[str]:
@@ -574,9 +571,17 @@ def process_mobility_file(file_path: str, conn, athlete_uuid: str = None) -> Dic
     Returns:
         Dictionary with processing results
     """
+    # Normalize case/separators so the same physical file always yields the same
+    # source_file string, regardless of how the caller's working directory or drive
+    # letter case resolved this run. Without this, Windows treats "C:\..." and "c:\..."
+    # as the same file but the DB match below (line ~756) is a case-sensitive string
+    # compare, so a re-run under different casing would look "new" and insert a duplicate
+    # row instead of updating the existing one.
+    file_path = os.path.normcase(os.path.normpath(file_path))
+
     file_name = os.path.basename(file_path)
     print(f"\nProcessing: {file_name}")
-    
+
     # Process each file in its own transaction
     # This prevents cascading failures and removes savepoint complexity
     try:
@@ -840,13 +845,10 @@ def process_mobility_directory(directory_path: str, athlete_uuid: str = None):
     conn = get_warehouse_connection()
     
     try:
-        # Get list of already processed files (by source_file path)
-        processed_files = get_processed_files(conn)
-        logger.info(f"Found {len(processed_files)} already processed files")
-        
-        # Normalize paths for comparison
-        processed_files_normalized = {os.path.normpath(f) for f in processed_files}
-        
+        # Load {path: mtime} of files processed in previous runs
+        processed_state = load_processed_state()
+        logger.info(f"Found {len(processed_state)} files processed in previous runs")
+
         # Find all Excel files
         excel_files = []
         dir_path = Path(directory_path)
@@ -947,36 +949,46 @@ def process_mobility_directory(directory_path: str, athlete_uuid: str = None):
             except Exception as e:
                 logger.error(f"Error listing directory: {e}")
         
-        # Filter out already processed files (normalize paths for comparison)
+        # Filter out files whose content hasn't changed since we last processed them
+        # (path + mtime unchanged). A file with a new mtime -- including one that was
+        # re-downloaded because Drive's copy changed under the same filename -- is
+        # treated as new work even if that exact path appeared in a previous run.
         new_files = []
         for f in excel_files:
-            file_path_normalized = os.path.normpath(str(f))
-            if file_path_normalized not in processed_files_normalized:
-                new_files.append(f)
+            key = os.path.normcase(os.path.normpath(str(f)))
+            try:
+                current_mtime = os.path.getmtime(f)
+            except OSError:
+                current_mtime = None
+            if key not in processed_state or processed_state.get(key) != current_mtime:
+                new_files.append((f, key, current_mtime))
             else:
-                logger.info(f"Skipping already processed: {f.name}")
-        
+                logger.info(f"Skipping unchanged file: {f.name}")
+
         if not new_files:
-            logger.info("All files have already been processed.")
+            logger.info("All files have already been processed and are unchanged.")
             return
-        
-        logger.info(f"Processing {len(new_files)} new files...")
-        
+
+        logger.info(f"Processing {len(new_files)} new/changed files...")
+
         # Process each file
         processed = []
         errors = []
         inserted_count = 0
         updated_count = 0
-        
-        for file_path in new_files:
+
+        for file_path, state_key, current_mtime in new_files:
             result = process_mobility_file(str(file_path), conn, athlete_uuid=athlete_uuid)
-            
+
             if result.get('success'):
                 processed.append(result)
                 if result.get('action') == 'inserted':
                     inserted_count += 1
                 elif result.get('action') == 'updated':
                     updated_count += 1
+                if current_mtime is not None:
+                    processed_state[state_key] = current_mtime
+                    save_processed_state(processed_state)
             else:
                 errors.append((str(file_path), result.get('error', 'Unknown error')))
         

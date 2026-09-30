@@ -12,22 +12,16 @@ $scriptPath = Join-Path $PSScriptRoot "python\scripts\rotate_neon_branches.py"
 
 if (-not (Test-Path $scriptPath)) {
     Write-Host "Error: Script not found: $scriptPath" -ForegroundColor Red
-    Write-Host "Run this from the project root: C:\Users\Joey\PycharmProjects\UAIS" -ForegroundColor Yellow
+    Write-Host "Run this from the project root: $PSScriptRoot" -ForegroundColor Yellow
     exit 1
 }
 
-# Use python from PATH (or py launcher on Windows)
-$pythonExe = "python"
-try {
-    $null = & $pythonExe --version 2>&1
-} catch {
-    $pythonExe = "py"
-    try {
-        $null = & $pythonExe --version 2>&1
-    } catch {
-        Write-Host "Error: Python not found. Install Python or add it to PATH." -ForegroundColor Red
-        exit 1
-    }
+# Use the venv python explicitly (PATH "python" can resolve to the Windows Store
+# App Execution Alias stub under Task Scheduler's S4U session, which silently no-ops)
+$pythonExe = Join-Path $PSScriptRoot "venv\Scripts\python.exe"
+if (-not (Test-Path $pythonExe)) {
+    Write-Host "Error: venv python not found at $pythonExe" -ForegroundColor Red
+    exit 1
 }
 
 $pyArgs = @()

@@ -121,11 +121,21 @@ def normalize_name_for_display(name: str) -> str:
 def normalize_email(email: Optional[str]) -> Optional[str]:
     """
     Normalize email for storage and matching: lowercase, strip.
-    Returns None if input is empty/None.
+    Returns None if input is empty/None/not a real email address.
+
+    The "@" check matters: several domain parsers extract email from a labeled cell
+    (e.g. "Gmail: ") and fall back to returning the raw cell text when the label prefix
+    doesn't match exactly. An unfilled cell can leave just the label itself (e.g. "Gmail:")
+    as the "email", which would otherwise pass through and match this athlete to every
+    other athlete whose form was left blank the same way via the email-first lookup in
+    find_existing_athlete_by_name_or_email.
     """
     if not email or not str(email).strip():
         return None
-    return str(email).strip().lower()
+    cleaned = str(email).strip().lower()
+    if '@' not in cleaned:
+        return None
+    return cleaned
 
 
 def normalize_name_for_matching(name: str) -> str:

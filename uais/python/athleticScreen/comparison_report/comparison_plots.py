@@ -27,7 +27,7 @@ from typing import Dict, List, Optional
 
 import numpy as np
 import pandas as pd
-from matplotlib.patches import Arc, Circle, FancyArrowPatch
+from matplotlib.patches import Arc, Circle, FancyArrowPatch, Rectangle
 from scipy.interpolate import interp1d
 from scipy.stats import percentileofscore
 
@@ -48,6 +48,7 @@ from athleticScreen.pdf_report import (  # noqa: E402
 )
 
 from .config import (
+    PAGE_BG,
     PANEL_BG,
     POPULATION_COLOR,
     format_session_label,
@@ -111,6 +112,60 @@ def _hex_to_pastel_rgba(hex_color: str, alpha: float = 0.5):
     return (r, g, b, alpha)
 
 
+#: Extra headroom added above the tallest histogram bar so the session
+#: legend has somewhere to sit. Without it the legend prints on top of the
+#: bars, which is what made the old one hard to read.
+LEGEND_HEADROOM = 1.62
+
+
+def _draw_session_legend(ax, columns: List[str], rows: List[tuple], *,
+                         fontsize: int = 25, right: float = 0.985,
+                         top: float = 0.965) -> None:
+    """Aligned, color-keyed legend in the top-right of an axes.
+
+    ``columns`` are the value-column headings; ``rows`` is a list of
+    ``(label, color, [value, ...])`` with one value per column. The label is
+    printed in its session color so the row ties to the line it describes,
+    while the numbers stay white and column-aligned — the old single
+    monospace blob relied on padding and drifted out of alignment as soon as
+    a number changed width.
+    """
+    if not rows:
+        return
+
+    n_cols = len(columns)
+    col_w = 0.105                      # axes-fraction width per value column
+    label_w = 0.185
+    block_w = label_w + n_cols * col_w
+    left = right - block_w
+    line_h = 0.068
+    height = line_h * (len(rows) + 1)
+
+    # Backing panel so the text reads over gridlines and bars.
+    ax.add_patch(Rectangle(
+        (left - 0.015, top - height - 0.01),
+        block_w + 0.03, height + 0.02,
+        transform=ax.transAxes, facecolor=PAGE_BG, alpha=0.72,
+        edgecolor="#5a646b", linewidth=1.2, zorder=8,
+    ))
+
+    # Column headings
+    for c, heading in enumerate(columns):
+        ax.text(left + label_w + (c + 0.5) * col_w, top, heading,
+                transform=ax.transAxes, ha="center", va="top",
+                color="#98a4ad", fontsize=fontsize - 3, zorder=9)
+
+    for r, (label, color, values) in enumerate(rows):
+        y = top - (r + 1) * line_h
+        ax.text(left, y, label, transform=ax.transAxes,
+                ha="left", va="top", color=color, fontsize=fontsize,
+                fontweight="bold", zorder=9)
+        for c, value in enumerate(values):
+            ax.text(left + label_w + (c + 0.5) * col_w, y, value,
+                    transform=ax.transAxes, ha="center", va="top",
+                    color="white", fontsize=fontsize, zorder=9)
+
+
 def _tier_color_map():
     return {
         "Elite":         _hex_to_pastel_rgba("#00ff00", 0.5),
@@ -157,7 +212,7 @@ def comparison_bar_graph(ax, metric: str, sessions: List[Dict], population: pd.D
     # CT is "lower is better" — show min instead of max for the secondary line.
     use_min = metric == "CT"
 
-    legend_lines = []
+    legend_rows = []
     for idx, sess in enumerate(sessions):
         df = sess["df"]
         if df.empty or metric not in df.columns:
@@ -175,22 +230,22 @@ def comparison_bar_graph(ax, metric: str, sessions: List[Dict], population: pd.D
 
         pct = percentileofscore(pop_values, mean_val)
         fmt = "{:.2f}" if metric == "CT" else "{:.1f}"
-        legend_lines.append(
-            f"{format_session_label(sess['date'])}  •  "
-            f"{int(pct)}th  •  μ {fmt.format(mean_val)}  "
-            f"({'min' if use_min else 'max'} {fmt.format(extreme_val)})"
-        )
+        legend_rows.append((
+            format_session_label(sess["date"]), color,
+            [f"{int(pct)}", fmt.format(mean_val), fmt.format(extreme_val)],
+        ))
 
     display_label = METRIC_LABELS.get(metric, metric)
     _style_dark_axes(ax, title=display_label, title_size=60,
                      ylabel="Frequency", label_size=30, tick_size=24)
     ax.grid(True, color="white", alpha=0.2, axis="y")
 
-    if legend_lines:
-        ax.text(0.98, 0.98, "\n".join(legend_lines),
-                transform=ax.transAxes, ha="right", va="top",
-                color="white", fontsize=28,
-                family="monospace")
+    # Headroom first, so the legend panel sits above the bars rather than on
+    # top of them.
+    if len(counts):
+        ax.set_ylim(0, counts.max() * LEGEND_HEADROOM)
+    _draw_session_legend(ax, ["%ile", "mean", "min" if use_min else "max"],
+                         legend_rows)
 
 
 def slv_comparison_bar_graph(ax, metric: str, sessions: List[Dict],
@@ -220,7 +275,7 @@ def slv_comparison_bar_graph(ax, metric: str, sessions: List[Dict],
            color=POPULATION_COLOR, alpha=0.6,
            edgecolor=POPULATION_COLOR, linewidth=0.5)
 
-    legend_lines = []
+    legend_rows = []
     for idx, sess in enumerate(sessions):
         df = sess["df"]
         if df.empty or metric not in df.columns or "side" not in df.columns:
@@ -245,22 +300,23 @@ def slv_comparison_bar_graph(ax, metric: str, sessions: List[Dict],
                  if not np.isnan(l_mean) else float("nan"))
         r_pct = (percentileofscore(pop_values, r_mean)
                  if not np.isnan(r_mean) else float("nan"))
-        legend_lines.append(
-            f"{format_session_label(sess['date'])}  L:{int(l_pct) if not np.isnan(l_pct) else '–'}th"
-            f"  R:{int(r_pct) if not np.isnan(r_pct) else '–'}th"
-        )
+        legend_rows.append((
+            format_session_label(sess["date"]), color,
+            [f"{int(l_pct)}" if not np.isnan(l_pct) else "–",
+             f"{int(r_pct)}" if not np.isnan(r_pct) else "–"],
+        ))
 
     display_label = METRIC_LABELS.get(metric, metric)
     _style_dark_axes(ax, title=display_label, title_size=60,
                      ylabel="Frequency", label_size=30, tick_size=24)
     ax.grid(True, color="white", alpha=0.2, axis="y")
 
-    if legend_lines:
-        # Two-column-ish hint text: "solid = L, dashed = R" up top
-        legend_text = "L = solid   R = dotted\n" + "\n".join(legend_lines)
-        ax.text(0.98, 0.98, legend_text,
-                transform=ax.transAxes, ha="right", va="top",
-                color="white", fontsize=26, family="monospace")
+    if len(counts):
+        ax.set_ylim(0, counts.max() * LEGEND_HEADROOM)
+    # Column headings carry the line-style key, so the separate
+    # "L = solid  R = dotted" line is no longer needed.
+    _draw_session_legend(ax, ["L %ile\n(solid)", "R %ile\n(dotted)"],
+                         legend_rows, fontsize=24)
 
 
 # ---------------------------------------------------------------------------
@@ -323,11 +379,10 @@ def comparison_radar_chart(ax, sessions: List[Dict], population: pd.DataFrame,
     ax.spines["polar"].set_color("white")
     ax.set_facecolor(PANEL_BG)
 
-    leg = ax.legend(loc="upper right", facecolor=PANEL_BG, edgecolor="white",
-                    labelcolor="white", fontsize=24,
-                    bbox_to_anchor=(1.32, 1.12))
-    if leg is not None:
-        leg.set_zorder(10)
+    # No legend here on purpose. It was anchored at (1.32, 1.12) — far outside
+    # the polar axes — and floated in the gap beside the power curve, reading
+    # as that chart's legend. The session colors are keyed in the page header
+    # and again in the power curve's own legend.
 
 
 def slv_comparison_radar_chart(ax, sessions: List[Dict], population: pd.DataFrame,
@@ -417,7 +472,7 @@ def comparison_fv_scatter(ax, sessions: List[Dict], population: pd.DataFrame) ->
 
     points = []
     pp_pop = population["PP_FORCEPLATE"].dropna()
-    legend_lines = []
+    legend_rows = []
     for idx, sess in enumerate(sessions):
         df = sess["df"]
         if df.empty:
@@ -431,20 +486,16 @@ def comparison_fv_scatter(ax, sessions: List[Dict], population: pd.DataFrame) ->
         points.append((f_mean, v_mean))
         pp_pct = (percentileofscore(pp_pop, pp_mean)
                   if len(pp_pop) > 0 else 0)
-        legend_lines.append(
-            f"{format_session_label(sess['date'])}  PP {int(pp_pct)}th"
-        )
+        legend_rows.append((
+            format_session_label(sess["date"]), color, [f"{int(pp_pct)}"],
+        ))
 
     if len(points) >= 2:
         _annotate_fv_trajectory(ax, points)
 
-    if legend_lines:
-        ax.text(0.98, 0.98, "\n".join(legend_lines),
-                transform=ax.transAxes, ha="right", va="top",
-                color="white", fontsize=27, family="monospace")
-
     _style_dark_axes(ax, title="Force–Velocity Scatter", title_size=60,
                      xlabel="Force @ PP (N)", ylabel="Vel @ PP (m/s)")
+    _draw_session_legend(ax, ["PP %ile"], legend_rows, fontsize=25)
 
 
 def slv_comparison_fv_scatter(ax, sessions: List[Dict], population: pd.DataFrame,
@@ -460,7 +511,7 @@ def slv_comparison_fv_scatter(ax, sessions: List[Dict], population: pd.DataFrame
     _draw_population_fv(ax, population)
 
     points = []
-    legend_lines = []
+    legend_rows = []
     pp_pop = population["PP_FORCEPLATE"].dropna()
     for idx, sess in enumerate(sessions):
         df = sess["df"]
@@ -478,30 +529,37 @@ def slv_comparison_fv_scatter(ax, sessions: List[Dict], population: pd.DataFrame
         points.append((f_mean, v_mean))
         pp_pct = (percentileofscore(pp_pop, pp_mean)
                   if len(pp_pop) > 0 else 0)
-        legend_lines.append(
-            f"{format_session_label(sess['date'])}  PP {int(pp_pct)}th"
-        )
+        legend_rows.append((
+            format_session_label(sess["date"]), color, [f"{int(pp_pct)}"],
+        ))
 
     if len(points) >= 2:
         _annotate_fv_trajectory(ax, points)
 
-    if legend_lines:
-        ax.text(0.98, 0.98, "\n".join(legend_lines),
-                transform=ax.transAxes, ha="right", va="top",
-                color="white", fontsize=24, family="monospace")
-
     _style_dark_axes(ax, title=f"{leg} Leg F–V Scatter", title_size=48,
                      xlabel="Force @ PP (N)", ylabel="Vel @ PP (m/s)")
+    _draw_session_legend(ax, ["PP %ile"], legend_rows, fontsize=23)
 
 
 # ---------------------------------------------------------------------------
 # Power curve (per-session mean curves overlaid)
 # ---------------------------------------------------------------------------
 def _load_session_power_curves(df: pd.DataFrame, power_files_dir: Optional[str]) -> List:
-    """Return a list of (t_norm, p_norm) tuples for each trial in ``df``.
+    """Return a list of (t_norm, power) tuples, one per trial with real data.
 
-    Mirrors the loader logic in pdf_report.power_curve, falling back to
-    a synthesized Gaussian shape when a Power.txt is missing.
+    REAL DATA ONLY. This used to fall back to a synthesized Gaussian
+    (``exp(-((t-0.35)**2)/0.06)``, normalized to 1.0) whenever a Power.txt
+    could not be found, which drew a perfectly plausible power curve out of
+    nothing — on an axis still labelled "Power (W)".
+
+    In a comparison that is worse than merely wrong: every session gets the
+    same synthetic bell, so two sessions look identical and a reader
+    concludes the athlete's power profile did not change. Trials without a
+    real Power.txt are now simply absent, and the callers say so on the page.
+
+    (The single-session report in pdf_report.py still synthesizes, but stamps
+    a red "SYNTHETIC" watermark over the panel. This module dropped that
+    watermark when it copied the loader.)
     """
     curves = []
     processed_dir = (os.path.join(power_files_dir, "Processed txt Files")
@@ -537,11 +595,8 @@ def _load_session_power_curves(df: pd.DataFrame, power_files_dir: Optional[str])
             except Exception:  # pragma: no cover - fallback to synthesized
                 pass
 
-        # Synthesized fallback so the curve still renders something useful.
-        t = np.linspace(0, 1, 200)
-        pp_value = r.get("PP_FORCEPLATE", 1.0) or 1.0
-        shape = np.exp(-((t - 0.35) ** 2) / 0.06) * pp_value
-        curves.append((t, shape / shape.max()))
+        # No file, or it failed to load: contribute nothing. Never invent a
+        # curve — see this function's docstring.
 
     return curves
 
@@ -558,11 +613,39 @@ def _mean_curve(curves) -> Optional[np.ndarray]:
     return np.mean(interps, axis=0)
 
 
+def _note_missing_power(ax, missing: List[str], any_plotted: bool) -> None:
+    """State plainly which sessions had no Power.txt behind them.
+
+    Silence would leave a curve that looks like the whole story when it is
+    only part of it, which is the same failure as the synthetic curve in a
+    quieter form.
+    """
+    if not missing:
+        return
+    if not any_plotted:
+        ax.text(0.5, 0.5,
+                "No power curve data\n"
+                "(no Power.txt found for these trials)",
+                transform=ax.transAxes, ha="center", va="center",
+                color="#98a4ad", fontsize=34, fontweight="bold",
+                linespacing=1.5)
+        return
+    ax.text(0.5, 0.02,
+            "No power file for: " + ", ".join(missing),
+            transform=ax.transAxes, ha="center", va="bottom",
+            color="#98a4ad", fontsize=24, style="italic")
+
+
 def comparison_power_curve(ax, sessions: List[Dict],
                            power_files_dir: Optional[str] = None) -> None:
-    """Plot one mean power curve per session, in session color."""
+    """Plot one mean power curve per session, in session color.
+
+    Only sessions with real Power.txt data are drawn; any others are named
+    under the axes rather than filled in with a made-up shape.
+    """
     t_common = np.linspace(0, 1, 200)
     legend_handles = []
+    missing: List[str] = []
     for idx, sess in enumerate(sessions):
         df = sess["df"]
         if df.empty:
@@ -570,6 +653,7 @@ def comparison_power_curve(ax, sessions: List[Dict],
         curves = _load_session_power_curves(df, power_files_dir)
         mean = _mean_curve(curves)
         if mean is None:
+            missing.append(format_session_label(sess["date"]))
             continue
         color = session_color(idx)
         line, = ax.plot(t_common, mean, color=color, linewidth=7,
@@ -583,6 +667,7 @@ def comparison_power_curve(ax, sessions: List[Dict],
 
     _style_dark_axes(ax, title="Power Curve", title_size=60,
                      xlabel="Normalized Time", ylabel="Power (W)")
+    _note_missing_power(ax, missing, bool(legend_handles))
 
 
 def slv_comparison_power_curve(ax, sessions: List[Dict],
@@ -590,6 +675,7 @@ def slv_comparison_power_curve(ax, sessions: List[Dict],
     """SLV power curve: solid line for L, dotted line for R, per session."""
     t_common = np.linspace(0, 1, 200)
     legend_handles = []
+    missing: List[str] = []
     for idx, sess in enumerate(sessions):
         df = sess["df"]
         if df.empty or "side" not in df.columns:
@@ -602,6 +688,7 @@ def slv_comparison_power_curve(ax, sessions: List[Dict],
             curves = _load_session_power_curves(sub, power_files_dir)
             mean = _mean_curve(curves)
             if mean is None:
+                missing.append(f"{format_session_label(sess['date'])} {marker}")
                 continue
             line, = ax.plot(t_common, mean, color=color, linewidth=6.5,
                             linestyle=linestyle,
@@ -611,10 +698,11 @@ def slv_comparison_power_curve(ax, sessions: List[Dict],
     if legend_handles:
         ax.legend(handles=legend_handles, loc="upper right",
                   facecolor=PANEL_BG, edgecolor="white",
-                  labelcolor="white", fontsize=24)
+                  labelcolor="white", fontsize=24, ncol=2)
 
     _style_dark_axes(ax, title="Power Curve", title_size=60,
                      xlabel="Normalized Time", ylabel="Power (W)")
+    _note_missing_power(ax, missing, bool(legend_handles))
 
 
 # ---------------------------------------------------------------------------
@@ -660,6 +748,57 @@ def _ideal_text(var: str, movement_name: str) -> str:
     return ""
 
 
+# Tier and kurtosis labels shortened for single-line table cells. The full
+# words still appear on the single-session report; here they would force the
+# column wider than the number it qualifies.
+_SHORT_TIER = {
+    "Below Average": "Below Avg",
+    "Very Flat": "Very Flat",
+    "Moderately Flat": "Mod Flat",
+}
+
+
+def _short_label(label: str) -> str:
+    return _SHORT_TIER.get(label, label)
+
+
+def _kurtosis_ideal_distance(value, movement_name: str):
+    """Distance from the movement's ideal kurtosis band; 0 when inside it.
+
+    Used to decide whether a kurtosis change moved toward or away from
+    ideal, since raw kurtosis has no "bigger is better" direction.
+    """
+    ideal = KURTOSIS_IDEAL_RANGE.get(movement_name)
+    if ideal is None or value is None or pd.isna(value):
+        return None
+    low, high = ideal
+    if low <= value <= high:
+        return 0.0
+    return min(abs(value - low), abs(value - high))
+
+
+def _delta_text(values: List, metric: str, movement_name: str) -> str:
+    """Signed first-to-last change for one table row.
+
+    Sessions with no data are skipped, so the delta always spans the first
+    and last sessions that actually have this movement. Kurtosis reports
+    the raw change in the value — the useful reading of whether that helped
+    is on the summary page, which has the noise thresholds to judge it.
+
+    Deliberately not colored green/red: the summary page gates a change on
+    the athlete's own trial spread and the population SWC before calling it
+    real, and a green arrow here would contradict a "Held" verdict there.
+    """
+    present = [v for v in values if v is not None and not pd.isna(v)]
+    if len(present) < 2:
+        return "—"
+    delta = present[-1] - present[0]
+    if delta == 0:
+        return "0"
+    sign = "+" if delta > 0 else "−"
+    return f"{sign}{_format_sigfig(abs(delta), 3)}"
+
+
 def _build_table_cells(sessions: List[Dict], movement_name: str,
                        population: pd.DataFrame, slv_leg: Optional[str] = None):
     """Produce text + tier color matrices for the comparison performance table.
@@ -667,6 +806,10 @@ def _build_table_cells(sessions: List[Dict], movement_name: str,
     For DJ/CMJ/PPU ``slv_leg`` is None and we use the session's ``avg`` row.
     For SLV, ``slv_leg`` is 'Left' or 'Right' and we average that leg's
     trials within each session.
+
+    Each entry is ``(text, color, raw_value)``. The text is a single line —
+    value and tier separated by two spaces — because stacking them on two
+    lines doubles every row's height for no extra information.
     """
     rpd_pop = population["rpd_max_w_per_s"].dropna() if "rpd_max_w_per_s" in population.columns else pd.Series([])
     auc_pop = population["auc_j"].dropna() if "auc_j" in population.columns else pd.Series([])
@@ -685,9 +828,9 @@ def _build_table_cells(sessions: List[Dict], movement_name: str,
             df = df[df["side"] == slv_leg]
 
         if df is None or df.empty:
-            rpd_row.append(("—", NEUTRAL))
-            kurt_row.append(("—", NEUTRAL))
-            auc_row.append(("—", NEUTRAL))
+            rpd_row.append(("—", NEUTRAL, None))
+            kurt_row.append(("—", NEUTRAL, None))
+            auc_row.append(("—", NEUTRAL, None))
             continue
 
         row = df.mean(numeric_only=True)
@@ -700,8 +843,9 @@ def _build_table_cells(sessions: List[Dict], movement_name: str,
         kurt_inside = _kurtosis_inside_ideal(kurt_val, movement_name)
 
         rpd_row.append((
-            f"{_format_sigfig(rpd_val, 4)}\n{rpd_tier}",
+            f"{_format_sigfig(rpd_val, 4)}  {_short_label(rpd_tier)}",
             color_map.get(rpd_tier, NEUTRAL),
+            None if pd.isna(rpd_val) else float(rpd_val),
         ))
         kurt_color = (
             KURT_INSIDE if kurt_inside is True
@@ -709,140 +853,195 @@ def _build_table_cells(sessions: List[Dict], movement_name: str,
             else NEUTRAL
         )
         kurt_row.append((
-            f"{_format_sigfig(kurt_val, 3)}\n{_kurtosis_label(kurt_val)}",
+            f"{_format_sigfig(kurt_val, 3)}  {_short_label(_kurtosis_label(kurt_val))}",
             kurt_color,
+            None if pd.isna(kurt_val) else float(kurt_val),
         ))
         auc_row.append((
-            f"{_format_sigfig(auc_val, 4)}\n{auc_tier}",
+            f"{_format_sigfig(auc_val, 4)}  {_short_label(auc_tier)}",
             color_map.get(auc_tier, NEUTRAL),
+            None if pd.isna(auc_val) else float(auc_val),
         ))
 
     return rpd_row, kurt_row, auc_row
 
 
+#: Font sizes for the comparison tables. Smaller than the single-session
+#: report's because these tables carry two to four extra columns.
+#: Fraction of the SLV table axes reserved for the session labels drawn
+#: above the header row. comparison_pages imports this to size the axes.
+SLV_TABLE_LABEL_BAND = 0.16
+
+TABLE_HEADER_FS = 26
+TABLE_BODY_FS = 25
+TABLE_LABEL_FS = 24
+
+
+def _style_table(table, n_cols: int, n_rows: int, *,
+                 session_header_range=None) -> None:
+    """Shared styling for both comparison tables.
+
+    ``session_header_range`` is a ``(start, stop)`` pair of column indices
+    whose header text is tinted with that session's color, tying the column
+    back to the dots and lines everywhere else in the report.
+    """
+    table.auto_set_font_size(False)
+    table.set_fontsize(TABLE_BODY_FS)
+
+    for c in range(n_cols):
+        cell = table[(0, c)]
+        cell.set_facecolor(PANEL_BG)
+        color = "white"
+        if session_header_range is not None:
+            start, stop = session_header_range
+            if start <= c < stop:
+                color = session_color(c - start)
+        cell.set_text_props(weight="bold", color=color, fontsize=TABLE_HEADER_FS)
+        cell.set_edgecolor("white")
+        cell.set_linewidth(1.5)
+
+    for r in range(1, n_rows + 1):
+        for c in range(n_cols):
+            cell = table[(r, c)]
+            # Values are bold; the row label and the reference column are not,
+            # so the eye lands on the numbers first.
+            is_value = 0 < c < n_cols - 1
+            cell.set_text_props(
+                color="white",
+                fontsize=TABLE_BODY_FS if is_value else TABLE_LABEL_FS,
+                weight="bold" if is_value else "normal",
+            )
+            cell.set_edgecolor("white")
+
+
 def comparison_performance_table(ax, sessions: List[Dict], movement_name: str,
                                  population: pd.DataFrame) -> None:
-    """One column per session — value on top, tier label below the value.
+    """One column per session, plus a first-to-last change column.
 
-    The whole cell is colored by tier (Max RPD / Work AUC) or by per-athlete
-    in-ideal-range (Kurtosis), matching the single-session report.
+    Each cell is a single line — ``value  Tier`` — and the cell is colored by
+    tier (Max RPD / Work AUC) or by whether kurtosis sits inside the
+    movement's ideal band, matching the single-session report.
+
+    The table fills its axes exactly (``bbox`` covers the full axes), so the
+    caller controls the table's height purely by how tall it makes the axes.
     """
     ax.axis("off")
     ax.set_facecolor(PANEL_BG)
 
     rpd_row, kurt_row, auc_row = _build_table_cells(sessions, movement_name, population)
 
-    # Header
-    headers = ["Variable"]
-    for sess in sessions:
-        headers.append(format_session_label(sess["date"]))
-    headers.append("Ideal Values")
+    headers = (["Variable"]
+               + [format_session_label(s["date"]) for s in sessions]
+               + ["Change", "Ideal Values"])
 
-    # Body
-    body = [
-        ["Max RPD (W/s)"] + [c[0] for c in rpd_row] + [_ideal_text("rpd", movement_name)],
-        ["Kurtosis"]      + [c[0] for c in kurt_row] + [_ideal_text("kurtosis", movement_name)],
-        ["Work (AUC)"]    + [c[0] for c in auc_row] + [_ideal_text("auc", movement_name)],
+    rows = [
+        ("Max RPD (W/s)", rpd_row, "rpd"),
+        ("Kurtosis", kurt_row, "kurtosis"),
+        ("Work (AUC)", auc_row, "auc"),
     ]
-    cell_colors = [
-        ["#373e43"] + [c[1] for c in rpd_row] + ["#373e43"],
-        ["#373e43"] + [c[1] for c in kurt_row] + ["#373e43"],
-        ["#373e43"] + [c[1] for c in auc_row] + ["#373e43"],
-    ]
+
+    body, cell_colors = [], []
+    for label, cells, ideal_key in rows:
+        delta = _delta_text([c[2] for c in cells], ideal_key, movement_name)
+        body.append([label] + [c[0] for c in cells]
+                    + [delta, _ideal_text(ideal_key, movement_name)])
+        cell_colors.append(["#373e43"] + [c[1] for c in cells]
+                           + ["#373e43", "#373e43"])
 
     n_cols = len(headers)
-    # Variable label gets a chunkier column; sessions share the rest evenly.
-    var_w = 0.18
-    ideal_w = 0.18
-    sess_w = (1.0 - var_w - ideal_w) / max(1, len(sessions))
-    col_widths = [var_w] + [sess_w] * len(sessions) + [ideal_w]
+    var_w = 0.15
+    delta_w = 0.09
+    ideal_w = 0.13
+    sess_w = (1.0 - var_w - delta_w - ideal_w) / max(1, len(sessions))
+    col_widths = [var_w] + [sess_w] * len(sessions) + [delta_w, ideal_w]
 
     table = ax.table(cellText=body, colLabels=headers,
                      cellColours=cell_colors,
                      cellLoc="center", loc="center",
                      colWidths=col_widths,
-                     bbox=[0.02, 0.05, 0.96, 0.9])
-    table.auto_set_font_size(False)
-    table.set_fontsize(30)
-
-    # Header styling
-    for i in range(n_cols):
-        cell = table[(0, i)]
-        cell.set_facecolor(PANEL_BG)
-        cell.set_text_props(weight="bold", color="white", fontsize=30)
-        cell.set_edgecolor("white")
-        cell.set_linewidth(1.5)
-
-    # Body styling
-    for r in range(1, 4):
-        for c in range(n_cols):
-            cell = table[(r, c)]
-            cell.set_text_props(color="white", fontsize=28,
-                                weight="bold" if c not in (0, n_cols - 1) else "normal")
-            cell.set_edgecolor("white")
-
-    table.scale(1, 1.4)
+                     bbox=[0.0, 0.0, 1.0, 1.0])
+    _style_table(table, n_cols, len(rows),
+                 session_header_range=(1, 1 + len(sessions)))
 
 
 def slv_comparison_performance_table(ax, sessions: List[Dict],
                                      population: pd.DataFrame) -> None:
-    """SLV table: rows alternate L / R for each metric, one column per session."""
+    """SLV table: one row per metric, with L and R side by side per session.
+
+    The old shape repeated every variable name twice (once for L, once for R)
+    and ran to six rows — the tallest object in the report. Putting the legs
+    in adjacent columns halves the height and, more usefully, sets each leg
+    directly beside its opposite so the asymmetry reads without scanning.
+
+    The session date spans its L/R pair as a label drawn above the table, in
+    that session's color, since matplotlib tables have no column spanning.
+    """
     ax.axis("off")
     ax.set_facecolor(PANEL_BG)
 
-    l_rpd, l_kurt, l_auc = _build_table_cells(sessions, "SLV", population, slv_leg="Left")
-    r_rpd, r_kurt, r_auc = _build_table_cells(sessions, "SLV", population, slv_leg="Right")
+    left = _build_table_cells(sessions, "SLV", population, slv_leg="Left")
+    right = _build_table_cells(sessions, "SLV", population, slv_leg="Right")
+    l_rpd, l_kurt, l_auc = left
+    r_rpd, r_kurt, r_auc = right
 
-    headers = ["Variable", "Side"]
-    for sess in sessions:
-        headers.append(format_session_label(sess["date"]))
-    headers.append("Ideal Values")
+    # Header: L/R under each session, then a Change pair, then the reference.
+    headers = ["Variable"]
+    for _ in sessions:
+        headers += ["L", "R"]
+    headers += ["Δ L", "Δ R", "Ideal Values"]
 
     rows = [
-        ("Max RPD (W/s)", "L", l_rpd, _ideal_text("rpd", "SLV")),
-        ("Max RPD (W/s)", "R", r_rpd, _ideal_text("rpd", "SLV")),
-        ("Kurtosis",      "L", l_kurt, _ideal_text("kurtosis", "SLV")),
-        ("Kurtosis",      "R", r_kurt, _ideal_text("kurtosis", "SLV")),
-        ("Work (AUC)",    "L", l_auc, _ideal_text("auc", "SLV")),
-        ("Work (AUC)",    "R", r_auc, _ideal_text("auc", "SLV")),
+        ("Max RPD (W/s)", l_rpd, r_rpd, "rpd"),
+        ("Kurtosis", l_kurt, r_kurt, "kurtosis"),
+        ("Work (AUC)", l_auc, r_auc, "auc"),
     ]
 
-    body = []
-    cell_colors = []
-    for var, side, cells, ideal in rows:
-        body.append([var, side] + [c[0] for c in cells] + [ideal])
-        cell_colors.append(["#373e43", "#373e43"] + [c[1] for c in cells] + ["#373e43"])
+    body, cell_colors = [], []
+    for label, l_cells, r_cells, ideal_key in rows:
+        text_row = [label]
+        color_row = ["#373e43"]
+        for l_cell, r_cell in zip(l_cells, r_cells):
+            text_row += [l_cell[0], r_cell[0]]
+            color_row += [l_cell[1], r_cell[1]]
+        text_row += [
+            _delta_text([c[2] for c in l_cells], ideal_key, "SLV"),
+            _delta_text([c[2] for c in r_cells], ideal_key, "SLV"),
+            _ideal_text(ideal_key, "SLV"),
+        ]
+        color_row += ["#373e43", "#373e43", "#373e43"]
+        body.append(text_row)
+        cell_colors.append(color_row)
 
     n_cols = len(headers)
-    var_w = 0.16
-    side_w = 0.06
-    ideal_w = 0.18
-    sess_w = (1.0 - var_w - side_w - ideal_w) / max(1, len(sessions))
-    col_widths = [var_w, side_w] + [sess_w] * len(sessions) + [ideal_w]
+    var_w = 0.13
+    delta_w = 0.055
+    ideal_w = 0.11
+    pair_w = (1.0 - var_w - 2 * delta_w - ideal_w) / max(1, len(sessions))
+    leg_w = pair_w / 2
+    col_widths = ([var_w] + [leg_w] * (2 * len(sessions))
+                  + [delta_w, delta_w, ideal_w])
 
+    # Leave the top slice of the axes for the spanning session labels.
+    label_band = SLV_TABLE_LABEL_BAND
     table = ax.table(cellText=body, colLabels=headers,
                      cellColours=cell_colors,
                      cellLoc="center", loc="center",
                      colWidths=col_widths,
-                     bbox=[0.02, 0.05, 0.96, 0.9])
-    table.auto_set_font_size(False)
-    table.set_fontsize(28)
+                     bbox=[0.0, 0.0, 1.0, 1.0 - label_band])
+    _style_table(table, n_cols, len(rows))
 
-    for i in range(n_cols):
-        cell = table[(0, i)]
-        cell.set_facecolor(PANEL_BG)
-        cell.set_text_props(weight="bold", color="white", fontsize=28)
-        cell.set_edgecolor("white")
-        cell.set_linewidth(1.5)
-
-    for r in range(1, len(rows) + 1):
-        for c in range(n_cols):
-            cell = table[(r, c)]
-            cell.set_text_props(color="white", fontsize=26,
-                                weight="bold" if 1 < c < n_cols - 1 else "normal")
-            cell.set_edgecolor("white")
-
-    table.scale(1, 1.2)
+    # Spanning session labels, centered over each L/R pair.
+    x = var_w
+    for idx, sess in enumerate(sessions):
+        ax.text(x + pair_w / 2, 1.0 - label_band / 2,
+                format_session_label(sess["date"]),
+                transform=ax.transAxes, ha="center", va="center",
+                color=session_color(idx), fontsize=TABLE_HEADER_FS,
+                fontweight="bold")
+        x += pair_w
+    ax.text(x + delta_w, 1.0 - label_band / 2, "Change",
+            transform=ax.transAxes, ha="center", va="center",
+            color="white", fontsize=TABLE_HEADER_FS, fontweight="bold")
 
 
 # ---------------------------------------------------------------------------
