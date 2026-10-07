@@ -33,10 +33,10 @@ type SessionDetail = { date: string; movements: string[] };
 const sessionDateQuery = (athleteUuid: string) =>
   ({
     where: { athlete_uuid: athleteUuid },
-    select: { session_date: true },
-    distinct: ["session_date"],
-    orderBy: { session_date: "desc" },
-  }) as const;
+    select: { session_date: true as const },
+    distinct: ["session_date" as const],
+    orderBy: { session_date: "desc" as const },
+  });
 
 /**
  * Collects every athletic-screen session date for an athlete, along with
