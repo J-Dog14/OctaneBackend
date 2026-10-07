@@ -49,6 +49,14 @@ const SETTING_GROUPS = [
     ],
   },
   {
+    title: "AI Layer (AI Lab page)",
+    description: "Where the OctaneAiLayer repo and its Python live on the machine running this app. Leave blank to use ../OctaneAiLayer and its .venv (or AI_LAYER_ROOT / AI_LAYER_PYTHON).",
+    keys: [
+      { key: "ai_layer_root", label: "OctaneAiLayer folder", placeholder: "C:\\Users\\Joey\\PycharmProjects\\OctaneAiLayer", type: "text" },
+      { key: "ai_layer_python", label: "AI layer python.exe", placeholder: "C:\\Users\\Joey\\PycharmProjects\\OctaneAiLayer\\.venv\\Scripts\\python.exe", type: "text" },
+    ],
+  },
+  {
     title: "Assessment Configuration",
     description: "Optional overrides for assessment behaviour.",
     keys: [

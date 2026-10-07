@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>8ctane — Athletes</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="athletes.css?v=20260930o">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <!-- pitch-intel embed (added by sync-ryan-dashboard.mjs) -->
+  <link rel="stylesheet" href="pi-embed.css">
+  <script src="pi-embed.js"></script>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="header-left">
+      <a href="index.html"><img src="logo.png" alt="8ctane Baseball" class="nav-logo"></a>
+      <span class="nav-divider"></span>
+      <span class="nav-product">Athlete Manager</span>
+    </div>
+    <div class="header-right">
+      <a href="index.html" class="btn-ghost">← Analyzer</a>
+    </div>
+  </div>
+</header>
+
+<!-- CONFIG BANNER (shown until script URL is set) -->
+<div id="config-banner" class="config-banner" style="display:none">
+  <div class="config-inner">
+    <strong>Setup required</strong> — paste your Apps Script Web App URL to connect to Google Sheets.
+    <input type="text" id="script-url-input" placeholder="https://script.google.com/macros/s/.../exec" class="url-input">
+    <button class="btn-primary btn-sm" onclick="saveScriptUrl()">Save & Connect</button>
+  </div>
+</div>
+
+<!-- VIEWS -->
+<div id="view-roster" class="view">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Athletes</h1>
+      <p class="page-sub" id="roster-count">Loading...</p>
+    </div>
+    <div style="display:flex;gap:.75rem">
+      <button class="btn-ghost" onclick="showBulkImport()">⬆ Bulk Import</button>
+      <button class="btn-primary" onclick="showAddAthlete()">+ Add Athlete</button>
+    </div>
+  </div>
+  <div id="athlete-grid" class="athlete-grid"></div>
+  <div id="roster-empty" class="empty-state" style="display:none">
+    No athletes yet. Add your first athlete to get started.
+  </div>
+</div>
+
+<!-- BULK IMPORT VIEW -->
+<div id="view-bulk-import" class="view" style="display:none">
+  <div class="page-header">
+    <button class="btn-ghost" onclick="showRoster()">← All Athletes</button>
+  </div>
+
+  <div class="bulk-import-page">
+    <div class="bulk-import-header">
+      <div class="bulk-import-title">Bulk Import</div>
+      <div class="bulk-import-sub">Upload a full season CSV (Statcast or Trackman). We'll detect the pitcher, split into outings, and let you assign to any athlete.</div>
+    </div>
+
+    <!-- DROP ZONE -->
+    <div class="drop-zone" id="drop-zone" onclick="document.getElementById('csv-file-input').click()">
+      <div class="drop-zone-icon">⬆</div>
+      <div class="drop-zone-text">Drop CSV here or click to browse</div>
+      <div class="drop-zone-sub">Statcast or Trackman format · Any size</div>
+      <input type="file" id="csv-file-input" accept=".csv" style="display:none" onchange="handleBulkFile(this.files[0])">
+    </div>
+
+    <!-- PARSED PREVIEW -->
+    <div id="bulk-preview" style="display:none">
+      <div class="bulk-preview-header">
+        <div>
+          <div class="bulk-preview-title" id="bulk-preview-title"></div>
+          <div class="bulk-preview-sub" id="bulk-preview-sub"></div>
+        </div>
+        <button class="btn-ghost" onclick="resetBulkImport()">✕ Clear</button>
+      </div>
+
+      <div class="bulk-assign-row">
+        <label class="bulk-assign-label">Assign to athlete:</label>
+        <select id="bulk-athlete-select" class="sel-input" style="max-width:320px">
+          <option value="">Select athlete...</option>
+        </select>
+        <label class="bulk-replace-label" title="Deletes the saved outing for any matching date and re-imports it with the new data"><input type="checkbox" id="bulk-replace"> Replace existing outings</label>
+        <button class="btn-primary" id="bulk-import-btn" onclick="runBulkImport()" disabled style="opacity:.4">Import All Outings</button>
+      </div>
+
+      <div class="bulk-progress-wrap" id="bulk-progress-wrap" style="display:none">
+        <div class="bulk-progress-bar" id="bulk-progress-bar" style="width:0%"></div>
+      </div>
+
+      <div id="bulk-outing-rows"></div>
+    </div>
+
+    <div id="bulk-result" class="bulk-result" style="display:none">
+      <div class="bulk-result-title" id="bulk-result-title"></div>
+      <div class="bulk-result-body" id="bulk-result-body"></div>
+      <div style="margin-top:1rem;display:flex;gap:.75rem">
+        <button class="btn-primary" onclick="showRoster()">Back to Athletes</button>
+        <button class="btn-ghost" onclick="resetBulkImport()">Import Another</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="view-profile" class="view" style="display:none">
+  <div class="page-header">
+    <button class="btn-ghost" onclick="showRoster()">← All Athletes</button>
+    <div style="display:flex;gap:.5rem">
+      <button class="btn-ghost" id="btn-share" onclick="sharePlayerLink()">Share Dashboard</button>
+      <button class="btn-ghost" id="btn-edit-metrics" onclick="showEditPitchMetrics()">Edit Pitch Metrics</button>
+      <button class="btn-ghost" id="btn-add-outing" onclick="showAddOuting()">+ Add Outing</button>
+      <button class="btn-ghost" id="btn-view-analyzer" onclick="openInAnalyzer()">Open in Analyzer</button>
+    </div>
+  </div>
+
+  <!-- Athlete hero -->
+  <div class="athlete-hero" id="profile-hero">
+    <div class="athlete-hero-left">
+      <div class="athlete-avatar" id="profile-avatar"></div>
+      <div>
+        <div class="athlete-hero-name" id="profile-name"></div>
+        <div class="athlete-hero-meta" id="profile-meta"></div>
+        <div class="athlete-hero-updated" id="profile-last-updated" style="font-size:11px;color:var(--muted);margin-top:4px"></div>
+        <!-- Season selector — filters every tab to one year; hidden for single-season athletes -->
+        <div id="season-bar" class="season-bar" style="display:none"></div>
+      </div>
+    </div>
+    <div class="kpi-strip" id="profile-kpis"></div>
+  </div>
+
+  <!-- Profile tabs -->
+  <div class="tabs-wrap" style="margin-top:1rem">
+    <nav class="tabs" id="profile-tabs">
+      <button class="tab" data-ptab="report">Report</button>
+      <button class="tab" data-ptab="overview">Season Overview</button>
+      <button class="tab" data-ptab="trends">Trends</button>
+      <button class="tab" data-ptab="splits">Splits</button>
+      <button class="tab" data-ptab="locations">Locations</button>
+      <button class="tab" data-ptab="yoy">Pitch Metrics</button>
+      <button class="tab" data-ptab="xarsenal">xArsenal</button>
+      <button class="tab" data-ptab="season-insight">Season Insight</button>
+      <button class="tab" data-ptab="outing-insight">Outing Insight</button>
+      <button class="tab" data-ptab="outings">Outings</button>
+      <button class="tab" data-ptab="compare">Compare</button>
+      <button class="tab" data-ptab="history">Year-over-Year</button>
+    </nav>
+  </div>
+
+  <div class="report-body">
+
+    <!-- OVERVIEW -->
+    <div class="ptab-panel" id="ptab-overview">
+      <div class="section">
+        <div id="season-usage" class="usage-card"></div>
+        <div class="section-hd">Season-to-date arsenal <span id="season-xarsenal" class="xa-summary"></span></div>
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead><tr>
+              <th>Pitch</th><th>Total pitches</th><th>Usage</th>
+              <th>Avg velo</th><th title="8ctane xArsenal pitch grade — 60 ≈ MLB average">Grade</th><th>Whiff%</th><th>CSW%</th><th>xwOBA</th>
+              <th>MLB avg whiff%</th>
+            </tr></thead>
+            <tbody id="season-arsenal-body"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="chart-grid-2" style="margin-top:1rem">
+        <div class="chart-card">
+          <div class="chart-card-title">Season pitch mix</div>
+          <div class="chart-wrap" style="height:220px"><canvas id="season-mix-chart" role="img" aria-label="Season pitch mix"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-card-title">Season CSW% by pitch</div>
+          <div class="chart-wrap" style="height:220px"><canvas id="season-csw-chart" role="img" aria-label="Season CSW by pitch"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TRENDS -->
+    <div class="ptab-panel" id="ptab-trends">
+      <div class="chart-grid-2">
+        <div class="chart-card">
+          <div class="chart-card-title">4-seam avg velocity</div>
+          <div class="chart-wrap" style="height:200px"><canvas id="trend-velo-chart" role="img" aria-label="Velocity trend"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-card-title">Peak velocity vs avg velocity</div>
+          <div class="chart-wrap" style="height:200px"><canvas id="trend-peak-chart" role="img" aria-label="Peak velocity trend"></canvas></div>
+        </div>
+      </div>
+      <div class="chart-grid-2" style="margin-top:1rem">
+        <div class="chart-card">
+          <div class="chart-card-title">Whiff% trend by pitch</div>
+          <div class="chart-wrap" style="height:220px"><canvas id="trend-whiff-chart" role="img" aria-label="Whiff trend"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-card-title">In-zone whiff% by pitch</div>
+          <div class="chart-wrap" style="height:220px"><canvas id="trend-zwhiff-chart" role="img" aria-label="In-zone whiff trend"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-card-title">Pitch mix shift over time</div>
+          <div class="chart-wrap" style="height:220px"><canvas id="trend-mix-chart" role="img" aria-label="Mix trend"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LOCATIONS -->
+    <div class="ptab-panel" id="ptab-locations">
+      <div class="locations-controls">
+        <div class="loc-filter-row">
+          <span class="loc-filter-label">View:</span>
+          <button class="loc-filter-btn active" data-hand="all" onclick="setLocationHand('all',this)">All batters</button>
+          <button class="loc-filter-btn" data-hand="R" onclick="setLocationHand('R',this)">vs. RHB</button>
+          <button class="loc-filter-btn" data-hand="L" onclick="setLocationHand('L',this)">vs. LHB</button>
+        </div>
+        <div class="loc-filter-row">
+          <span class="loc-filter-label">Show:</span>
+          <button class="loc-filter-btn active" data-locmode="heat" onclick="setLocationMode('heat',this)">Heat maps</button>
+          <button class="loc-filter-btn" data-locmode="dots" onclick="setLocationMode('dots',this)">Pitch dots</button>
+        </div>
+        <div class="loc-filter-row" id="loc-color-row" style="display:none">
+          <span class="loc-filter-label">Color by:</span>
+          <button class="loc-filter-btn active" data-color="pitch" onclick="setLocationColor('pitch',this)">Pitch type</button>
+          <button class="loc-filter-btn" data-color="outcome" onclick="setLocationColor('outcome',this)">Outcome</button>
+        </div>
+      </div>
+      <div id="locations-content" style="display:flex;flex-wrap:wrap;gap:1.5rem;margin-top:1rem"></div>
+    </div>
+
+    <!-- SPLITS -->
+    <div class="ptab-panel" id="ptab-splits">
+      <div id="splits-content"></div>
+    </div>
+
+    <!-- PITCH METRICS -->
+    <div class="ptab-panel" id="ptab-yoy">
+
+      <div class="section">
+        <div id="metrics-psstuff-section" style="display:none;margin-bottom:1.5rem">
+          <div class="section-hd">8ctane psStuff+ metrics</div>
+          <div id="metrics-psstuff-cards"></div>
+        </div>
+        <div class="section-hd">Season pitch shapes — <span class="season-label"></span></div>
+        <div id="metrics-shape-cards" class="shape-cards"></div>
+      </div>
+
+      <div class="section" style="margin-top:1.5rem">
+        <div class="section-hd">Movement profile — <span class="season-label"></span></div>
+        <div id="metrics-movement-profile"></div>
+      </div>
+
+      <div class="section" style="margin-top:1.5rem">
+        <div class="section-hd">Swing &amp; miss — <span class="season-label"></span></div>
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead><tr>
+              <th>Pitch</th><th>Pitches</th><th>Usage</th>
+              <th>Whiff%</th><th>MLB avg</th>
+              <th>SwStr%</th><th>CSW%</th>
+              <th>Zone%</th><th>Chase%</th><th>Z-Contact%</th><th>Z-Whiff%</th>
+            </tr></thead>
+            <tbody id="metrics-swing-body"></tbody>
+          </table>
+        </div>
+        <div id="metrics-swing-note" class="chart-footnote" style="display:none">Zone%, Chase% and Z-Contact% need outings imported after Sept 29 2026 — re-import older outings to fill them in.</div>
+      </div>
+
+      <div class="section" style="margin-top:1.5rem">
+        <div class="section-hd">Contact quality vs. MLB — <span class="season-label"></span></div>
+        <div class="table-scroll">
+          <table class="data-table">
+            <thead><tr>
+              <th>Pitch</th><th>BBE</th>
+              <th>xwOBA</th><th>MLB avg</th>
+              <th>xBA</th><th>xSLG</th>
+              <th>Avg EV</th><th>MLB avg</th>
+              <th>Hard hit%</th><th>MLB avg</th>
+              <th>GB%</th>
+            </tr></thead>
+            <tbody id="metrics-contact-body"></tbody>
+          </table>
+        </div>
+        <div class="chart-footnote">Whiff% = whiffs per swing (Statcast) · SwStr% = whiffs per pitch · xwOBA, xBA, xSLG on balls in play · Hard hit = 95+ mph EV</div>
+      </div>
+
+      <div class="chart-grid-2" style="margin-top:1.5rem">
+        <div class="chart-card">
+          <div class="chart-card-title">Avg velocity by pitch</div>
+          <div class="chart-wrap" style="height:220px"><canvas id="metrics-velo-chart" role="img" aria-label="Avg velocity by pitch"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-card-title">Whiff% vs. MLB average</div>
+          <div class="chart-wrap" style="height:220px"><canvas id="metrics-whiff-chart" role="img" aria-label="Whiff% vs MLB average"></canvas></div>
+        </div>
+      </div>
+
+      <div id="yoy-empty" class="empty-state" style="display:none">
+        No outing data available yet.
+      </div>
+
+    </div>
+
+    <!-- REPORT -->
+    <div class="ptab-panel active" id="ptab-report">
+      <div class="loc-filter-row" id="report-subtabs" style="margin-bottom:1.25rem">
+        <button class="loc-filter-btn active" data-sub="report" onclick="setReportSub('report')">Report</button>
+        <button class="loc-filter-btn" data-sub="11" onclick="setReportSub('11')">Winning 1-1</button>
+        <button class="loc-filter-btn" data-sub="fpfb" onclick="setReportSub('fpfb')">First-pitch fastballs</button>
+      </div>
+      <div id="report-content"></div>
+      <div id="report-11" style="display:none"></div>
+      <div id="report-fpfb" style="display:none"></div>
+    </div>
+
+    <!-- SEASON INSIGHT -->
+    <div class="ptab-panel" id="ptab-season-insight">
+      <div id="season-insight-content"></div>
+    </div>
+
+    <!-- OUTING INSIGHT -->
+    <div class="ptab-panel" id="ptab-outing-insight">
+      <div class="section">
+        <div class="section-hd">Select outing to analyze</div>
+        <select id="outing-insight-sel" class="sel-input" style="margin-bottom:1.5rem" onchange="loadOutingInsight()">
+          <option value="">Select an outing...</option>
+        </select>
+      </div>
+      <div id="outing-insight-content"></div>
+    </div>
+
+    <!-- OUTINGS LIST -->
+    <!-- xARSENAL -->
+    <div class="ptab-panel" id="ptab-xarsenal">
+      <div id="xarsenal-content"></div>
+    </div>
+
+    <div class="ptab-panel" id="ptab-outings">
+      <div class="oc-toolbar">
+        <div class="loc-filter-row">
+          <button class="loc-filter-btn active" data-oview="card" onclick="setOutingView('card')">Outing card</button>
+          <button class="loc-filter-btn" data-oview="season" onclick="setOutingView('season')">Season summary</button>
+        </div>
+        <div class="oc-picker" id="oc-picker">
+          <button class="btn-ghost oc-step" onclick="stepOuting(1)" title="Older outing">◀</button>
+          <select class="form-input" id="outing-select" onchange="selectOuting(this.value)"></select>
+          <button class="btn-ghost oc-step" onclick="stepOuting(-1)" title="Newer outing">▶</button>
+          <button class="btn-ghost" onclick="saveOutingCardImage()">Save as image</button>
+        </div>
+        <button class="btn-ghost" onclick="showExportData()">Export data</button>
+      </div>
+      <div id="outing-card-wrap"><div id="outing-card"></div></div>
+      <div id="season-card-wrap" style="display:none">
+        <div id="season-card"></div>
+        <details class="oc-manage">
+          <summary>Manage outings (review / delete)</summary>
+          <div id="outings-list"></div>
+        </details>
+      </div>
+    </div>
+
+    <!-- COMPARE -->
+    <div class="ptab-panel" id="ptab-compare">
+      <div class="section">
+        <div class="section-hd">Compare two outings</div>
+        <div class="compare-selectors">
+          <div>
+            <div class="compare-sel-label">Outing 1</div>
+            <select id="compare-sel-1" class="sel-input" onchange="renderComparison()"><option value="">Select outing...</option></select>
+          </div>
+          <div class="multi-vs" style="padding-top:1.5rem">VS</div>
+          <div>
+            <div class="compare-sel-label">Outing 2</div>
+            <select id="compare-sel-2" class="sel-input" onchange="renderComparison()"><option value="">Select outing...</option></select>
+          </div>
+        </div>
+        <div id="compare-result" style="margin-top:1.5rem"></div>
+      </div>
+    </div>
+
+    <!-- YEAR OVER YEAR -->
+    <div class="ptab-panel" id="ptab-history">
+      <div class="section">
+        <div class="section-hd">Season-over-season</div>
+        <div id="history-content">
+          <div class="empty-state">Loading...</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODALS -->
+<div id="modal-overlay" class="modal-overlay" style="display:none" onclick="closeModal(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title"></div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <img src="logo.png" alt="8ctane Baseball" style="height:28px;opacity:.5">
+  <span>Athlete Manager · Powered by Google Sheets</span>
+  <button class="btn-ghost" style="margin-left:auto;font-size:10px" onclick="showConfigBanner()">⚙ Configure</button>
+</footer>
+
+<script src="baselines-ref.js?v=20260527"></script>
+<script src="mlb-shape-match.js?v=20260725"></script>
+<script src="release-templates.js?v=20260930o"></script>
+<script src="athletes-v2.js?v=20260930q"></script>
+</body>
+</html>

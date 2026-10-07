@@ -9,7 +9,17 @@
     "lint": "next lint",
     "prisma:generate": "prisma generate",
     "prisma:db:pull": "prisma db pull",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "pi:setup": "npx --yes tsx scripts/pitch-intel/cli.ts setup",
+    "pi:link": "npx --yes tsx scripts/pitch-intel/cli.ts link",
+    "pi:pull": "npx --yes tsx scripts/pitch-intel/cli.ts pull",
+    "pi:backfill": "npx --yes tsx scripts/pitch-intel/cli.ts backfill",
+    "pi:import": "npx --yes tsx scripts/pitch-intel/cli.ts import",
+    "pi:check": "npx --yes tsx scripts/pitch-intel/cli.ts check",
+    "pi:nightly": "npx --yes tsx scripts/pitch-intel/cli.ts nightly",
+    "pi:unlink": "npx --yes tsx scripts/pitch-intel/cli.ts unlink",
+    "pi:list": "npx --yes tsx scripts/pitch-intel/cli.ts list",
+    "pi:runs": "npx --yes tsx scripts/pitch-intel/cli.ts runs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1007.0",

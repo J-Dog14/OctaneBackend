@@ -1,0 +1,1207 @@
+{
+  "CH": {
+    "n_total": 115645,
+    "k": 6,
+    "scaler_mean": {
+      "velo": 85.947,
+      "hb_norm": -1.19,
+      "vb": 0.362,
+      "side_norm": -1.997,
+      "height": 5.709,
+      "ext": 6.433
+    },
+    "scaler_scale": {
+      "velo": 3.668,
+      "hb_norm": 0.281,
+      "vb": 0.4,
+      "side_norm": 0.722,
+      "height": 0.459,
+      "ext": 0.436
+    },
+    "clusters": [
+      {
+        "cluster_id": 4,
+        "n": 24664,
+        "centroid": {
+          "velo": 86.2,
+          "hb_norm": -1.32,
+          "vb": 0.43,
+          "side_norm": -2.11,
+          "height": 5.75,
+          "ext": 6.8
+        },
+        "metrics": {
+          "whiff_pct": 30.9,
+          "csw_pct": 23.9,
+          "ball_pct": 42.1,
+          "xwoba": 0.281,
+          "hard_hit_pct": 32.2
+        }
+      },
+      {
+        "cluster_id": 5,
+        "n": 22001,
+        "centroid": {
+          "velo": 88.84,
+          "hb_norm": -1.29,
+          "vb": 0.46,
+          "side_norm": -1.28,
+          "height": 5.95,
+          "ext": 6.27
+        },
+        "metrics": {
+          "whiff_pct": 29.6,
+          "csw_pct": 23.8,
+          "ball_pct": 40.2,
+          "xwoba": 0.275,
+          "hard_hit_pct": 33.4
+        }
+      },
+      {
+        "cluster_id": 3,
+        "n": 20061,
+        "centroid": {
+          "velo": 81.59,
+          "hb_norm": -1.01,
+          "vb": 0.79,
+          "side_norm": -1.84,
+          "height": 6.13,
+          "ext": 6.33
+        },
+        "metrics": {
+          "whiff_pct": 30.4,
+          "csw_pct": 26.4,
+          "ball_pct": 37.9,
+          "xwoba": 0.286,
+          "hard_hit_pct": 29.5
+        }
+      },
+      {
+        "cluster_id": 2,
+        "n": 20006,
+        "centroid": {
+          "velo": 86.55,
+          "hb_norm": -1.33,
+          "vb": 0.18,
+          "side_norm": -2.27,
+          "height": 5.48,
+          "ext": 6.01
+        },
+        "metrics": {
+          "whiff_pct": 28.1,
+          "csw_pct": 21.5,
+          "ball_pct": 42.4,
+          "xwoba": 0.283,
+          "hard_hit_pct": 31.3
+        }
+      },
+      {
+        "cluster_id": 1,
+        "n": 17578,
+        "centroid": {
+          "velo": 87.06,
+          "hb_norm": -0.84,
+          "vb": 0.09,
+          "side_norm": -1.98,
+          "height": 5.63,
+          "ext": 6.53
+        },
+        "metrics": {
+          "whiff_pct": 27.3,
+          "csw_pct": 22.6,
+          "ball_pct": 40.0,
+          "xwoba": 0.288,
+          "hard_hit_pct": 39.9
+        }
+      },
+      {
+        "cluster_id": 0,
+        "n": 11335,
+        "centroid": {
+          "velo": 84.69,
+          "hb_norm": -1.34,
+          "vb": 0.02,
+          "side_norm": -2.96,
+          "height": 4.95,
+          "ext": 6.72
+        },
+        "metrics": {
+          "whiff_pct": 28.0,
+          "csw_pct": 22.6,
+          "ball_pct": 42.0,
+          "xwoba": 0.283,
+          "hard_hit_pct": 33.5
+        }
+      }
+    ]
+  },
+  "CU": {
+    "n_total": 71948,
+    "k": 6,
+    "scaler_mean": {
+      "velo": 79.829,
+      "hb_norm": 0.767,
+      "vb": -0.856,
+      "side_norm": -1.745,
+      "height": 5.93,
+      "ext": 6.359
+    },
+    "scaler_scale": {
+      "velo": 3.787,
+      "hb_norm": 0.397,
+      "vb": 0.402,
+      "side_norm": 0.745,
+      "height": 0.413,
+      "ext": 0.455
+    },
+    "clusters": [
+      {
+        "cluster_id": 3,
+        "n": 15759,
+        "centroid": {
+          "velo": 81.33,
+          "hb_norm": 0.63,
+          "vb": -0.98,
+          "side_norm": -1.67,
+          "height": 5.91,
+          "ext": 6.78
+        },
+        "metrics": {
+          "whiff_pct": 31.1,
+          "csw_pct": 28.9,
+          "ball_pct": 42.0,
+          "xwoba": 0.277,
+          "hard_hit_pct": 41.3
+        }
+      },
+      {
+        "cluster_id": 1,
+        "n": 13404,
+        "centroid": {
+          "velo": 75.47,
+          "hb_norm": 0.89,
+          "vb": -1.07,
+          "side_norm": -1.8,
+          "height": 6.02,
+          "ext": 6.16
+        },
+        "metrics": {
+          "whiff_pct": 26.3,
+          "csw_pct": 32.2,
+          "ball_pct": 40.7,
+          "xwoba": 0.302,
+          "hard_hit_pct": 33.4
+        }
+      },
+      {
+        "cluster_id": 5,
+        "n": 13320,
+        "centroid": {
+          "velo": 82.46,
+          "hb_norm": 0.42,
+          "vb": -0.54,
+          "side_norm": -1.72,
+          "height": 6.08,
+          "ext": 6.18
+        },
+        "metrics": {
+          "whiff_pct": 26.7,
+          "csw_pct": 28.7,
+          "ball_pct": 39.6,
+          "xwoba": 0.299,
+          "hard_hit_pct": 39.7
+        }
+      },
+      {
+        "cluster_id": 2,
+        "n": 13022,
+        "centroid": {
+          "velo": 78.99,
+          "hb_norm": 1.25,
+          "vb": -0.67,
+          "side_norm": -2.12,
+          "height": 5.54,
+          "ext": 6.51
+        },
+        "metrics": {
+          "whiff_pct": 31.3,
+          "csw_pct": 30.4,
+          "ball_pct": 39.0,
+          "xwoba": 0.273,
+          "hard_hit_pct": 33.1
+        }
+      },
+      {
+        "cluster_id": 4,
+        "n": 12062,
+        "centroid": {
+          "velo": 80.42,
+          "hb_norm": 0.67,
+          "vb": -1.21,
+          "side_norm": -0.89,
+          "height": 6.34,
+          "ext": 6.1
+        },
+        "metrics": {
+          "whiff_pct": 29.7,
+          "csw_pct": 31.6,
+          "ball_pct": 40.7,
+          "xwoba": 0.257,
+          "hard_hit_pct": 37.9
+        }
+      },
+      {
+        "cluster_id": 0,
+        "n": 4381,
+        "centroid": {
+          "velo": 80.63,
+          "hb_norm": 0.77,
+          "vb": -0.26,
+          "side_norm": -3.16,
+          "height": 5.3,
+          "ext": 6.27
+        },
+        "metrics": {
+          "whiff_pct": 29.2,
+          "csw_pct": 28.4,
+          "ball_pct": 39.5,
+          "xwoba": 0.271,
+          "hard_hit_pct": 35.1
+        }
+      }
+    ]
+  },
+  "FC": {
+    "n_total": 83674,
+    "k": 6,
+    "scaler_mean": {
+      "velo": 89.701,
+      "hb_norm": 0.179,
+      "vb": 0.674,
+      "side_norm": -1.916,
+      "height": 5.785,
+      "ext": 6.392
+    },
+    "scaler_scale": {
+      "velo": 2.961,
+      "hb_norm": 0.253,
+      "vb": 0.311,
+      "side_norm": 0.723,
+      "height": 0.424,
+      "ext": 0.4
+    },
+    "clusters": [
+      {
+        "cluster_id": 3,
+        "n": 17628,
+        "centroid": {
+          "velo": 89.38,
+          "hb_norm": 0.15,
+          "vb": 0.62,
+          "side_norm": -2.13,
+          "height": 5.75,
+          "ext": 6.08
+        },
+        "metrics": {
+          "whiff_pct": 20.0,
+          "csw_pct": 27.7,
+          "ball_pct": 32.8,
+          "xwoba": 0.37,
+          "hard_hit_pct": 40.2
+        }
+      },
+      {
+        "cluster_id": 5,
+        "n": 17171,
+        "centroid": {
+          "velo": 87.63,
+          "hb_norm": 0.4,
+          "vb": 0.36,
+          "side_norm": -1.84,
+          "height": 5.88,
+          "ext": 6.48
+        },
+        "metrics": {
+          "whiff_pct": 23.1,
+          "csw_pct": 27.5,
+          "ball_pct": 34.0,
+          "xwoba": 0.338,
+          "hard_hit_pct": 38.0
+        }
+      },
+      {
+        "cluster_id": 2,
+        "n": 14836,
+        "centroid": {
+          "velo": 92.13,
+          "hb_norm": 0.23,
+          "vb": 0.89,
+          "side_norm": -1.59,
+          "height": 5.96,
+          "ext": 6.66
+        },
+        "metrics": {
+          "whiff_pct": 20.5,
+          "csw_pct": 24.8,
+          "ball_pct": 34.1,
+          "xwoba": 0.332,
+          "hard_hit_pct": 36.1
+        }
+      },
+      {
+        "cluster_id": 4,
+        "n": 14283,
+        "centroid": {
+          "velo": 89.04,
+          "hb_norm": 0.1,
+          "vb": 0.63,
+          "side_norm": -2.64,
+          "height": 5.33,
+          "ext": 6.74
+        },
+        "metrics": {
+          "whiff_pct": 19.7,
+          "csw_pct": 26.6,
+          "ball_pct": 33.3,
+          "xwoba": 0.354,
+          "hard_hit_pct": 38.7
+        }
+      },
+      {
+        "cluster_id": 0,
+        "n": 10746,
+        "centroid": {
+          "velo": 91.55,
+          "hb_norm": -0.19,
+          "vb": 0.94,
+          "side_norm": -1.92,
+          "height": 5.61,
+          "ext": 6.3
+        },
+        "metrics": {
+          "whiff_pct": 17.0,
+          "csw_pct": 25.0,
+          "ball_pct": 35.8,
+          "xwoba": 0.38,
+          "hard_hit_pct": 42.5
+        }
+      },
+      {
+        "cluster_id": 1,
+        "n": 9010,
+        "centroid": {
+          "velo": 89.13,
+          "hb_norm": 0.29,
+          "vb": 0.79,
+          "side_norm": -1.02,
+          "height": 6.31,
+          "ext": 5.95
+        },
+        "metrics": {
+          "whiff_pct": 19.6,
+          "csw_pct": 26.2,
+          "ball_pct": 34.4,
+          "xwoba": 0.333,
+          "hard_hit_pct": 34.6
+        }
+      }
+    ]
+  },
+  "FF": {
+    "n_total": 341924,
+    "k": 6,
+    "scaler_mean": {
+      "velo": 94.493,
+      "hb_norm": -0.651,
+      "vb": 1.312,
+      "side_norm": -1.873,
+      "height": 5.807,
+      "ext": 6.502
+    },
+    "scaler_scale": {
+      "velo": 3.084,
+      "hb_norm": 0.332,
+      "vb": 0.243,
+      "side_norm": 0.729,
+      "height": 0.463,
+      "ext": 0.449
+    },
+    "clusters": [
+      {
+        "cluster_id": 1,
+        "n": 86894,
+        "centroid": {
+          "velo": 95.71,
+          "hb_norm": -0.71,
+          "vb": 1.38,
+          "side_norm": -1.94,
+          "height": 5.73,
+          "ext": 6.85
+        },
+        "metrics": {
+          "whiff_pct": 20.0,
+          "csw_pct": 27.8,
+          "ball_pct": 32.2,
+          "xwoba": 0.328,
+          "hard_hit_pct": 46.8
+        }
+      },
+      {
+        "cluster_id": 4,
+        "n": 82706,
+        "centroid": {
+          "velo": 94.82,
+          "hb_norm": -0.43,
+          "vb": 1.51,
+          "side_norm": -1.12,
+          "height": 6.22,
+          "ext": 6.5
+        },
+        "metrics": {
+          "whiff_pct": 18.5,
+          "csw_pct": 25.7,
+          "ball_pct": 33.8,
+          "xwoba": 0.341,
+          "hard_hit_pct": 45.4
+        }
+      },
+      {
+        "cluster_id": 0,
+        "n": 76750,
+        "centroid": {
+          "velo": 94.2,
+          "hb_norm": -0.81,
+          "vb": 1.32,
+          "side_norm": -2.04,
+          "height": 5.85,
+          "ext": 6.09
+        },
+        "metrics": {
+          "whiff_pct": 18.0,
+          "csw_pct": 25.9,
+          "ball_pct": 34.9,
+          "xwoba": 0.352,
+          "hard_hit_pct": 46.9
+        }
+      },
+      {
+        "cluster_id": 3,
+        "n": 49627,
+        "centroid": {
+          "velo": 93.94,
+          "hb_norm": -1.03,
+          "vb": 1.02,
+          "side_norm": -2.59,
+          "height": 5.16,
+          "ext": 6.58
+        },
+        "metrics": {
+          "whiff_pct": 18.6,
+          "csw_pct": 26.0,
+          "ball_pct": 33.4,
+          "xwoba": 0.341,
+          "hard_hit_pct": 46.8
+        }
+      },
+      {
+        "cluster_id": 2,
+        "n": 44738,
+        "centroid": {
+          "velo": 93.4,
+          "hb_norm": -0.26,
+          "vb": 1.14,
+          "side_norm": -2.05,
+          "height": 5.81,
+          "ext": 6.5
+        },
+        "metrics": {
+          "whiff_pct": 16.2,
+          "csw_pct": 24.7,
+          "ball_pct": 35.1,
+          "xwoba": 0.354,
+          "hard_hit_pct": 42.3
+        }
+      },
+      {
+        "cluster_id": 5,
+        "n": 1209,
+        "centroid": {
+          "velo": 65.87,
+          "hb_norm": -0.67,
+          "vb": 1.17,
+          "side_norm": -1.98,
+          "height": 6.02,
+          "ext": 4.65
+        },
+        "metrics": {
+          "whiff_pct": 5.2,
+          "csw_pct": 17.3,
+          "ball_pct": 38.0,
+          "xwoba": 0.441,
+          "hard_hit_pct": 44.0
+        }
+      }
+    ]
+  },
+  "FS": {
+    "n_total": 35060,
+    "k": 6,
+    "scaler_mean": {
+      "velo": 86.541,
+      "hb_norm": -0.924,
+      "vb": 0.273,
+      "side_norm": -1.825,
+      "height": 5.792,
+      "ext": 6.561
+    },
+    "scaler_scale": {
+      "velo": 3.587,
+      "hb_norm": 0.346,
+      "vb": 0.37,
+      "side_norm": 0.669,
+      "height": 0.421,
+      "ext": 0.418
+    },
+    "clusters": [
+      {
+        "cluster_id": 4,
+        "n": 7435,
+        "centroid": {
+          "velo": 85.89,
+          "hb_norm": -1.22,
+          "vb": 0.31,
+          "side_norm": -2.23,
+          "height": 5.54,
+          "ext": 6.8
+        },
+        "metrics": {
+          "whiff_pct": 34.4,
+          "csw_pct": 25.0,
+          "ball_pct": 40.5,
+          "xwoba": 0.262,
+          "hard_hit_pct": 31.4
+        }
+      },
+      {
+        "cluster_id": 0,
+        "n": 6124,
+        "centroid": {
+          "velo": 85.71,
+          "hb_norm": -0.8,
+          "vb": 0.76,
+          "side_norm": -1.51,
+          "height": 6.01,
+          "ext": 6.62
+        },
+        "metrics": {
+          "whiff_pct": 31.8,
+          "csw_pct": 24.4,
+          "ball_pct": 40.9,
+          "xwoba": 0.262,
+          "hard_hit_pct": 33.6
+        }
+      },
+      {
+        "cluster_id": 3,
+        "n": 6111,
+        "centroid": {
+          "velo": 91.75,
+          "hb_norm": -1.08,
+          "vb": 0.2,
+          "side_norm": -2.0,
+          "height": 5.81,
+          "ext": 6.58
+        },
+        "metrics": {
+          "whiff_pct": 31.0,
+          "csw_pct": 23.4,
+          "ball_pct": 40.4,
+          "xwoba": 0.244,
+          "hard_hit_pct": 39.3
+        }
+      },
+      {
+        "cluster_id": 5,
+        "n": 5801,
+        "centroid": {
+          "velo": 86.12,
+          "hb_norm": -0.89,
+          "vb": 0.04,
+          "side_norm": -2.21,
+          "height": 5.39,
+          "ext": 6.26
+        },
+        "metrics": {
+          "whiff_pct": 31.0,
+          "csw_pct": 23.6,
+          "ball_pct": 41.4,
+          "xwoba": 0.272,
+          "hard_hit_pct": 35.5
+        }
+      },
+      {
+        "cluster_id": 1,
+        "n": 5325,
+        "centroid": {
+          "velo": 84.84,
+          "hb_norm": -0.92,
+          "vb": 0.2,
+          "side_norm": -1.12,
+          "height": 6.24,
+          "ext": 6.11
+        },
+        "metrics": {
+          "whiff_pct": 30.3,
+          "csw_pct": 23.6,
+          "ball_pct": 40.3,
+          "xwoba": 0.267,
+          "hard_hit_pct": 33.6
+        }
+      },
+      {
+        "cluster_id": 2,
+        "n": 4264,
+        "centroid": {
+          "velo": 84.1,
+          "hb_norm": -0.43,
+          "vb": 0.03,
+          "side_norm": -1.69,
+          "height": 5.88,
+          "ext": 7.01
+        },
+        "metrics": {
+          "whiff_pct": 36.6,
+          "csw_pct": 26.2,
+          "ball_pct": 39.1,
+          "xwoba": 0.244,
+          "hard_hit_pct": 34.9
+        }
+      }
+    ]
+  },
+  "KC": {
+    "n_total": 18890,
+    "k": 5,
+    "scaler_mean": {
+      "velo": 82.602,
+      "hb_norm": 0.579,
+      "vb": -0.806,
+      "side_norm": -1.897,
+      "height": 5.898,
+      "ext": 6.41
+    },
+    "scaler_scale": {
+      "velo": 3.69,
+      "hb_norm": 0.407,
+      "vb": 0.404,
+      "side_norm": 0.694,
+      "height": 0.41,
+      "ext": 0.404
+    },
+    "clusters": [
+      {
+        "cluster_id": 2,
+        "n": 4784,
+        "centroid": {
+          "velo": 84.47,
+          "hb_norm": 0.75,
+          "vb": -0.93,
+          "side_norm": -1.45,
+          "height": 5.88,
+          "ext": 6.39
+        },
+        "metrics": {
+          "whiff_pct": 32.3,
+          "csw_pct": 32.1,
+          "ball_pct": 36.9,
+          "xwoba": 0.257,
+          "hard_hit_pct": 42.3
+        }
+      },
+      {
+        "cluster_id": 4,
+        "n": 3864,
+        "centroid": {
+          "velo": 79.51,
+          "hb_norm": 0.51,
+          "vb": -1.27,
+          "side_norm": -1.74,
+          "height": 6.13,
+          "ext": 6.61
+        },
+        "metrics": {
+          "whiff_pct": 28.6,
+          "csw_pct": 29.5,
+          "ball_pct": 43.7,
+          "xwoba": 0.299,
+          "hard_hit_pct": 39.4
+        }
+      },
+      {
+        "cluster_id": 3,
+        "n": 3662,
+        "centroid": {
+          "velo": 83.13,
+          "hb_norm": 0.31,
+          "vb": -0.66,
+          "side_norm": -2.71,
+          "height": 5.85,
+          "ext": 6.47
+        },
+        "metrics": {
+          "whiff_pct": 33.7,
+          "csw_pct": 29.6,
+          "ball_pct": 38.4,
+          "xwoba": 0.285,
+          "hard_hit_pct": 43.2
+        }
+      },
+      {
+        "cluster_id": 0,
+        "n": 3376,
+        "centroid": {
+          "velo": 86.39,
+          "hb_norm": 0.19,
+          "vb": -0.29,
+          "side_norm": -1.51,
+          "height": 6.33,
+          "ext": 6.05
+        },
+        "metrics": {
+          "whiff_pct": 40.1,
+          "csw_pct": 32.2,
+          "ball_pct": 38.7,
+          "xwoba": 0.252,
+          "hard_hit_pct": 42.5
+        }
+      },
+      {
+        "cluster_id": 1,
+        "n": 3204,
+        "centroid": {
+          "velo": 78.94,
+          "hb_norm": 1.13,
+          "vb": -0.76,
+          "side_norm": -2.23,
+          "height": 5.25,
+          "ext": 6.51
+        },
+        "metrics": {
+          "whiff_pct": 33.3,
+          "csw_pct": 29.7,
+          "ball_pct": 37.7,
+          "xwoba": 0.266,
+          "hard_hit_pct": 33.0
+        }
+      }
+    ]
+  },
+  "SI": {
+    "n_total": 174022,
+    "k": 6,
+    "scaler_mean": {
+      "velo": 93.92,
+      "hb_norm": -1.263,
+      "vb": 0.625,
+      "side_norm": -1.985,
+      "height": 5.625,
+      "ext": 6.407
+    },
+    "scaler_scale": {
+      "velo": 2.788,
+      "hb_norm": 0.256,
+      "vb": 0.41,
+      "side_norm": 0.758,
+      "height": 0.641,
+      "ext": 0.456
+    },
+    "clusters": [
+      {
+        "cluster_id": 4,
+        "n": 45617,
+        "centroid": {
+          "velo": 96.28,
+          "hb_norm": -1.36,
+          "vb": 0.68,
+          "side_norm": -1.86,
+          "height": 5.76,
+          "ext": 6.56
+        },
+        "metrics": {
+          "whiff_pct": 12.7,
+          "csw_pct": 27.5,
+          "ball_pct": 31.4,
+          "xwoba": 0.33,
+          "hard_hit_pct": 42.4
+        }
+      },
+      {
+        "cluster_id": 3,
+        "n": 34223,
+        "centroid": {
+          "velo": 93.83,
+          "hb_norm": -0.98,
+          "vb": 1.02,
+          "side_norm": -1.75,
+          "height": 5.95,
+          "ext": 6.63
+        },
+        "metrics": {
+          "whiff_pct": 12.7,
+          "csw_pct": 26.5,
+          "ball_pct": 32.1,
+          "xwoba": 0.354,
+          "hard_hit_pct": 43.7
+        }
+      },
+      {
+        "cluster_id": 1,
+        "n": 31285,
+        "centroid": {
+          "velo": 92.11,
+          "hb_norm": -1.37,
+          "vb": 0.42,
+          "side_norm": -2.32,
+          "height": 5.2,
+          "ext": 6.78
+        },
+        "metrics": {
+          "whiff_pct": 10.4,
+          "csw_pct": 28.7,
+          "ball_pct": 31.4,
+          "xwoba": 0.363,
+          "hard_hit_pct": 44.2
+        }
+      },
+      {
+        "cluster_id": 0,
+        "n": 30947,
+        "centroid": {
+          "velo": 93.33,
+          "hb_norm": -1.39,
+          "vb": 0.38,
+          "side_norm": -2.58,
+          "height": 5.49,
+          "ext": 5.92
+        },
+        "metrics": {
+          "whiff_pct": 11.1,
+          "csw_pct": 27.7,
+          "ball_pct": 32.0,
+          "xwoba": 0.357,
+          "hard_hit_pct": 43.7
+        }
+      },
+      {
+        "cluster_id": 2,
+        "n": 28530,
+        "centroid": {
+          "velo": 93.71,
+          "hb_norm": -1.25,
+          "vb": 0.72,
+          "side_norm": -1.23,
+          "height": 5.98,
+          "ext": 6.0
+        },
+        "metrics": {
+          "whiff_pct": 11.2,
+          "csw_pct": 27.0,
+          "ball_pct": 32.7,
+          "xwoba": 0.356,
+          "hard_hit_pct": 44.4
+        }
+      },
+      {
+        "cluster_id": 5,
+        "n": 3420,
+        "centroid": {
+          "velo": 86.91,
+          "hb_norm": -0.84,
+          "vb": -0.66,
+          "side_norm": -3.83,
+          "height": 2.69,
+          "ext": 6.39
+        },
+        "metrics": {
+          "whiff_pct": 11.5,
+          "csw_pct": 26.7,
+          "ball_pct": 27.3,
+          "xwoba": 0.304,
+          "hard_hit_pct": 39.6
+        }
+      }
+    ]
+  },
+  "SL": {
+    "n_total": 152473,
+    "k": 6,
+    "scaler_mean": {
+      "velo": 86.255,
+      "hb_norm": 0.338,
+      "vb": 0.143,
+      "side_norm": -1.885,
+      "height": 5.825,
+      "ext": 6.408
+    },
+    "scaler_scale": {
+      "velo": 3.189,
+      "hb_norm": 0.301,
+      "vb": 0.345,
+      "side_norm": 0.757,
+      "height": 0.506,
+      "ext": 0.45
+    },
+    "clusters": [
+      {
+        "cluster_id": 5,
+        "n": 42680,
+        "centroid": {
+          "velo": 88.24,
+          "hb_norm": 0.28,
+          "vb": 0.38,
+          "side_norm": -1.83,
+          "height": 5.77,
+          "ext": 6.7
+        },
+        "metrics": {
+          "whiff_pct": 31.1,
+          "csw_pct": 28.4,
+          "ball_pct": 37.6,
+          "xwoba": 0.298,
+          "hard_hit_pct": 36.4
+        }
+      },
+      {
+        "cluster_id": 4,
+        "n": 34952,
+        "centroid": {
+          "velo": 85.15,
+          "hb_norm": 0.34,
+          "vb": -0.19,
+          "side_norm": -1.79,
+          "height": 5.91,
+          "ext": 6.64
+        },
+        "metrics": {
+          "whiff_pct": 33.3,
+          "csw_pct": 29.9,
+          "ball_pct": 37.4,
+          "xwoba": 0.284,
+          "hard_hit_pct": 40.2
+        }
+      },
+      {
+        "cluster_id": 1,
+        "n": 29681,
+        "centroid": {
+          "velo": 86.22,
+          "hb_norm": 0.2,
+          "vb": 0.16,
+          "side_norm": -2.34,
+          "height": 5.71,
+          "ext": 5.96
+        },
+        "metrics": {
+          "whiff_pct": 29.7,
+          "csw_pct": 29.9,
+          "ball_pct": 35.6,
+          "xwoba": 0.304,
+          "hard_hit_pct": 38.8
+        }
+      },
+      {
+        "cluster_id": 0,
+        "n": 27237,
+        "centroid": {
+          "velo": 87.1,
+          "hb_norm": 0.27,
+          "vb": 0.18,
+          "side_norm": -1.01,
+          "height": 6.29,
+          "ext": 6.11
+        },
+        "metrics": {
+          "whiff_pct": 31.8,
+          "csw_pct": 30.9,
+          "ball_pct": 34.5,
+          "xwoba": 0.288,
+          "hard_hit_pct": 36.7
+        }
+      },
+      {
+        "cluster_id": 3,
+        "n": 16793,
+        "centroid": {
+          "velo": 83.09,
+          "hb_norm": 0.78,
+          "vb": 0.07,
+          "side_norm": -2.73,
+          "height": 5.41,
+          "ext": 6.48
+        },
+        "metrics": {
+          "whiff_pct": 31.8,
+          "csw_pct": 31.1,
+          "ball_pct": 36.6,
+          "xwoba": 0.287,
+          "hard_hit_pct": 33.0
+        }
+      },
+      {
+        "cluster_id": 2,
+        "n": 1130,
+        "centroid": {
+          "velo": 73.29,
+          "hb_norm": 0.96,
+          "vb": 0.93,
+          "side_norm": -3.5,
+          "height": 3.32,
+          "ext": 6.22
+        },
+        "metrics": {
+          "whiff_pct": 27.3,
+          "csw_pct": 29.4,
+          "ball_pct": 36.5,
+          "xwoba": 0.28,
+          "hard_hit_pct": 26.1
+        }
+      }
+    ]
+  },
+  "ST": {
+    "n_total": 85862,
+    "k": 6,
+    "scaler_mean": {
+      "velo": 82.704,
+      "hb_norm": 1.139,
+      "vb": 0.076,
+      "side_norm": -2.24,
+      "height": 5.482,
+      "ext": 6.327
+    },
+    "scaler_scale": {
+      "velo": 3.071,
+      "hb_norm": 0.337,
+      "vb": 0.355,
+      "side_norm": 0.717,
+      "height": 0.503,
+      "ext": 0.458
+    },
+    "clusters": [
+      {
+        "cluster_id": 0,
+        "n": 18424,
+        "centroid": {
+          "velo": 83.1,
+          "hb_norm": 1.38,
+          "vb": -0.02,
+          "side_norm": -2.45,
+          "height": 5.43,
+          "ext": 6.6
+        },
+        "metrics": {
+          "whiff_pct": 29.3,
+          "csw_pct": 28.4,
+          "ball_pct": 39.5,
+          "xwoba": 0.271,
+          "hard_hit_pct": 30.3
+        }
+      },
+      {
+        "cluster_id": 1,
+        "n": 16112,
+        "centroid": {
+          "velo": 83.56,
+          "hb_norm": 0.89,
+          "vb": 0.46,
+          "side_norm": -2.08,
+          "height": 5.56,
+          "ext": 6.51
+        },
+        "metrics": {
+          "whiff_pct": 31.3,
+          "csw_pct": 29.6,
+          "ball_pct": 37.9,
+          "xwoba": 0.261,
+          "hard_hit_pct": 30.5
+        }
+      },
+      {
+        "cluster_id": 2,
+        "n": 14267,
+        "centroid": {
+          "velo": 86.01,
+          "hb_norm": 0.84,
+          "vb": -0.15,
+          "side_norm": -2.01,
+          "height": 5.67,
+          "ext": 6.19
+        },
+        "metrics": {
+          "whiff_pct": 33.6,
+          "csw_pct": 30.3,
+          "ball_pct": 39.1,
+          "xwoba": 0.266,
+          "hard_hit_pct": 36.1
+        }
+      },
+      {
+        "cluster_id": 5,
+        "n": 13358,
+        "centroid": {
+          "velo": 81.8,
+          "hb_norm": 1.28,
+          "vb": -0.21,
+          "side_norm": -1.53,
+          "height": 5.94,
+          "ext": 6.25
+        },
+        "metrics": {
+          "whiff_pct": 27.5,
+          "csw_pct": 27.9,
+          "ball_pct": 38.5,
+          "xwoba": 0.26,
+          "hard_hit_pct": 31.0
+        }
+      },
+      {
+        "cluster_id": 3,
+        "n": 12833,
+        "centroid": {
+          "velo": 81.51,
+          "hb_norm": 1.28,
+          "vb": 0.1,
+          "side_norm": -2.54,
+          "height": 5.43,
+          "ext": 5.72
+        },
+        "metrics": {
+          "whiff_pct": 26.8,
+          "csw_pct": 32.8,
+          "ball_pct": 36.0,
+          "xwoba": 0.285,
+          "hard_hit_pct": 32.2
+        }
+      },
+      {
+        "cluster_id": 4,
+        "n": 10868,
+        "centroid": {
+          "velo": 78.94,
+          "hb_norm": 1.16,
+          "vb": 0.28,
+          "side_norm": -2.96,
+          "height": 4.69,
+          "ext": 6.57
+        },
+        "metrics": {
+          "whiff_pct": 28.9,
+          "csw_pct": 29.6,
+          "ball_pct": 38.8,
+          "xwoba": 0.275,
+          "hard_hit_pct": 29.1
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,14 @@
+// Baselines reference for athletes.js
+// Auto-generated from 50,000 MLB pitches (2025 late season + 2026 through May 15)
+const MLB_BASELINE_REF = {
+  "FF":{"name":"4-Seam Fastball","n":16487,"avg_velo":94.8,"whiff_pct":18.3,"csw_pct":18.3,"avg_xwoba":0.403,"avg_ev":92.0,"hard_hit_pct":47.5},
+  "FA":{"name":"4-Seam Fastball","n":16487,"avg_velo":94.8,"whiff_pct":18.3,"csw_pct":18.3,"avg_xwoba":0.403,"avg_ev":92.0,"hard_hit_pct":47.5},
+  "SI":{"name":"Sinker","n":7812,"avg_velo":94.1,"whiff_pct":11.0,"csw_pct":11.0,"avg_xwoba":0.366,"avg_ev":90.2,"hard_hit_pct":45.1},
+  "FC":{"name":"Cutter","n":3671,"avg_velo":89.9,"whiff_pct":19.7,"csw_pct":19.7,"avg_xwoba":0.366,"avg_ev":88.5,"hard_hit_pct":37.1},
+  "SL":{"name":"Slider","n":7090,"avg_velo":86.3,"whiff_pct":28.7,"csw_pct":28.7,"avg_xwoba":0.369,"avg_ev":89.1,"hard_hit_pct":39.8},
+  "ST":{"name":"Sweeper","n":3436,"avg_velo":82.9,"whiff_pct":26.5,"csw_pct":26.5,"avg_xwoba":0.334,"avg_ev":87.5,"hard_hit_pct":32.3},
+  "CU":{"name":"Curveball","n":2847,"avg_velo":80.3,"whiff_pct":25.4,"csw_pct":25.4,"avg_xwoba":0.386,"avg_ev":89.0,"hard_hit_pct":39.4},
+  "KC":{"name":"Knuckle-Curve","n":790,"avg_velo":82.3,"whiff_pct":29.4,"csw_pct":29.4,"avg_xwoba":0.423,"avg_ev":90.0,"hard_hit_pct":44.6},
+  "FS":{"name":"Splitter","n":1708,"avg_velo":86.1,"whiff_pct":33.4,"csw_pct":33.4,"avg_xwoba":0.335,"avg_ev":87.4,"hard_hit_pct":34.3},
+  "CH":{"name":"Changeup","n":6097,"avg_velo":86.2,"whiff_pct":30.0,"csw_pct":30.0,"avg_xwoba":0.326,"avg_ev":86.5,"hard_hit_pct":31.5}
+};

@@ -384,3 +384,120 @@ export function killJob(jobId: string): boolean {
   }
   return true;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// argv jobs (AI Lab)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type ArgvJobMeta = { id: string; label: string; cwd: string };
+
+export type ArgvJobOptions = {
+  /** Complete environment for the child (not merged with process.env). */
+  env: NodeJS.ProcessEnv;
+  /**
+   * After exit, files under this directory created/modified during the run are
+   * announced as `[ARTIFACT] <relative path>::<name>` lines so the page can
+   * link them. Packet internals are skipped (the Python side announces the
+   * ones that matter).
+   */
+  artifactRoot?: string;
+  /** Hard stop; the process is killed after this many ms. Default 45 min. */
+  timeoutMs?: number;
+};
+
+const ARTIFACT_EXT = new Set([".html", ".pdf", ".zip", ".md", ".csv", ".docx", ".json"]);
+
+async function scanArtifacts(root: string, since: number): Promise<string[]> {
+  const found: { rel: string; mtime: number }[] = [];
+  async function walk(dir: string, depth: number) {
+    if (depth > 3 || found.length > 200) return;
+    let entries: import("node:fs").Dirent[] = [];
+    try {
+      entries = await readdir(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const e of entries) {
+      const full = path.join(dir, e.name);
+      const rel = path.relative(root, full).split(path.sep).join("/");
+      if (e.isDirectory()) {
+        if (rel === "_vendor" || rel.endsWith("/data") || rel.endsWith("/raw")) continue;
+        await walk(full, depth + 1);
+        continue;
+      }
+      if (!ARTIFACT_EXT.has(path.extname(e.name).toLowerCase())) continue;
+      // Inside a packet only the zip and the out/ folder are worth a link.
+      if (rel.startsWith("packets/") && rel.split("/").length > 2 && !rel.includes("/out/")) continue;
+      if (rel === "workbench/queue.json") continue;
+      try {
+        const st = await stat(full);
+        if (st.mtimeMs >= since - 2000) found.push({ rel, mtime: st.mtimeMs });
+      } catch {
+        /* skip */
+      }
+    }
+  }
+  await walk(root, 0);
+  return found.sort((a, b) => b.mtime - a.mtime).slice(0, 40).map((f) => f.rel);
+}
+
+/**
+ * Spawn `file args…` WITHOUT a shell and register it in the same job table as
+ * the UAIS runners, so the existing /api/dashboard/uais/{stream,kill,input}
+ * routes work for it unchanged. Callers must validate args; nothing here is
+ * interpreted by a shell.
+ */
+export function createArgvJob(
+  meta: ArgvJobMeta,
+  file: string,
+  args: string[],
+  options: ArgvJobOptions
+): string {
+  const jobId = crypto.randomUUID();
+  const jobStartTime = Date.now();
+  const proc = spawn(file, args, {
+    cwd: meta.cwd,
+    env: options.env,
+    shell: false,
+    windowsHide: true,
+  });
+  const job: Job = {
+    runner: { id: meta.id, label: meta.label, cwd: meta.cwd, command: [path.basename(file), ...args].join(" ") },
+    process: proc,
+    chunks: [],
+    controller: null,
+    done: false,
+  };
+  jobs.set(jobId, job);
+  pushChunk(jobId, new TextEncoder().encode(`$ ${path.basename(file)} ${args.join(" ")}\n`));
+
+  const timer = setTimeout(() => {
+    pushChunk(jobId, new TextEncoder().encode(`\n[Timed out — killing process]\n`));
+    try { proc.kill("SIGTERM"); } catch { /* already gone */ }
+  }, options.timeoutMs ?? 45 * 60 * 1000);
+
+  proc.stdout?.on("data", (data: Buffer) => pushChunk(jobId, data));
+  proc.stderr?.on("data", (data: Buffer) => pushChunk(jobId, data));
+  proc.on("error", (err) => {
+    pushChunk(jobId, new TextEncoder().encode(`\n[Process error] ${err.message}\n`));
+  });
+  proc.on("exit", (code, signal) => {
+    clearTimeout(timer);
+    const msg = code != null
+      ? `\n[Process exited with code ${code}]\n`
+      : `\n[Process exited with signal ${signal}]\n`;
+    pushChunk(jobId, new TextEncoder().encode(msg));
+    const finish = () => onExit(jobId);
+    if (!options.artifactRoot) return finish();
+    void scanArtifacts(options.artifactRoot, jobStartTime)
+      .then((rels) => {
+        for (const rel of rels) {
+          pushChunk(jobId, new TextEncoder().encode(`[ARTIFACT] ${rel}::${path.basename(rel)}\n`));
+        }
+      })
+      .catch(() => undefined)
+      .finally(finish);
+  });
+
+  return jobId;
+}

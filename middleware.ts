@@ -8,6 +8,7 @@ const isPublicRoute = createRouteMatcher([
   "/api/biomech(.*)",
   "/api/external(.*)",
   "/api/sync(.*)", // OctaneSync agent — uses its own token auth, not Clerk
+  "/muse(.*)", // Muse assistant — Bearer MUSE_API_TOKEN, read-only
 ]);
 
 export default clerkMiddleware(async (auth, request) => {

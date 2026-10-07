@@ -1,0 +1,24 @@
+/*
+ * Pitch Intelligence embed (ours, not Ryan's). Data here comes from the
+ * nightly Savant pulls, so the controls that write to Ryan's Google Sheet are
+ * hidden. The adapter refuses those writes anyway.
+ */
+#config-banner,
+button[onclick="showConfigBanner()"],
+button[onclick="showBulkImport()"],
+button[onclick="showAddAthlete()"],
+#btn-share,
+#btn-edit-metrics,
+#btn-add-outing,
+#btn-view-analyzer,
+.card-delete-btn,
+.outing-delete-btn,
+[onclick*="confirmDelete"],
+a.btn-ghost[href="index.html"] {
+  display: none !important;
+}
+
+/* The logo links to Ryan's Analyzer page, which isn't part of this app. */
+a[href="index.html"] {
+  pointer-events: none;
+}
