@@ -1,4 +1,4 @@
-import { requireAuth } from "@/lib/auth/requireAuth";
+import { denyRoles, requireAuth } from "@/lib/auth/requireAuth";
 import { prisma } from "@/lib/db/prisma";
 import { Prisma } from "@prisma/client";
 import { internalError, success } from "@/lib/responses";
@@ -11,6 +11,8 @@ import { internalError, success } from "@/lib/responses";
 
 export async function POST() {
   await requireAuth();
+  const denied = await denyRoles(["coach"]);
+  if (denied) return denied;
   try {
     const updated = await prisma.$executeRawUnsafe(`
       UPDATE analytics.d_athletes a

@@ -155,3 +155,11 @@ whiff% (per swing) is marked when it rests on fewer than 30 swings.
 
 After pulling this change, run `npm run pi:setup` once to add the new tables.
 
+## TrackMan Team Portal pulls
+
+`uais/python/trackman/` pulls per-pitch data from the TrackMan portal (Playwright,
+run on a PC) and loads it into `trackman_pitches` (`data_source = 'portal'`),
+`trackman_players` (every TrackMan player, linked or not) and `trackman_sessions`.
+Players with no matching athlete are created in `d_athletes` with
+`source_system = 'trackman'`. See that folder's README.
+

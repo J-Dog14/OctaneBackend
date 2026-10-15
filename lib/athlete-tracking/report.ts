@@ -8,13 +8,15 @@ import type { AthleteTrackingReport, DomainId } from "@/lib/athlete-tracking/typ
 
 export async function buildAthleteTrackingReport(
   athleteUuid: string,
-  sessionDates?: Partial<Record<DomainId, string>>
+  sessionDates?: Partial<Record<DomainId, string>>,
+  requestedDomains?: readonly DomainId[]
 ): Promise<AthleteTrackingReport> {
   const reportPayload = await buildAthleteReportPayload(athleteUuid);
   const domains = await buildDomainsWithPercentiles(
     athleteUuid,
     reportPayload.counts,
-    sessionDates
+    sessionDates,
+    requestedDomains
   );
 
   return {

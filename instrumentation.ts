@@ -6,12 +6,11 @@ export async function register() {
     const { prisma } = await import("@/lib/db/prisma");
     await prisma.$connect();
 
-    // Warm athlete-tracking population caches in the background.
-    void import("@/lib/athlete-tracking/percentiles").then(({ warmPopulationCaches }) => {
-      warmPopulationCaches().catch(() => {
-        // Silently swallow — caches will fill on the first real request instead.
-      });
-    });
+    // Drain the durable percentile refresh queue outside page requests.
+    // Next also executes instrumentation during production builds.
+    if (process.env.NEXT_PHASE !== "phase-production-build") {
+      void import("@/lib/percentiles/worker").then(({ startPopulationWorker }) => startPopulationWorker());
+    }
 
     // Generate uais/config/db_connections.yaml from org settings / env vars.
     // The UAIS Python scripts require this file to exist before they check

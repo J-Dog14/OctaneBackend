@@ -89,7 +89,7 @@ function grade(rows: PitchTypeSummary[], throws: "L" | "R" | null, level: string
   };
 }
 
-function attachGrades(rows: PitchTypeSummary[], throws: "L" | "R" | null, level: string | null, minCount: number) {
+export function attachGrades(rows: PitchTypeSummary[], throws: "L" | "R" | null, level: string | null, minCount: number) {
   const { byKey, arsenal } = grade(rows, throws, level, minCount);
   for (const r of rows) {
     const g = byKey.get(r.pitchType);

@@ -44,6 +44,8 @@ popd
 REM Log completion time and exit code
 if "%RC%"=="0" (
     echo %date% %time% - Mobility processing completed successfully >> "%LOG%"
+) else if "%RC%"=="4" (
+    echo %date% %time% - Mobility processing finished but NEEDS ATTENTION - see data\mobility_last_run.json >> "%LOG%"
 ) else (
     echo %date% %time% - Mobility processing FAILED with error code %RC% >> "%LOG%"
 )

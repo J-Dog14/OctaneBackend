@@ -332,3 +332,77 @@ CREATE TABLE IF NOT EXISTS pitch_intel.aggregate_pitch_rows (
 );
 
 CREATE INDEX IF NOT EXISTS idx_apr_report ON pitch_intel.aggregate_pitch_rows (report_id);
+
+-- =============================================================================
+-- TrackMan Team Portal pulls (uais/python/trackman/)
+-- Every TrackMan player is stored, whether or not they match an athlete.
+-- Players with pitch data who match nobody are created in analytics.d_athletes
+-- with source_system = 'trackman' (their point of origin) by the loader.
+-- =============================================================================
+
+-- trackman_players: one row per TrackMan player ID (the portal's profile).
+CREATE TABLE IF NOT EXISTS pitch_intel.trackman_players (
+    player_id      TEXT PRIMARY KEY,          -- TrackMan 10-digit ID, or an MLB ID
+    id_source      TEXT        NOT NULL DEFAULT 'trackman' CHECK (id_source IN ('trackman', 'mlb')),
+    name           TEXT        NOT NULL,
+    date_of_birth  DATE,
+    team           TEXT,
+    jersey_number  TEXT,
+    throws         CHAR(1)     CHECK (throws IN ('L', 'R')),
+    throws_source  TEXT,                      -- 'inferred' (release side + FB break) or 'manual'
+    athlete_uuid   VARCHAR(36)
+                   REFERENCES analytics.d_athletes (athlete_uuid)
+                   ON UPDATE CASCADE ON DELETE SET NULL,
+    match_status   TEXT        NOT NULL DEFAULT 'unmatched'
+                   CHECK (match_status IN ('unmatched', 'linked', 'matched_exact', 'matched_fuzzy', 'created', 'conflict', 'manual')),
+    match_note     TEXT,
+    raw            JSONB       NOT NULL DEFAULT '{}'::jsonb,
+    first_seen_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_tmp_athlete ON pitch_intel.trackman_players (athlete_uuid);
+CREATE INDEX IF NOT EXISTS idx_tmp_status ON pitch_intel.trackman_players (match_status);
+
+-- trackman_sessions: one row per portal session (the /sessions Id GUID).
+CREATE TABLE IF NOT EXISTS pitch_intel.trackman_sessions (
+    session_id      TEXT PRIMARY KEY,
+    session_type    TEXT,                     -- e.g. Pitching
+    local_date      DATE,
+    local_datetime  TEXT,                     -- as the portal shows it
+    utc_datetime    TIMESTAMPTZ,
+    radar_serial    TEXT,
+    player_count    INTEGER,
+    plays           INTEGER,                  -- pitches the portal says the session has (all players)
+    pitches_pulled  INTEGER     NOT NULL DEFAULT 0,
+    raw             JSONB       NOT NULL DEFAULT '{}'::jsonb,
+    pulled_at       TIMESTAMPTZ,
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_tms_date ON pitch_intel.trackman_sessions (local_date);
+
+-- trackman_pitches also holds portal pitches (data_source = 'portal').
+-- Pitches from a player who couldn't be matched safely (a name/DOB conflict)
+-- are kept with athlete_uuid NULL until someone links them.
+ALTER TABLE pitch_intel.trackman_pitches ALTER COLUMN athlete_uuid DROP NOT NULL;
+ALTER TABLE pitch_intel.trackman_pitches ALTER COLUMN link_id DROP NOT NULL;
+ALTER TABLE pitch_intel.trackman_pitches ADD COLUMN IF NOT EXISTS data_source TEXT NOT NULL DEFAULT 'file' CHECK (data_source IN ('file', 'portal'));
+ALTER TABLE pitch_intel.trackman_pitches ADD COLUMN IF NOT EXISTS tm_session_id TEXT;
+ALTER TABLE pitch_intel.trackman_pitches ADD COLUMN IF NOT EXISTS tm_player_id TEXT;
+ALTER TABLE pitch_intel.trackman_pitches ADD COLUMN IF NOT EXISTS gyro DOUBLE PRECISION;
+ALTER TABLE pitch_intel.trackman_pitches ADD COLUMN IF NOT EXISTS tilt TEXT;
+ALTER TABLE pitch_intel.trackman_pitches ADD COLUMN IF NOT EXISTS measured_tilt TEXT;
+ALTER TABLE pitch_intel.trackman_pitches ADD COLUMN IF NOT EXISTS zone_location TEXT;
+
+CREATE INDEX IF NOT EXISTS idx_tp_tm_player ON pitch_intel.trackman_pitches (tm_player_id);
+CREATE INDEX IF NOT EXISTS idx_tp_tm_session ON pitch_intel.trackman_pitches (tm_session_id);
+
+ALTER TABLE pitch_intel.uploads DROP CONSTRAINT IF EXISTS uploads_kind_check;
+ALTER TABLE pitch_intel.uploads ADD CONSTRAINT uploads_kind_check CHECK (kind IN ('savant_csv', 'trackman', 'trackman_portal', 'screenshot'));
+
+-- Portal players carry several IDs ("TMBB-1000069193", "MLB-809790", "AMA-…", "PG-…");
+-- player_id is the one the portal displays (MLB, else first TMBB, else first AMA).
+ALTER TABLE pitch_intel.trackman_players ADD COLUMN IF NOT EXISTS portal_id TEXT;
+ALTER TABLE pitch_intel.trackman_players ADD COLUMN IF NOT EXISTS foreign_ids TEXT[] NOT NULL DEFAULT '{}';
+ALTER TABLE pitch_intel.trackman_players ADD COLUMN IF NOT EXISTS bats TEXT;

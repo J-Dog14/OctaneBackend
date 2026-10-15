@@ -1588,3 +1588,19 @@ model f_readiness_screen_grip {
   @@index([session_date], name: "idx_grip_session")
   @@schema("public")
 }
+
+// Prepared percentile comparison populations and their durable refresh queue.
+model coach_population_snapshots {
+  key               String    @id @db.Text
+  payload           Json?     @db.JsonB
+  requested_version BigInt    @default(1)
+  completed_version BigInt    @default(0)
+  refreshed_at      DateTime? @db.Timestamptz(6)
+  next_attempt_at   DateTime  @default(now()) @db.Timestamptz(6)
+  lease_token       String?   @db.Text
+  lease_until       DateTime? @db.Timestamptz(6)
+  last_error        String?   @db.Text
+  failure_count     Int       @default(0)
+
+  @@schema("public")
+}

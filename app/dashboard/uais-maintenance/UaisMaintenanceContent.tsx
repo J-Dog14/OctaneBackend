@@ -13,6 +13,7 @@ import { EmailCollectionModal } from "./components/EmailCollectionModal";
 import { UpdateEmailModal } from "./components/UpdateEmailModal";
 import { MissingDobModal } from "./components/MissingDobModal";
 import { AthleteInfoUpdateModal, type MismatchItem } from "./components/AthleteInfoUpdateModal";
+import { ComparisonReportPanel, type ComparisonTarget } from "./components/ComparisonReportPanel";
 import type { AthleteOption, UploadedFile } from "./types";
 
 const DUPLICATE_SESSION_REGEX = /DUPLICATE_SESSION:(\d{4}-\d{2}-\d{2})/;
@@ -133,6 +134,18 @@ export function UaisMaintenanceContent() {
   const [sendToAppStatus, setSendToAppStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
   const [sendToAppError, setSendToAppError] = useState<string | null>(null);
   const [lastRunDomainIds, setLastRunDomainIds] = useState<string[]>([]);
+
+  // ── Athletic Screen comparison report ─────────────────────────────────────
+  // Opt in before the run to generate it automatically (two most recent
+  // sessions); otherwise it's offered after an Athletic Screen insertion when
+  // the athlete has 2+ sessions, or opened by hand for an existing athlete.
+  const [autoComparison, setAutoComparison] = useState(false);
+  const [comparisonTarget, setComparisonTarget] = useState<ComparisonTarget | null>(null);
+  const comparisonRaiseCountRef = useRef(0);
+  const openComparison = (target: Omit<ComparisonTarget, "refreshKey">) => {
+    comparisonRaiseCountRef.current += 1;
+    setComparisonTarget({ ...target, refreshKey: comparisonRaiseCountRef.current });
+  };
 
   // ── Effects ───────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -271,6 +284,7 @@ export function UaisMaintenanceContent() {
     setReportLinks([]);
     setSendToAppStatus("idle");
     setSendToAppError(null);
+    setComparisonTarget(null);
     // Reset per-run signal collection
     collectedNewAthleteRef.current = null;
     collectedMissingDobsRef.current = [];
@@ -411,10 +425,20 @@ export function UaisMaintenanceContent() {
     const mismatches = Array.from(collectedMismatchesRef.current.values());
     if (mismatches.length > 0) setMismatchQueue(mismatches);
 
+    // Athlete the run wrote to — used for the comparison offer below.
+    let ranFor: { athleteUuid: string; name: string } | null =
+      runMode === "existing" && athleteSelected
+        ? { athleteUuid: athleteSelected.athlete_uuid, name: athleteSelected.name }
+        : null;
+
     if (runMode === "new") {
       const latestRes = await fetch("/api/dashboard/athletes/latest?updated=1");
       const latestData = await latestRes.json();
       const athlete = latestData?.athlete_uuid ? latestData : null;
+      // Read through the ref type — TS narrowed .current to null at the reset above.
+      const signalled = collectedNewAthleteRef.current as { uuid: string; name: string } | null;
+      if (signalled) ranFor = { athleteUuid: signalled.uuid, name: signalled.name };
+      else if (athlete) ranFor = { athleteUuid: athlete.athlete_uuid, name: athlete.name ?? "This athlete" };
       if (athlete) {
         if (!athlete.email) {
           setEmailPopup({ athleteUuid: athlete.athlete_uuid, name: athlete.name ?? "This athlete" });
@@ -439,6 +463,12 @@ export function UaisMaintenanceContent() {
       // B.4: email prompt for existing athletes with no email on file
       setEmailPopup({ athleteUuid: athleteSelected.athlete_uuid, name: athleteSelected.name });
       setEmailPopupValue("");
+    }
+
+    // Athletic Screen comparison: the panel checks the athlete's sessions and
+    // only surfaces (or auto-runs) when there are at least two to compare.
+    if (ranFor && ordered.some((r) => r.id === "athletic-screen")) {
+      openComparison({ ...ranFor, source: "post-run", autoRun: autoComparison });
     }
   };
 
@@ -784,16 +814,55 @@ export function UaisMaintenanceContent() {
               runnerDataPaths={runnerDataPaths}
               setRunnerDataPaths={setRunnerDataPaths}
             />
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={() => void runSelected()}
-              disabled={streaming}
-            >
-              {uploadedFiles.length > 0
-                ? `Run selected (${uploadedFiles.length} file${uploadedFiles.length !== 1 ? "s" : ""} uploaded)`
-                : "Run selected"}
-            </button>
+            {selectedRunnerIds.has("athletic-screen") && (
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                  fontSize: "14px",
+                  marginBottom: "0.75rem",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={autoComparison}
+                  onChange={(e) => setAutoComparison(e.target.checked)}
+                  disabled={streaming}
+                />
+                Also create an Athletic Screen comparison report (two most recent sessions) if
+                the athlete has previous screens
+              </label>
+            )}
+            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => void runSelected()}
+                disabled={streaming}
+              >
+                {uploadedFiles.length > 0
+                  ? `Run selected (${uploadedFiles.length} file${uploadedFiles.length !== 1 ? "s" : ""} uploaded)`
+                  : "Run selected"}
+              </button>
+              {runMode === "existing" && athleteSelected && (
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  disabled={streaming}
+                  onClick={() =>
+                    openComparison({
+                      athleteUuid: athleteSelected.athlete_uuid,
+                      name: athleteSelected.name,
+                      source: "manual",
+                      autoRun: false,
+                    })
+                  }
+                >
+                  Athletic Screen comparison report…
+                </button>
+              )}
+            </div>
             <p className="text-muted" style={{ marginTop: "0.75rem", fontSize: "13px" }}>
               <Link href="/docs/UAIS_RUNNERS_TROUBLESHOOTING">Troubleshooting</Link>
             </p>
@@ -817,6 +886,12 @@ export function UaisMaintenanceContent() {
         outputEndRef={outputEndRef}
         onSendInput={() => void sendInput()}
         onKill={() => void killActiveJob()}
+      />
+
+      <ComparisonReportPanel
+        key={comparisonTarget?.refreshKey ?? 0}
+        target={comparisonTarget}
+        onClose={() => setComparisonTarget(null)}
       />
 
       <DuplicateSessionModal

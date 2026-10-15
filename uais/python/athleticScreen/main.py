@@ -39,6 +39,7 @@ from common.session_duplicate_prompt import prompt_duplicate_session
 from common.session_xml import get_dob_from_session_xml_next_to_file, parse_email_from_session_xml, parse_gender_from_session_xml, normalize_gender, parse_session_date_from_session_xml, parse_birthdate_from_session_xml, parse_subject_name_from_session_xml
 from file_parsers import parse_movement_file
 from power_analysis import load_power_txt, analyze_power_curve_advanced
+from power_curve_store import save_power_curve
 
 # Map movement types to PostgreSQL table names
 MOVEMENT_TO_PG_TABLE = {
@@ -919,6 +920,14 @@ def process_txt_files(folder_path: str, dry_run: bool = False, athlete_uuid: str
                 update_athlete_age_group_from_insert(athlete_uuid, age_group, conn=pg_conn)
                 # Commit the transaction (this automatically releases all savepoints)
                 pg_conn.commit()
+
+                # Keep the raw power curve alongside the metrics it produced, so
+                # reports built later (comparison, Railway runs after the temp
+                # upload dir is gone) can draw this trial's real curve.
+                _trial = parsed_data.get('trial_name')
+                _curve = power_data_cache.get((athlete_uuid, _trial)) if _trial else None
+                if _curve is not None and movement_type in {'CMJ', 'DJ', 'PPU', 'SLV'}:
+                    save_power_curve(pg_conn, athlete_uuid, date_str, movement_type, _trial, _curve)
 
                 # Cross-insert CMJ/PPU into readiness screen tables so the readiness
                 # baseline is populated from the initial intake session.

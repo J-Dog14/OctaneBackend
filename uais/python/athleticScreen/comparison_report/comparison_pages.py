@@ -185,18 +185,25 @@ def _rect_from_top(fig_h_in: float, left: float, width: float, *,
 
 
 def _build_sessions_with_avg(per_session_dfs: List[pd.DataFrame],
-                             session_dates: List[str]) -> List[Dict]:
+                             session_dates: List[str],
+                             athlete_name: str = "",
+                             stored_curves: Optional[List[Dict]] = None) -> List[Dict]:
     """Pair each session date with its dataframe and the session-average row.
 
     For SLV per-leg averages are computed inside the SLV plot helpers themselves.
+    ``stored_curves`` is one ``{trial_name: power array}`` per session (from
+    the warehouse); the power-curve plots draw those first.
     """
     sessions = []
-    for date_str, df in zip(session_dates, per_session_dfs):
+    stored_curves = stored_curves or [{} for _ in session_dates]
+    for date_str, df, curves in zip(session_dates, per_session_dfs, stored_curves):
+        base = {"date": date_str, "athlete_name": athlete_name,
+                "stored_curves": curves or {}}
         if df is None or df.empty:
-            sessions.append({"date": date_str, "df": pd.DataFrame(), "avg": None})
+            sessions.append({**base, "df": pd.DataFrame(), "avg": None})
             continue
         avg = df.mean(numeric_only=True)
-        sessions.append({"date": date_str, "df": df, "avg": avg})
+        sessions.append({**base, "df": df, "avg": avg})
     return sessions
 
 
@@ -205,8 +212,10 @@ def _build_sessions_with_avg(per_session_dfs: List[pd.DataFrame],
 # ---------------------------------------------------------------------------
 def dj_page(pdf, per_session_dfs, pop_df, athlete_name: str,
             session_dates: List[str], logo_path: Optional[str] = None,
-            power_files_dir: Optional[str] = None) -> None:
-    sessions = _build_sessions_with_avg(per_session_dfs, session_dates)
+            power_files_dir: Optional[str] = None,
+            stored_curves: Optional[List[Dict]] = None) -> None:
+    sessions = _build_sessions_with_avg(per_session_dfs, session_dates,
+                                        athlete_name, stored_curves)
     if not any(not s["df"].empty for s in sessions):
         return
 
@@ -278,8 +287,10 @@ def dj_page(pdf, per_session_dfs, pop_df, athlete_name: str,
 # ---------------------------------------------------------------------------
 def _generic_two_bar_page(pdf, movement_name: str, per_session_dfs, pop_df,
                           athlete_name: str, session_dates: List[str],
-                          logo_path: Optional[str], power_files_dir: Optional[str]) -> None:
-    sessions = _build_sessions_with_avg(per_session_dfs, session_dates)
+                          logo_path: Optional[str], power_files_dir: Optional[str],
+                          stored_curves: Optional[List[Dict]] = None) -> None:
+    sessions = _build_sessions_with_avg(per_session_dfs, session_dates,
+                                        athlete_name, stored_curves)
     if not any(not s["df"].empty for s in sessions):
         return
 
@@ -330,16 +341,20 @@ def _generic_two_bar_page(pdf, movement_name: str, per_session_dfs, pop_df,
 
 def cmj_page(pdf, per_session_dfs, pop_df, athlete_name: str,
              session_dates: List[str], logo_path: Optional[str] = None,
-             power_files_dir: Optional[str] = None) -> None:
+             power_files_dir: Optional[str] = None,
+             stored_curves: Optional[List[Dict]] = None) -> None:
     _generic_two_bar_page(pdf, "CMJ", per_session_dfs, pop_df,
-                          athlete_name, session_dates, logo_path, power_files_dir)
+                          athlete_name, session_dates, logo_path, power_files_dir,
+                          stored_curves)
 
 
 def ppu_page(pdf, per_session_dfs, pop_df, athlete_name: str,
              session_dates: List[str], logo_path: Optional[str] = None,
-             power_files_dir: Optional[str] = None) -> None:
+             power_files_dir: Optional[str] = None,
+             stored_curves: Optional[List[Dict]] = None) -> None:
     _generic_two_bar_page(pdf, "PPU", per_session_dfs, pop_df,
-                          athlete_name, session_dates, logo_path, power_files_dir)
+                          athlete_name, session_dates, logo_path, power_files_dir,
+                          stored_curves)
 
 
 # ---------------------------------------------------------------------------
@@ -347,8 +362,10 @@ def ppu_page(pdf, per_session_dfs, pop_df, athlete_name: str,
 # ---------------------------------------------------------------------------
 def slv_page(pdf, per_session_dfs, pop_df, athlete_name: str,
              session_dates: List[str], logo_path: Optional[str] = None,
-             power_files_dir: Optional[str] = None) -> None:
-    sessions = _build_sessions_with_avg(per_session_dfs, session_dates)
+             power_files_dir: Optional[str] = None,
+             stored_curves: Optional[List[Dict]] = None) -> None:
+    sessions = _build_sessions_with_avg(per_session_dfs, session_dates,
+                                        athlete_name, stored_curves)
     if not any(not s["df"].empty for s in sessions):
         return
 

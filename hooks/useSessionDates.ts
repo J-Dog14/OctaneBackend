@@ -19,7 +19,12 @@ export type SessionDetail = { date: string; movements: string[] };
  * "how did he do since last time" case — while still letting you reach back
  * and select every session the athlete has.
  */
-export function useSessionDates(athleteUuid: string | undefined, reportType: ReportTypeId) {
+export function useSessionDates(
+  athleteUuid: string | undefined,
+  reportType: ReportTypeId,
+  /** Bump to refetch for the same athlete, e.g. after new data is inserted. */
+  refreshKey = 0
+) {
   const [sessions, setSessions] = useState<SessionDetail[]>([]);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedDates, setSelectedDates] = useState<string[]>([]);
@@ -69,7 +74,7 @@ export function useSessionDates(athleteUuid: string | undefined, reportType: Rep
     return () => {
       cancelled = true;
     };
-  }, [athleteUuid, reportType]);
+  }, [athleteUuid, reportType, refreshKey]);
 
   const dates = useMemo(() => sessions.map((s) => s.date), [sessions]);
 

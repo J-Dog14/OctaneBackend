@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { formatMetricDisplayName } from "@/lib/athlete-tracking/displayNames";
+import { formatMetricLabel } from "@/lib/athlete-tracking/displayNames";
 
 type MetricSummary = {
   name: string;
@@ -47,7 +47,7 @@ export function HighlightsLowlightsCard({ highlights, lowlights }: Props) {
                   key={`high-${i}-${domainLabel}-${metric.name}`}
                   style={{ marginBottom: "0.35rem" }}
                 >
-                  {formatMetricDisplayName(metric.name, metric.category, domainId)}{" "}
+                  {formatMetricLabel(metric.name, metric.category, domainId)}{" "}
                   <span className="text-muted">({domainLabel})</span>{" "}
                   <span style={getPercentileStyle(metric.percentile)}>
                     {Math.round(metric.percentile ?? 0)}th %ile
@@ -68,7 +68,7 @@ export function HighlightsLowlightsCard({ highlights, lowlights }: Props) {
                   key={`low-${i}-${domainLabel}-${metric.name}`}
                   style={{ marginBottom: "0.35rem" }}
                 >
-                  {formatMetricDisplayName(metric.name, metric.category, domainId)}{" "}
+                  {formatMetricLabel(metric.name, metric.category, domainId)}{" "}
                   <span className="text-muted">({domainLabel})</span>{" "}
                   <span style={getPercentileStyle(metric.percentile)}>
                     {Math.round(metric.percentile ?? 0)}th %ile

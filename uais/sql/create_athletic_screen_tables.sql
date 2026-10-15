@@ -243,3 +243,18 @@ CREATE INDEX IF NOT EXISTS "idx_f_athletic_screen_nmt_date" ON "public"."f_athle
 CREATE INDEX IF NOT EXISTS "idx_f_athletic_screen_ppu_uuid" ON "public"."f_athletic_screen_ppu"("athlete_uuid");
 CREATE INDEX IF NOT EXISTS "idx_f_athletic_screen_ppu_date" ON "public"."f_athletic_screen_ppu"("session_date");
 
+
+-- Raw power-vs-time curve per trial (one row per fact-table trial).
+-- Written by athleticScreen/main.py at insert time; read by the comparison
+-- report so it draws the real curve for that athlete + session. Also created
+-- lazily by athleticScreen/power_curve_store.py.
+CREATE TABLE IF NOT EXISTS "public"."f_athletic_screen_power_curve" (
+    "athlete_uuid" VARCHAR(36) NOT NULL,
+    "session_date" DATE NOT NULL,
+    "movement" VARCHAR(8) NOT NULL,
+    "trial_name" TEXT NOT NULL,
+    "sample_hz" REAL NOT NULL DEFAULT 1000.0,
+    "power_w" REAL[] NOT NULL,
+    "created_at" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY ("athlete_uuid", "session_date", "movement", "trial_name")
+);

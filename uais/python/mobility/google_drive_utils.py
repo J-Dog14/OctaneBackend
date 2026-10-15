@@ -257,144 +257,181 @@ def _list_sheets_in_folder(service, folder_id: str) -> list:
     return results
 
 
-def download_missing_sheets(
-    excel_directory: str,
-    gsheet_directory: str,
-    credentials_path: str
-) -> Dict[str, Any]:
+MANIFEST_NAME = "_drive_manifest.json"
+
+
+def _safe_name(n: str) -> str:
+    """Windows-safe file stem ("/" etc. are illegal in filenames)."""
+    return n.replace('/', '-').replace('\\', '-').replace(':', '-').strip()
+
+
+def _drive_timestamp(iso_str: str) -> float:
+    # Drive returns RFC3339, e.g. "2026-09-22T14:23:01.123Z"
+    return datetime.strptime(iso_str[:19], '%Y-%m-%dT%H:%M:%S').replace(
+        tzinfo=timezone.utc
+    ).timestamp()
+
+
+def load_manifest(excel_dir: Path) -> Dict[str, Dict[str, Any]]:
+    """{drive_id: {file, name, createdTime, modifiedTime}} for every sheet we've cached."""
+    p = excel_dir / MANIFEST_NAME
+    if p.exists():
+        try:
+            return json.loads(p.read_text(encoding='utf-8'))
+        except Exception:
+            return {}
+    return {}
+
+
+def save_manifest(excel_dir: Path, manifest: Dict[str, Dict[str, Any]]) -> None:
+    (excel_dir / MANIFEST_NAME).write_text(json.dumps(manifest, indent=1, sort_keys=True), encoding='utf-8')
+
+
+def write_meta_sidecar(xlsx_path: Path, drive_file: Dict[str, Any]) -> None:
+    """<file>.xlsx.meta.json — read by sheet_rules.resolve_session_date (Drive created date)."""
+    meta = {k: drive_file.get(k) for k in ('id', 'name', 'createdTime', 'modifiedTime')}
+    (xlsx_path.parent / (xlsx_path.name + '.meta.json')).write_text(json.dumps(meta), encoding='utf-8')
+
+
+def plan_cache(drive_files: list, excel_dir: Path, manifest: Dict[str, Dict[str, Any]]):
     """
-    Download missing Google Sheets as Excel files.
+    Decide the local file for every Drive sheet and whether it needs downloading.
 
-    Uses the Drive API to list files in the folder — bypasses reading local
-    .gsheet files, which cannot be opened on Windows Google Drive for Desktop.
+    Sheets are tracked by Drive file ID, not by name, so two sheets with the same
+    title (e.g. the director copies "Ryan Weiss Mobility Assessment" for a
+    shoulder re-check) no longer overwrite each other in the cache. A sheet keeps
+    the local file name it was first given; a new sheet whose plain name is
+    already taken gets " [<created date>]" appended.
 
-    Args:
-        excel_directory: Directory where Excel files should be stored
-        gsheet_directory: Path to the synced Google Drive folder (used to
-            derive the folder name for the Drive API search)
-        credentials_path: Path to Google API credentials JSON file
-
-    Returns:
-        Dictionary with download results
+    Returns (plan, orphans): plan = [(drive_file, local_path, needs_download)],
+    orphans = cached .xlsx files that no Drive sheet maps to (deleted on Drive, or
+    an ambiguous pre-manifest copy of a duplicated title).
     """
-    if not GOOGLE_API_AVAILABLE:
-        return {
-            'success': False,
-            'error': 'Google API libraries not available',
-            'downloaded': 0,
-            'failed': 0
-        }
+    by_title: Dict[str, list] = {}
+    for f in drive_files:
+        by_title.setdefault(_safe_name(f['name']).lower(), []).append(f)
 
-    # Authenticate
-    print("Authenticating with Google...")
-    creds = get_google_credentials(credentials_path)
-    if not creds:
-        return {
-            'success': False,
-            'error': 'Failed to authenticate with Google',
-            'downloaded': 0,
-            'failed': 0
-        }
-    print("[OK] Authentication successful")
+    taken = {v['file'].lower(): k for k, v in manifest.items() if v.get('file')}
+    plan = []
+    for f in sorted(drive_files, key=lambda x: x.get('createdTime', '')):
+        fid = f['id']
+        entry = manifest.get(fid)
+        if entry and entry.get('file'):
+            local = excel_dir / entry['file']
+            needs = (not local.exists()) or (
+                f.get('modifiedTime') and entry.get('modifiedTime') != f.get('modifiedTime')
+                and _drive_timestamp(f['modifiedTime']) > _drive_timestamp(entry.get('modifiedTime') or '1970-01-01T00:00:00')
+            )
+            plan.append((f, local, bool(needs)))
+            continue
 
-    # Build Drive service
-    service = build('drive', 'v3', credentials=creds)
+        stem = _safe_name(f['name'])
+        plain = f"{stem}.xlsx"
+        unique_title = len(by_title.get(stem.lower(), [])) == 1
+        if unique_title and plain.lower() not in taken:
+            local = excel_dir / plain
+            # First run with a manifest: adopt the file already in the cache when it's current.
+            needs = not local.exists() or (
+                bool(f.get('modifiedTime')) and _drive_timestamp(f['modifiedTime']) > local.stat().st_mtime + 60
+            )
+        else:
+            day = (f.get('createdTime') or '')[:10] or 'undated'
+            name = f"{stem} [{day}].xlsx"
+            if name.lower() in taken:
+                name = f"{stem} [{day} {fid[:6]}].xlsx"
+            local = excel_dir / name
+            needs = not local.exists()
+        taken[local.name.lower()] = fid
+        plan.append((f, local, needs))
 
-    # Find the folder in Drive by name.
-    # gsheet_directory is something like "G:\My Drive\Data\Mobility Assessments"
-    # We search from the root for the leaf folder name.
+    mapped = {p[1].name.lower() for p in plan}
+    orphans = [p for p in excel_dir.glob('*.xlsx') if p.name.lower() not in mapped]
+    return plan, orphans
+
+
+def list_drive_sheets(service, gsheet_directory: str) -> Optional[list]:
+    """All Google Sheets in the Mobility Assessments folder (templates excluded), or None if not found."""
     folder_name = Path(gsheet_directory).name  # "Mobility Assessments"
-    print(f"Searching Drive for folder: {folder_name}")
-
     folder_id = _find_drive_folder_id(service, folder_name)
     if not folder_id:
-        # Try searching under "Data" parent if top-level search fails
         parent_name = Path(gsheet_directory).parent.name  # "Data"
         parent_id = _find_drive_folder_id(service, parent_name)
         if parent_id:
             folder_id = _find_drive_folder_id(service, folder_name, parent_id)
-
     if not folder_id:
-        return {
-            'success': False,
-            'error': f'Could not find Drive folder "{folder_name}" via API',
-            'downloaded': 0,
-            'failed': 0
-        }
+        return None
+    # Templates and test copies ("TEST UPDATED MOBILITY ASSESSMENT") aren't athlete data.
+    return [f for f in _list_sheets_in_folder(service, folder_id)
+            if 'template' not in f['name'].lower() and not f['name'].strip().lower().startswith('test')]
 
-    print(f"[OK] Found Drive folder ID: {folder_id}")
 
-    # Get existing Excel files in the cache directory, keyed by sanitized stem -> local mtime.
-    # Tracking mtime (not just presence) lets us re-pull a Sheet that was reused/edited in place
-    # for a later assessment under the same filename — otherwise that update silently never
-    # reaches the local cache, and the ingestion step has no way to know it exists.
+def download_missing_sheets(
+    excel_directory: str,
+    gsheet_directory: str,
+    credentials_path: str,
+    dry_run: bool = False,
+) -> Dict[str, Any]:
+    """
+    Download new / edited Google Sheets as Excel files into the cache and write a
+    <file>.meta.json sidecar (Drive id, created and modified time) next to each.
+
+    The sidecar is written for every sheet, including ones already cached, so the
+    173 sheets bulk-downloaded on 2026-06-08 (before any sidecar existed) get their
+    real Drive dates.
+    """
+    if not GOOGLE_API_AVAILABLE:
+        return {'success': False, 'error': 'Google API libraries not available', 'downloaded': 0, 'failed': 0}
+
+    print("Authenticating with Google...")
+    creds = get_google_credentials(credentials_path)
+    if not creds:
+        return {'success': False, 'error': 'Failed to authenticate with Google', 'downloaded': 0, 'failed': 0}
+    print("[OK] Authentication successful")
+
+    service = build('drive', 'v3', credentials=creds)
+    drive_files = list_drive_sheets(service, gsheet_directory)
+    if drive_files is None:
+        return {'success': False, 'error': f'Could not find Drive folder "{Path(gsheet_directory).name}" via API',
+                'downloaded': 0, 'failed': 0}
+
     excel_dir = Path(excel_directory)
     excel_dir.mkdir(parents=True, exist_ok=True)
-    existing_excel = {f.stem.lower(): f.stat().st_mtime for f in excel_dir.glob("*.xlsx")}
-
-    # List all Sheets in the Drive folder via API (no local file reading)
-    drive_files = _list_sheets_in_folder(service, folder_id)
-    print(f"\nFound {len(drive_files)} Google Sheets in Drive folder")
-    print(f"Found {len(existing_excel)} existing Excel files in cache")
-
-    def _safe(n: str) -> str:
-        return n.replace('/', '-').replace('\\', '-').replace(':', '-').lower()
-
-    def _drive_timestamp(iso_str: str) -> float:
-        # Drive returns RFC3339, e.g. "2026-09-22T14:23:01.123Z"
-        return datetime.strptime(iso_str[:19], '%Y-%m-%dT%H:%M:%S').replace(
-            tzinfo=timezone.utc
-        ).timestamp()
-
-    missing = []
-    for f in drive_files:
-        if 'template' in f['name'].lower():
-            continue
-        stem = _safe(f['name'])
-        local_mtime = existing_excel.get(stem)
-        if local_mtime is None:
-            missing.append(f)
-            continue
-        drive_modified = f.get('modifiedTime')
-        if drive_modified and _drive_timestamp(drive_modified) > local_mtime + 60:
-            # Drive's copy was edited after our local copy was last pulled -> refresh it
-            missing.append(f)
-
-    if not missing:
-        print("All files already downloaded and up to date")
-        return {'success': True, 'downloaded': 0, 'failed': 0, 'message': 'All files already exist'}
-
-    print(f"\nDownloading {len(missing)} new/updated files...")
+    manifest = load_manifest(excel_dir)
+    plan, orphans = plan_cache(drive_files, excel_dir, manifest)
+    to_get = [p for p in plan if p[2]]
+    print(f"\nFound {len(drive_files)} Google Sheets in Drive folder; {len(to_get)} new/updated; {len(orphans)} cached file(s) with no Drive sheet")
 
     downloaded = 0
     failed = 0
     errors = []
-
-    for drive_file in missing:
-        name = drive_file['name']
-        file_id = drive_file['id']
-        # Sanitize name for Windows filesystem — "/" is illegal in filenames
-        safe_name = name.replace('/', '-').replace('\\', '-').replace(':', '-')
-        output_path = excel_dir / (safe_name + '.xlsx')
-        print(f"\nProcessing: {name}")
-
-        if download_google_sheet_as_excel(creds, file_id, str(output_path)):
-            print(f"   [OK] Downloaded successfully")
-            downloaded += 1
-            # Write sidecar with Drive's modifiedTime (not createdTime) so a Sheet that's
-            # reused/edited in place for a later assessment records that later date, not the
-            # date the Sheet was originally created.
-            modified_date = drive_file.get('modifiedTime', drive_file.get('createdTime', ''))[:10]
-            if modified_date:
-                (output_path.parent / (output_path.name + '.date')).write_text(modified_date)
-        else:
-            print(f"   [FAIL] Download failed")
-            failed += 1
-            errors.append(f"{name}: Download failed")
+    for drive_file, local, needs in plan:
+        if needs:
+            print(f"\n{'Would download' if dry_run else 'Downloading'}: {drive_file['name']} -> {local.name}")
+            if dry_run:
+                continue
+            if download_google_sheet_as_excel(creds, drive_file['id'], str(local)):
+                downloaded += 1
+            else:
+                failed += 1
+                errors.append(f"{drive_file['name']}: Download failed")
+                continue
+        if dry_run:
+            continue
+        write_meta_sidecar(local, drive_file)
+        manifest[drive_file['id']] = {
+            'file': local.name,
+            'name': drive_file['name'],
+            'createdTime': drive_file.get('createdTime'),
+            'modifiedTime': drive_file.get('modifiedTime'),
+        }
+    if not dry_run:
+        save_manifest(excel_dir, manifest)
 
     return {
         'success': True,
         'downloaded': downloaded,
         'failed': failed,
-        'errors': errors
+        'errors': errors,
+        'plan': plan,
+        'orphans': [str(p) for p in orphans],
     }

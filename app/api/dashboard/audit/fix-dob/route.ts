@@ -1,10 +1,12 @@
-import { requireAuth } from "@/lib/auth/requireAuth";
+import { denyRoles, requireAuth } from "@/lib/auth/requireAuth";
 import { prisma } from "@/lib/db/prisma";
 import { Prisma } from "@prisma/client";
 import { internalError, success } from "@/lib/responses";
 
 export async function POST() {
   await requireAuth();
+  const denied = await denyRoles(["coach"]);
+  if (denied) return denied;
   try {
     // Step 1: fill exact DOB from f_proteus.birth_date (stored as "YYYY-MM-DD" string).
     // Uses [0-9] instead of \d — Postgres POSIX regex does not support \d as a digit shorthand.

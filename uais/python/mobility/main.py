@@ -30,8 +30,21 @@ from common.athlete_manager import (
 )
 from common.athlete_matcher import update_athlete_data_flag
 from common.athlete_utils import extract_source_athlete_id
-from common.duplicate_detector import check_and_merge_duplicates
+from common.duplicate_detector import check_and_merge_duplicates, find_similar_athletes_for_uuids
 from common.session_duplicate_prompt import session_exists, prompt_duplicate_session
+
+from mobility.sheet_rules import (
+    detect_template,
+    filter_legacy_metrics,
+    name_from_filename,
+    parse_height_inches,
+    read_drive_meta,
+    read_raw_values,
+    resolve_session_date,
+)
+
+# Bump when parsing rules change: every cached sheet is re-ingested on the next run.
+RULES_VERSION = "2026-10-14b"
 
 # Import Google Drive utilities
 try:
@@ -192,6 +205,8 @@ def extract_demographic_data(ws) -> Dict[str, Any]:
             if not name_str or name_str.lower() in ['name:', 'name']:
                 # If still just the label, try to get from next cell or return None
                 name_str = None
+        if name_str:
+            name_str = re.sub(r'(?i)^\s*name\s*:?\s*', '', name_str).strip()  # "Name:Griffin Jackson"
         data['name'] = name_str if name_str and name_str.strip() and name_str.lower() not in ['name:', 'name'] else None
     except:
         data['name'] = None
@@ -242,23 +257,10 @@ def extract_demographic_data(ws) -> Dict[str, Any]:
     except:
         data['date_of_birth'] = None
     
-    # B6: Height
+    # B6: Height, in inches. 6' 4'' -> 76 (the old parser kept only the 6).
     try:
-        height_cell = ws['B6'].value
-        height_str = extract_after_prefix(height_cell, "Height: ")
-        if height_str:
-            # Try to extract numeric value
-            height_match = re.search(r'[\d.]+', str(height_str))
-            if height_match:
-                try:
-                    data['height'] = float(height_match.group())
-                except:
-                    data['height'] = None
-            else:
-                data['height'] = None
-        else:
-            data['height'] = None
-    except:
+        data['height'] = parse_height_inches(ws['B6'].value)
+    except Exception:
         data['height'] = None
     
     # B7: Weight
@@ -351,8 +353,10 @@ def extract_assessment_data(ws) -> Dict[str, Any]:
     metrics = {}
     optimal_ranges = {}
     medical_history = None
+    unknown_labels: List[str] = []      # filled-in rows whose label isn't a known metric
+    unreadable: Dict[str, Any] = {}     # known metric, value typed but not a number
 
-    for row_num in range(11, 81):  # Rows 11-80 inclusive
+    for row_num in range(10, 81):  # Rows 10-80 (legacy sheets start at row 10)
         try:
             col_name = ws[f'A{row_num}'].value
             if col_name is None or not str(col_name).strip():
@@ -371,7 +375,13 @@ def extract_assessment_data(ws) -> Dict[str, Any]:
                         optimal_ranges[col_name_sql] = c_str
                 continue
 
-            metrics[col_name_sql] = to_float_or_none(ws[f'B{row_num}'].value)
+            raw_b = ws[f'B{row_num}'].value
+            metrics[col_name_sql] = to_float_or_none(raw_b)
+            typed = raw_b is not None and str(raw_b).strip() not in ("", "-", "\\")
+            if typed and col_name_sql not in MOBILITY_COLUMNS:
+                unknown_labels.append(str(col_name).strip())
+            elif typed and metrics[col_name_sql] is None and col_name_sql in MOBILITY_COLUMNS:
+                unreadable[str(col_name).strip()] = str(raw_b).strip()
 
             # Column C: optimal range (store as string if present)
             c_val = ws[f'C{row_num}'].value
@@ -391,14 +401,164 @@ def extract_assessment_data(ws) -> Dict[str, Any]:
     except Exception:
         pass
 
+    template = detect_template(ws)
     metrics = {k: v for k, v in metrics.items() if k in MOBILITY_COLUMNS}
     optimal_ranges = {k: v for k, v in optimal_ranges.items() if k in MOBILITY_COLUMNS}
+    dropped: Dict[str, Any] = {}
+    if template == "legacy":
+        # Old "Assessment Key" sheet: mostly 1-3 color grades. Keep only values on
+        # the same scale as the current template (see sheet_rules.py).
+        metrics, dropped = filter_legacy_metrics(metrics)
+        optimal_ranges = {}
+        try:
+            d = ws['C17'].value  # legacy medical history sits under a "Medical and Injury History" label in column C
+            if medical_history is None and d is not None and 'medical' in str(d).lower():
+                notes = [str(ws[f'C{r}'].value).strip() for r in range(18, 30) if ws[f'C{r}'].value]
+                medical_history = "\n".join(notes) or None
+        except Exception:
+            pass
+
+    # Every known column is written (None where blank or dropped) so a re-ingest
+    # clears values that were stored under older, looser rules.
+    filled = {k: v for k, v in metrics.items() if v is not None}
+    all_metrics = {col: filled.get(col) for col in MOBILITY_COLUMNS}
 
     return {
-        'metrics': metrics,
+        'metrics': all_metrics,
+        'filled_count': len(filled),
         'medical_history': medical_history,
         'optimal_ranges': optimal_ranges,
+        'template': template,
+        'dropped': dropped,
+        'raw_values': read_raw_values(ws),
+        # Only meaningful for the current template; the old one is expected to differ.
+        'unknown_labels': unknown_labels if template == "v2" else [],
+        'unreadable': unreadable if template == "v2" else {},
     }
+
+
+_COLUMN_CACHE: Dict[str, set] = {}
+
+# The day the Drive folder was first bulk-downloaded; rows carrying it got the download
+# time, not a session date.
+BULK_DOWNLOAD_DATE = date(2026, 6, 8)
+# When is an edit to an already-stored sheet a new session typed over the old one
+# (re-used in place) rather than a correction? See looks_like_retest().
+RETEST_MIN_CHANGED = 5      # this many values changed ...
+RETEST_MIN_GAP_DAYS = 7     # ... a week or more after the stored session, or
+RETEST_ANY_GAP_DAYS = 14    # any value changed or added two weeks or more later
+
+
+def looks_like_retest(changed: int, added: int, gap_days: Optional[int]) -> bool:
+    """
+    A full re-test typed over a sheet changes many values; a partial re-check of a
+    deficit may change only one or two, so any change or newly filled-in value two
+    weeks or more after the stored session also counts. Smaller or quicker edits are
+    corrections and update the stored session in place.
+    """
+    if gap_days is None:
+        return False
+    return (changed >= RETEST_MIN_CHANGED and gap_days >= RETEST_MIN_GAP_DAYS) or (
+        changed + added >= 1 and gap_days >= RETEST_ANY_GAP_DAYS
+    )
+
+
+def table_columns(cur, table_name: str = 'f_mobility') -> set:
+    cache = _COLUMN_CACHE.setdefault(table_name, set())
+    if not cache:
+        cur.execute("""
+            SELECT column_name FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = %s
+        """, (table_name,))
+        cache.update(r[0] for r in cur.fetchall())
+    return cache
+
+
+def classify_sheet_rows(cur, file_path: str):
+    """
+    Rows already stored for one source sheet, newest first, split into what to do
+    with the older ones. The old pipeline added a row every time a sheet was edited
+    (it dated sessions by Drive's modified time), so an older row is either
+      - a duplicate (a typo fix: fewer than RETEST_MIN_CHANGED metrics differ), or
+      - an earlier version (the sheet was re-used in place for a re-test).
+    Returns (rows, history, duplicates); rows = [(id, session_date, date_source,
+    {metric: value})], the other two = [(id, session_date, n_changed)].
+    """
+    known = table_columns(cur)
+    cols = sorted(c for c in MOBILITY_COLUMNS if c in known)
+    src_col = "session_date_source" if "session_date_source" in known else "NULL"
+    cur.execute(
+        f"SELECT id, session_date, {src_col}{''.join(', ' + c for c in cols)} FROM public.f_mobility "
+        f"WHERE source_file = %s ORDER BY id DESC",
+        (file_path,),
+    )
+    raw = cur.fetchall()
+    rows = [(r[0], r[1], r[2], dict(zip(cols, r[3:]))) for r in raw]
+    history, duplicates = [], []
+    if len(rows) > 1:
+        newest_date, newest = rows[0][1], rows[0][3]
+        for r in rows[1:]:
+            changed, added = count_changed(r[3], newest), count_added(r[3], newest)
+            gap = (newest_date - r[1]).days if newest_date and r[1] else None
+            (history if looks_like_retest(changed, added, gap) else duplicates).append((r[0], r[1], changed + added))
+    return rows, history, duplicates
+
+
+def count_added(before: Dict[str, Any], after: Dict[str, Any]) -> int:
+    """Metrics blank before and filled in after."""
+    return sum(1 for k, v in after.items() if v is not None and before.get(k) is None)
+
+
+def earlier_state(cur, file_path: str) -> Dict[str, Any]:
+    """Latest known value per metric across the earlier versions of a re-used sheet."""
+    known = table_columns(cur)
+    cols = sorted(c for c in MOBILITY_COLUMNS if c in known)
+    cur.execute(
+        f"SELECT {', '.join(cols)} FROM public.f_mobility WHERE source_file = %s "
+        f"ORDER BY session_date DESC, id DESC",
+        (file_path + '#earlier-version',),
+    )
+    state: Dict[str, Any] = {}
+    for r in cur.fetchall():
+        for k, v in zip(cols, r):
+            if v is not None and k not in state:
+                state[k] = v
+    return state
+
+
+def new_since(before: Dict[str, Any], metrics: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    For a re-used sheet, the values that belong to the new session: those changed
+    or newly filled in. Values carried over unchanged stay with the earlier session,
+    so a two-metric re-check adds two points to the trends, not seventy.
+    """
+    out: Dict[str, Any] = {}
+    for k, v in metrics.items():
+        b = before.get(k)
+        same = False
+        if v is not None and b is not None:
+            try:
+                same = abs(float(v) - float(b)) <= 1e-9
+            except (TypeError, ValueError):
+                same = v == b
+        out[k] = None if (v is None or same) else v
+    return out
+
+
+def count_changed(a: Dict[str, Any], b: Dict[str, Any]) -> int:
+    """Metrics filled in on both sides whose values differ."""
+    n = 0
+    for k, va in a.items():
+        vb = b.get(k)
+        if va is None or vb is None:
+            continue
+        try:
+            if abs(float(va) - float(vb)) > 1e-9:
+                n += 1
+        except (TypeError, ValueError):
+            if va != vb:
+                n += 1
+    return n
 
 
 def ensure_column_exists(conn, table_name: str, column_name: str, column_type: str = 'DECIMAL'):
@@ -411,7 +571,18 @@ def ensure_column_exists(conn, table_name: str, column_name: str, column_type: s
         column_name: Name of the column to ensure exists
         column_type: SQL type for the column (default: DECIMAL)
     """
+    cache = _COLUMN_CACHE.setdefault(table_name, set())
+    if column_name in cache:
+        return
     with conn.cursor() as cur:
+        if not cache:
+            cur.execute("""
+                SELECT column_name FROM information_schema.columns
+                WHERE table_schema = 'public' AND table_name = %s
+            """, (table_name,))
+            cache.update(r[0] for r in cur.fetchall())
+            if column_name in cache:
+                return
         # Check if column exists
         cur.execute("""
             SELECT column_name 
@@ -430,6 +601,7 @@ def ensure_column_exists(conn, table_name: str, column_name: str, column_type: s
                     ADD COLUMN {column_name} {column_type}
                 """)
                 conn.commit()
+                cache.add(column_name)
                 print(f"   [OK] Added column {column_name} to {table_name}")
             except Exception as e:
                 # Column might have been created by another process, check again
@@ -450,7 +622,21 @@ def ensure_column_exists(conn, table_name: str, column_name: str, column_type: s
 PROCESSED_STATE_FILE = project_root / "data" / "mobility_processed_state.json"
 
 
-def load_processed_state() -> Dict[str, float]:
+def file_signature(path: str) -> Optional[str]:
+    """
+    What decides whether a cached sheet needs (re)processing: its mtime, the Drive
+    created date in its sidecar, and RULES_VERSION. A new sidecar or a rules change
+    re-ingests the file even though the .xlsx itself didn't change.
+    """
+    try:
+        mtime = os.path.getmtime(path)
+    except OSError:
+        return None
+    meta = read_drive_meta(path) or {}
+    return f"{mtime}|{meta.get('createdTime') or ''}|{RULES_VERSION}"
+
+
+def load_processed_state() -> Dict[str, Any]:
     """
     Load the {normalized_path: mtime} map of files processed in previous runs.
 
@@ -467,7 +653,7 @@ def load_processed_state() -> Dict[str, float]:
     return {}
 
 
-def save_processed_state(state: Dict[str, float]) -> None:
+def save_processed_state(state: Dict[str, Any]) -> None:
     try:
         PROCESSED_STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
         PROCESSED_STATE_FILE.write_text(json.dumps(state))
@@ -580,6 +766,7 @@ def process_mobility_file(file_path: str, conn, athlete_uuid: str = None) -> Dic
     file_path = os.path.normcase(os.path.normpath(file_path))
 
     file_name = os.path.basename(file_path)
+    info: Dict[str, Any] = {'file': file_name}
     print(f"\nProcessing: {file_name}")
 
     # Process each file in its own transaction
@@ -598,11 +785,11 @@ def process_mobility_file(file_path: str, conn, athlete_uuid: str = None) -> Dic
                 if not wb:
                     print(f"   [FAIL] Could not download Google Sheet. Please download as Excel (.xlsx) file.")
                     print(f"   URL: {gsheet_url}")
-                    return {'success': False, 'error': 'Could not download Google Sheet'}
+                    return {**info, 'success': False, 'error': 'Could not download Google Sheet'}
             else:
                 print(f"   [FAIL] Could not extract Google Sheets URL from .gsheet file.")
                 print(f"   Please download the Google Sheet as an Excel (.xlsx) file to process it.")
-                return {'success': False, 'error': 'Could not extract Google Sheets URL'}
+                return {**info, 'success': False, 'error': 'Could not extract Google Sheets URL'}
         else:
             # Regular Excel file
             wb = load_workbook(file_path, data_only=True)
@@ -614,27 +801,20 @@ def process_mobility_file(file_path: str, conn, athlete_uuid: str = None) -> Dic
         demo_data = extract_demographic_data(ws)
         
         if not demo_data.get('name'):
-            # Fall back to the filename — strip known suffixes to get the athlete name.
-            stem = os.path.splitext(file_name)[0]
-            for suffix in [
-                " Mobility Assessment", " Assessment Key", " Remote Assessment",
-                " Mobility Strength", " Mobility-Strength", " Mobility/Strength",
-                " Mobility", " Assessment",
-            ]:
-                if stem.lower().endswith(suffix.lower()):
-                    stem = stem[: -len(suffix)].strip()
-                    break
-            # Also strip trailing dates like "5 6 2026" or "5 15"
-            stem = re.sub(r'\s+\d{1,2}\s+\d{1,2}(\s+\d{4})?$', '', stem).strip()
-            # Skip if what's left is still a generic template name or empty
-            skip_names = {'mobility', 'updated mobility assessment template', 'assessment template', ''}
-            if stem.lower() in skip_names:
+            # Fall back to the file name, cut at the first descriptive word or date:
+            # "Ryan Weiss Shoulder Recheck 10-14" -> "Ryan Weiss". Partial re-check
+            # sheets often leave A6 blank, and the old fallback would have created
+            # an athlete called "Ryan Weiss Shoulder Recheck".
+            stem = name_from_filename(file_name)
+            if not stem:
                 print(f"   [SKIP] Skipping {file_name} - template or no identifiable name")
-                return {'success': False, 'error': 'No name found'}
+                return {**info, 'success': False, 'error': 'No name found'}
             demo_data['name'] = stem
+            info['name_from_filename'] = True
             print(f"   No name in cell A6 — using filename: {stem}")
 
         name = demo_data['name']
+        info['athlete_name'] = name
         print(f"   Found athlete: {name}")
         
         # Extract assessment data
@@ -643,25 +823,49 @@ def process_mobility_file(file_path: str, conn, athlete_uuid: str = None) -> Dic
         medical_history = assessment_data['medical_history']
         optimal_ranges = assessment_data['optimal_ranges']
 
-        if not metrics:
-            print(f"   [SKIP] Skipping {file_name} - no assessment metrics found")
-            return {'success': False, 'error': 'No assessment metrics found'}
+        template = assessment_data['template']
+        info.update(template=template, unknown_labels=assessment_data['unknown_labels'],
+                    unreadable=assessment_data['unreadable'])
+        if assessment_data['dropped']:
+            print(f"   Old-template sheet: dropped {len(assessment_data['dropped'])} value(s) on a different scale "
+                  f"({', '.join(sorted(assessment_data['dropped']))})")
+
+        if assessment_data['filled_count'] == 0:
+            # A blank copy of the template, or a sheet created ahead of the session.
+            # Counted as handled; Drive's modified time pulls it again once it's filled in.
+            print(f"   [SKIP] {file_name} - no values filled in yet")
+            # The old pipeline stored empty sheets as all-blank rows; drop those.
+            try:
+                with conn.cursor() as cur:
+                    cols = [c for c in MOBILITY_COLUMNS if c in table_columns(cur)]
+                    cur.execute(
+                        f"DELETE FROM public.f_mobility WHERE source_file = %s"
+                        f"{''.join(' AND ' + c + ' IS NULL' for c in cols)}",
+                        (os.path.normcase(os.path.normpath(file_path)),),
+                    )
+                    if cur.rowcount:
+                        print(f"   Removed {cur.rowcount} empty row(s) stored for this sheet earlier")
+                conn.commit()
+            except Exception as e:
+                conn.rollback()
+                print(f"   Warning: could not clean up empty rows: {e}")
+            return {**info, 'success': True, 'action': 'skipped_empty'}
 
         # Guard: if most column names are numeric placeholders (col_NNN) the file isn't a
         # mobility assessment — it's a non-template spreadsheet that landed in the folder.
         numeric_cols = sum(1 for k in metrics if k.startswith('col_'))
         if numeric_cols > len(metrics) // 2:
             print(f"   [SKIP] Skipping {file_name} - does not look like a mobility assessment ({numeric_cols}/{len(metrics)} columns are numeric)")
-            return {'success': False, 'error': 'Not a mobility assessment file'}
+            return {**info, 'success': False, 'error': 'Not a mobility assessment file'}
 
-        print(f"   Found {len(metrics)} assessment metrics, {len(optimal_ranges)} optimal ranges")
+        print(f"   Found {assessment_data['filled_count']} filled-in metric(s), {len(optimal_ranges)} optimal ranges")
         
         source_athlete_id = extract_source_athlete_id(name)
         if athlete_uuid:
             uuid_to_use = athlete_uuid
             print(f"   [OK] Using provided athlete UUID: {athlete_uuid}")
         else:
-            uuid_to_use, _ = get_or_create_athlete(
+            uuid_to_use, is_new = get_or_create_athlete(
                 name=name,
                 date_of_birth=demo_data.get('date_of_birth'),
                 height=demo_data.get('height'),
@@ -671,6 +875,7 @@ def process_mobility_file(file_path: str, conn, athlete_uuid: str = None) -> Dic
                 source_athlete_id=source_athlete_id,
                 check_app_db=True
             )
+            info['new_athlete'] = bool(is_new)
             print(f"   [OK] Got/created athlete UUID: {uuid_to_use}")
         
         # Update athlete data flag (before main insert to avoid transaction issues)
@@ -680,20 +885,28 @@ def process_mobility_file(file_path: str, conn, athlete_uuid: str = None) -> Dic
             print(f"   Warning: Could not update athlete flag: {flag_error}")
             # Continue processing - flag update is not critical
         
-        # Determine session_date — prefer the Drive createdTime sidecar written during
-        # download, fall back to file mtime (which equals today for freshly downloaded files).
-        date_sidecar = file_path + '.date'
-        if os.path.exists(date_sidecar):
-            try:
-                session_date = date.fromisoformat(open(date_sidecar).read().strip())
-            except Exception:
-                session_date = date.today()
-        else:
-            try:
-                session_date = datetime.fromtimestamp(os.path.getmtime(file_path)).date()
-            except Exception:
-                session_date = date.today()
-        
+        # Session date: a date written in the file name, else the Drive created date
+        # (sidecar written at download). Never the local file time — that's the day
+        # the file was downloaded (how 173 sheets ended up dated 2026-06-08).
+        session_date, date_source = resolve_session_date(file_path)
+        if session_date is None:
+            with conn.cursor() as cur:
+                cur.execute("SELECT session_date FROM public.f_mobility WHERE source_file = %s ORDER BY id DESC LIMIT 1", (file_path,))
+                prev = cur.fetchone()
+            if prev:
+                session_date, date_source = prev[0], 'existing_row'
+            else:
+                # Not from the Drive folder (e.g. a UAIS-runner upload): staff upload right after the session.
+                try:
+                    session_date = datetime.fromtimestamp(os.path.getmtime(file_path)).date()
+                except Exception:
+                    session_date = date.today()
+                date_source = 'file_time'
+                print(f"   [WARN] No Drive date for {file_name}; using the file time {session_date}")
+        info['date_source'] = date_source
+        print(f"   Session date {session_date} (from {date_source}), template {template}, "
+              f"{assessment_data['filled_count']} value(s) filled in")
+
         # Ensure source_file column exists
         ensure_column_exists(conn, 'f_mobility', 'source_file', 'TEXT')
 
@@ -708,6 +921,9 @@ def process_mobility_file(file_path: str, conn, athlete_uuid: str = None) -> Dic
         # Ensure all metric columns exist
         for col_name in metrics.keys():
             ensure_column_exists(conn, 'f_mobility', col_name, 'DECIMAL')
+        ensure_column_exists(conn, 'f_mobility', 'raw_values', 'JSONB')
+        ensure_column_exists(conn, 'f_mobility', 'template_version', 'TEXT')
+        ensure_column_exists(conn, 'f_mobility', 'session_date_source', 'TEXT')
 
         # Prepare data for insertion
         insert_data = {
@@ -716,6 +932,9 @@ def process_mobility_file(file_path: str, conn, athlete_uuid: str = None) -> Dic
             'source_system': 'mobility',
             'source_athlete_id': source_athlete_id,
             'source_file': file_path,
+            'template_version': template,
+            'session_date_source': date_source,
+            'raw_values': json.dumps(assessment_data['raw_values'], default=str),
         }
 
         # Add medical history if present
@@ -749,45 +968,95 @@ def process_mobility_file(file_path: str, conn, athlete_uuid: str = None) -> Dic
             if session_exists(conn, "f_mobility", uuid_to_use, session_date):
                 if not prompt_duplicate_session(session_date):
                     print("   Skipping insert (user chose not to continue).")
-                    return {'success': False, 'action': 'skipped', 'athlete_uuid': uuid_to_use}
+                    return {**info, 'success': False, 'action': 'skipped', 'athlete_uuid': uuid_to_use}
         
         # Process file in its own transaction
         # This ensures that if one file fails, it doesn't affect others
         try:
             with conn.cursor() as cur:
-                # Check if record already exists. Match on (athlete_uuid, session_date, source_file)
-                # first; fall back to (athlete_uuid, session_date) so old rows that pre-date the
-                # source_file column (stored as NULL) are treated as updates, not new inserts.
-                cur.execute("""
-                    SELECT id FROM public.f_mobility
-                    WHERE athlete_uuid = %s
-                    AND session_date = %s
-                    AND (source_file = %s OR source_file IS NULL)
-                    ORDER BY (source_file = %s) DESC NULLS LAST
-                    LIMIT 1
-                """, (uuid_to_use, session_date, file_path, file_path))
-
-                existing = cur.fetchone()
+                # One row per source sheet: match on source_file first (its date may have
+                # been corrected). Fall back to (athlete_uuid, session_date) for rows that
+                # pre-date the source_file column.
+                reused = False
+                same_rows, history, duplicates = classify_sheet_rows(cur, file_path)
+                if duplicates:
+                    cur.execute("DELETE FROM public.f_mobility WHERE id = ANY(%s)", ([d[0] for d in duplicates],))
+                    print(f"   Removed {len(duplicates)} duplicate row(s) for this sheet")
+                if history:
+                    # Re-used in place for a re-test: the older rows hold the earlier session's
+                    # values. Keep them as their own sessions (detached so they're never matched
+                    # again) and keep the newest row's date for the current contents.
+                    for hid, hdate, n in history:
+                        new_date = session_date if hdate == BULK_DOWNLOAD_DATE else hdate
+                        cur.execute(
+                            "UPDATE public.f_mobility SET source_file = source_file || '#earlier-version', session_date = %s WHERE id = %s",
+                            (new_date, hid),
+                        )
+                        print(f"   Kept earlier version from {new_date} ({n} metrics differ) as its own session")
+                    insert_data['session_date'] = same_rows[0][1]
+                    insert_data['session_date_source'] = 'reused_sheet'
+                    insert_data.update(new_since(earlier_state(cur, file_path), metrics))
+                    reused = True
+                    print(f"   Sheet was re-used for a re-test: current values stay dated {same_rows[0][1]}")
+                if same_rows and not history:
+                    cur_id, cur_date, cur_src, cur_vals = same_rows[0]
+                    meta = read_drive_meta(file_path) or {}
+                    try:
+                        modified = date.fromisoformat((meta.get('modifiedTime') or '')[:10])
+                    except ValueError:
+                        modified = None
+                    # Compare with everything this sheet has recorded so far (a re-used
+                    # sheet's newest row only holds what changed in that session).
+                    before = earlier_state(cur, file_path) if cur_src == 'reused_sheet' else {}
+                    before.update({k: v for k, v in cur_vals.items() if v is not None})
+                    changed, added = count_changed(before, metrics), count_added(before, metrics)
+                    gap = (modified - cur_date).days if modified and cur_date else None
+                    if looks_like_retest(changed, added, gap):
+                        # A re-test typed over the stored session: keep the old row as its own
+                        # session and date the new values by the edit.
+                        cur.execute(
+                            "UPDATE public.f_mobility SET source_file = source_file || '#earlier-version' WHERE id = %s",
+                            (cur_id,),
+                        )
+                        insert_data['session_date'] = modified
+                        insert_data['session_date_source'] = 'reused_sheet'
+                        insert_data.update(new_since(before, metrics))
+                        same_rows = []
+                        reused = True
+                        print(f"   Sheet was re-used for a re-test ({changed} changed, {added} added, {gap} days later): "
+                              f"kept {cur_date} as its own session, new values dated {modified}")
+                    elif cur_src == 'reused_sheet':
+                        insert_data['session_date'] = cur_date
+                        insert_data['session_date_source'] = 'reused_sheet'
+                        insert_data.update(new_since(earlier_state(cur, file_path), metrics))
+                        reused = True
+                if same_rows:
+                    existing = (same_rows[0][0],)
+                else:
+                    cur.execute("""
+                        SELECT id FROM public.f_mobility
+                        WHERE athlete_uuid = %s AND session_date = %s AND source_file IS NULL
+                        ORDER BY id DESC LIMIT 1
+                    """, (uuid_to_use, session_date))
+                    existing = cur.fetchone()
                 
+                info['reused'] = reused
+                info['session_date'] = str(insert_data['session_date'])
                 if existing:
                     # Update existing record
-                    set_parts = [f"{col} = %s" for col in insert_data.keys() if col != 'athlete_uuid']
-                    update_values = [insert_data[col] for col in insert_data.keys() if col != 'athlete_uuid']
-                    update_values.append(uuid_to_use)
-                    update_values.append(session_date)
-                    update_values.append(file_path)
-                    
+                    set_parts = [f"{col} = %s" for col in insert_data.keys()]
+                    update_values = [insert_data[col] for col in insert_data.keys()]
+                    update_values.append(existing[0])
+
                     cur.execute(f"""
                         UPDATE public.f_mobility
                         SET {', '.join(set_parts)}
-                        WHERE athlete_uuid = %s 
-                        AND session_date = %s 
-                        AND source_file = %s
+                        WHERE id = %s
                     """, update_values)
                     
                     conn.commit()
                     print(f"   [OK] Updated existing record")
-                    return {'success': True, 'action': 'updated', 'athlete_uuid': uuid_to_use}
+                    return {**info, 'success': True, 'action': 'updated', 'athlete_uuid': uuid_to_use}
                 else:
                     # Insert new record
                     cols = list(insert_data.keys())
@@ -801,7 +1070,7 @@ def process_mobility_file(file_path: str, conn, athlete_uuid: str = None) -> Dic
                     
                     conn.commit()
                     print(f"   [OK] Inserted new record")
-                    return {'success': True, 'action': 'inserted', 'athlete_uuid': uuid_to_use}
+                    return {**info, 'success': True, 'action': 'inserted', 'athlete_uuid': uuid_to_use}
         
         except Exception as e:
             # Rollback transaction on error
@@ -817,10 +1086,106 @@ def process_mobility_file(file_path: str, conn, athlete_uuid: str = None) -> Dic
         print(f"   [ERROR] Error processing {file_name}: {str(e)}")
         import traceback
         traceback.print_exc()
-        return {'success': False, 'error': str(e)}
+        return {**info, 'success': False, 'error': str(e)}
 
 
-def process_mobility_directory(directory_path: str, athlete_uuid: str = None):
+RUN_REPORT_FILE = project_root / "data" / "mobility_last_run.json"
+
+
+def build_run_report(results: List[Dict[str, Any]], errors: List[tuple], drive_result: Optional[Dict[str, Any]],
+                     duplicate_pairs: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    End-of-run summary of everything that needs a person: Drive sign-in/download
+    problems, cached files no Drive sheet maps to, labels and values the parser
+    couldn't use, new athletes and possible duplicates, and dates that fell back to
+    the file time. Written to data/mobility_last_run.json and the log.
+    """
+    unknown: Dict[str, List[str]] = {}
+    for r in results:
+        for label in r.get('unknown_labels') or []:
+            unknown.setdefault(label, []).append(r['file'])
+    report = {
+        'run_at': datetime.now().isoformat(timespec='seconds'),
+        'files_processed': len(results),
+        'drive': None,
+        'errors': [{'file': os.path.basename(f), 'error': e} for f, e in errors],
+        'unmatched_cached_files': [],
+        'unknown_labels': [{'label': k, 'files': v} for k, v in sorted(unknown.items())],
+        'unreadable_values': [{'file': r['file'], 'label': k, 'value': v}
+                              for r in results for k, v in (r.get('unreadable') or {}).items()],
+        'new_athletes': [{'name': r.get('athlete_name'), 'file': r['file'], 'name_from_filename': bool(r.get('name_from_filename'))}
+                         for r in results if r.get('new_athlete')],
+        'possible_duplicate_athletes': duplicate_pairs,
+        'dated_by_file_time': [r['file'] for r in results if r.get('date_source') == 'file_time'],
+        'reused_sheets': [{'file': r['file'], 'session_date': r.get('session_date')} for r in results if r.get('reused')],
+        'empty_sheets_skipped': [r['file'] for r in results if r.get('action') == 'skipped_empty'],
+    }
+    if drive_result is not None:
+        report['drive'] = {
+            'ok': bool(drive_result.get('success')),
+            'error': drive_result.get('error'),
+            'downloaded': drive_result.get('downloaded', 0),
+            'download_failures': drive_result.get('errors') or [],
+        }
+        report['unmatched_cached_files'] = [os.path.basename(o) for o in drive_result.get('orphans') or []]
+
+    critical, warnings = [], []
+    d = report['drive']
+    if d is not None and not d['ok']:
+        critical.append(f"Google Drive step failed ({d['error']}); new or edited sheets were NOT pulled")
+    if d is not None and d['download_failures']:
+        critical.append(f"{len(d['download_failures'])} sheet(s) failed to download: " + "; ".join(d['download_failures'][:5]))
+    if report['errors']:
+        critical.append(f"{len(report['errors'])} sheet(s) failed to process: "
+                        + "; ".join(f"{e['file']} ({e['error']})" for e in report['errors'][:5]))
+    if report['unmatched_cached_files']:
+        warnings.append(f"{len(report['unmatched_cached_files'])} cached file(s) have no Drive sheet (deleted or a same-named "
+                        f"copy) - their rows stay until you run backfill_mobility_dates.py: "
+                        + ", ".join(report['unmatched_cached_files'][:8]))
+    if report['unknown_labels']:
+        warnings.append("Rows with values but a label the pipeline doesn't know (not stored): "
+                        + "; ".join(f"'{u['label']}' ({len(u['files'])} sheet(s))" for u in report['unknown_labels'][:8]))
+    if report['unreadable_values']:
+        warnings.append("Values that aren't numbers (stored as blank): "
+                        + "; ".join(f"{u['file']}: {u['label']} = '{u['value']}'" for u in report['unreadable_values'][:8]))
+    if report['possible_duplicate_athletes']:
+        warnings.append("Possible duplicate athletes (merge with find_and_merge_similar_athletes.py if real): "
+                        + "; ".join(f"{p['name']} ~ {p['similar_to']} ({p['similarity']:.2f})"
+                                    for p in report['possible_duplicate_athletes'][:8]))
+    if report['new_athletes']:
+        warnings.append("New athletes created - check the spelling: "
+                        + ", ".join(f"{a['name']}{' (from file name)' if a['name_from_filename'] else ''}" for a in report['new_athletes'][:10]))
+    if report['dated_by_file_time']:
+        warnings.append("No Drive date - dated by the file time: " + ", ".join(report['dated_by_file_time'][:8]))
+    report['critical'] = critical
+    report['warnings'] = warnings
+    return report
+
+
+def log_run_report(report: Dict[str, Any]) -> None:
+    logger = logging.getLogger(__name__)
+    try:
+        RUN_REPORT_FILE.parent.mkdir(parents=True, exist_ok=True)
+        RUN_REPORT_FILE.write_text(json.dumps(report, indent=1, default=str), encoding='utf-8')
+    except Exception as e:
+        logger.warning(f"Could not write {RUN_REPORT_FILE}: {e}")
+    logger.info("")
+    logger.info("=" * 80)
+    if not report['critical'] and not report['warnings']:
+        logger.info("NEEDS ATTENTION: nothing")
+    else:
+        logger.info("NEEDS ATTENTION")
+        for line in report['critical']:
+            logger.error(f"  [!] {line}")
+        for line in report['warnings']:
+            logger.warning(f"  [-] {line}")
+        logger.info(f"  Details: {RUN_REPORT_FILE}")
+    logger.info("=" * 80)
+
+
+def process_mobility_directory(directory_path: str, athlete_uuid: str = None, force: bool = False,
+                               only_files: Optional[set] = None,
+                               drive_result: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
     Process all Excel files in the mobility assessments directory.
     Uses logging for all output.
@@ -954,31 +1319,35 @@ def process_mobility_directory(directory_path: str, athlete_uuid: str = None):
         # re-downloaded because Drive's copy changed under the same filename -- is
         # treated as new work even if that exact path appeared in a previous run.
         new_files = []
+        if only_files is not None:
+            excel_files = [f for f in excel_files if f.name.lower() in only_files]
         for f in excel_files:
             key = os.path.normcase(os.path.normpath(str(f)))
-            try:
-                current_mtime = os.path.getmtime(f)
-            except OSError:
-                current_mtime = None
-            if key not in processed_state or processed_state.get(key) != current_mtime:
+            current_mtime = file_signature(str(f))
+            if force or key not in processed_state or processed_state.get(key) != current_mtime:
                 new_files.append((f, key, current_mtime))
             else:
                 logger.info(f"Skipping unchanged file: {f.name}")
 
         if not new_files:
             logger.info("All files have already been processed and are unchanged.")
-            return
+            report = build_run_report([], [], drive_result, [])
+            log_run_report(report)
+            return report
 
         logger.info(f"Processing {len(new_files)} new/changed files...")
 
         # Process each file
         processed = []
+        results = []
         errors = []
         inserted_count = 0
         updated_count = 0
+        skipped_empty = 0
 
         for file_path, state_key, current_mtime in new_files:
             result = process_mobility_file(str(file_path), conn, athlete_uuid=athlete_uuid)
+            results.append(result)
 
             if result.get('success'):
                 processed.append(result)
@@ -986,6 +1355,8 @@ def process_mobility_directory(directory_path: str, athlete_uuid: str = None):
                     inserted_count += 1
                 elif result.get('action') == 'updated':
                     updated_count += 1
+                elif result.get('action') == 'skipped_empty':
+                    skipped_empty += 1
                 if current_mtime is not None:
                     processed_state[state_key] = current_mtime
                     save_processed_state(processed_state)
@@ -1002,6 +1373,7 @@ def process_mobility_directory(directory_path: str, athlete_uuid: str = None):
         
         # Check for duplicate athletes
         # In automated runs, use auto_skip=True to avoid blocking on user input
+        duplicate_pairs: List[Dict[str, Any]] = []
         if processed:
             logger.info("")
             is_automated = os.getenv('AUTOMATED_RUN') == '1'
@@ -1012,12 +1384,15 @@ def process_mobility_directory(directory_path: str, athlete_uuid: str = None):
             try:
                 # Extract unique athlete UUIDs from processed results
                 processed_uuids = list(set([r.get('athlete_uuid') for r in processed if r.get('success') and r.get('athlete_uuid')]))
-                if processed_uuids:
-                    check_and_merge_duplicates(
-                        conn=conn, 
-                        athlete_uuids=processed_uuids, 
-                        auto_skip=is_automated  # Skip interactive prompts in automated mode
-                    )
+                if processed_uuids and is_automated:
+                    # Nobody is there to answer the merge prompt: list the pairs in the report.
+                    from common.athlete_manager import NAME_SIMILARITY_THRESHOLD
+                    for a1, a2, sim in find_similar_athletes_for_uuids(conn, processed_uuids, NAME_SIMILARITY_THRESHOLD):
+                        duplicate_pairs.append({'name': a1.get('name'), 'uuid': a1.get('athlete_uuid'),
+                                                'similar_to': a2.get('name'), 'similar_uuid': a2.get('athlete_uuid'),
+                                                'similarity': float(sim)})
+                elif processed_uuids:
+                    check_and_merge_duplicates(conn=conn, athlete_uuids=processed_uuids, auto_skip=False)
             except Exception as e:
                 logger.warning(f"Could not check for duplicates: {str(e)}")
                 import traceback
@@ -1031,6 +1406,7 @@ def process_mobility_directory(directory_path: str, athlete_uuid: str = None):
         logger.info(f"Processed: {len(processed)} files")
         logger.info(f"Inserted: {inserted_count} records")
         logger.info(f"Updated: {updated_count} records")
+        logger.info(f"Skipped (no values filled in): {skipped_empty} files")
         logger.info(f"Errors: {len(errors)} files")
         
         if errors:
@@ -1038,7 +1414,11 @@ def process_mobility_directory(directory_path: str, athlete_uuid: str = None):
             logger.error("Errors encountered:")
             for file_path, error in errors:
                 logger.error(f"  - {os.path.basename(file_path)}: {error}")
-        
+
+        report = build_run_report(results, errors, drive_result, duplicate_pairs)
+        log_run_report(report)
+        return report
+
     finally:
         conn.close()
 
@@ -1069,22 +1449,9 @@ def setup_logging():
     return log_file
 
 
-def main():
-    """
-    Main execution function.
-    """
-    # Set up logging FIRST (before any other operations)
-    log_file = setup_logging()
-    logger = logging.getLogger(__name__)
-    
-    logger.info("=" * 80)
-    logger.info("Mobility Assessment Processing - Starting")
-    logger.info("=" * 80)
-    logger.info(f"Execution time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    logger.info(f"Log file: {log_file}")
-    logger.info(f"Script location: {Path(__file__).parent}")
-    logger.info("")
-    
+def resolve_directories(logger=None):
+    """(excel cache dir, synced Google Drive folder, OAuth client file) — shared with the backfill script."""
+    logger = logger or logging.getLogger(__name__)
     # Get paths from config (preferred) or use defaults
     # This avoids drive-letter dependencies that fail in Task Scheduler
     # For mobility, we primarily use Google Drive, so local Excel directory is just a cache
@@ -1203,7 +1570,29 @@ def main():
             logger.warning(f"Using system temp directory as fallback: {excel_directory}")
             os.makedirs(excel_directory, exist_ok=True)
     
+    return excel_directory, gsheet_directory, credentials_path
+
+
+def main():
+    """
+    Main execution function.
+    """
+    # Set up logging FIRST (before any other operations)
+    log_file = setup_logging()
+    logger = logging.getLogger(__name__)
+    
+    logger.info("=" * 80)
+    logger.info("Mobility Assessment Processing - Starting")
+    logger.info("=" * 80)
+    logger.info(f"Execution time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    logger.info(f"Log file: {log_file}")
+    logger.info(f"Script location: {Path(__file__).parent}")
+    logger.info("")
+    
+    excel_directory, gsheet_directory, credentials_path = resolve_directories(logger)
+
     # Step 1: Download missing Google Sheets as Excel files
+    download_result: Optional[Dict[str, Any]] = None
     if GOOGLE_DRIVE_AVAILABLE and os.path.exists(gsheet_directory) and credentials_path.exists():
         logger.info("=" * 80)
         logger.info("Step 1: Downloading missing Google Sheets")
@@ -1217,6 +1606,9 @@ def main():
         
         if download_result.get('success'):
             logger.info(f"[OK] Downloaded {download_result.get('downloaded', 0)} files")
+            for orphan in download_result.get('orphans', []):
+                logger.warning(f"Cached file has no matching Drive sheet (deleted, renamed, or a same-named copy): "
+                               f"{os.path.basename(orphan)} - run python/scripts/backfill_mobility_dates.py to clean up")
             if download_result.get('failed', 0) > 0:
                 logger.warning(f"[FAIL] Failed to download {download_result.get('failed', 0)} files")
                 if download_result.get('errors'):
@@ -1228,13 +1620,13 @@ def main():
             logger.info("Continuing with existing Excel files...")
     else:
         if not GOOGLE_DRIVE_AVAILABLE:
-            logger.warning("Google Drive API not available. Skipping download step.")
+            reason = "Google API libraries not installed"
         elif not os.path.exists(gsheet_directory):
-            logger.warning(f"Google Sheets directory not found: {gsheet_directory}")
-            logger.info("Skipping download step.")
-        elif not credentials_path.exists():
-            logger.warning(f"Credentials file not found: {credentials_path}")
-            logger.info("Skipping download step.")
+            reason = f"Google Drive folder not found: {gsheet_directory}"
+        else:
+            reason = f"OAuth client file not found: {credentials_path}"
+        logger.warning(f"{reason}. Skipping download step.")
+        download_result = {'success': False, 'error': reason}
     
     # Step 2: Process all Excel files
     logger.info("=" * 80)
@@ -1244,7 +1636,7 @@ def main():
     if not os.path.exists(excel_directory):
         logger.error(f"Directory not found: {excel_directory}")
         logger.error("Please ensure the directory exists and contains Excel files.")
-        return
+        return 1
     
     logger.info(f"Using directory: {excel_directory}")
     
@@ -1260,12 +1652,21 @@ def main():
                 sys.exit(1)
             finally:
                 _vconn.close()
-        process_mobility_directory(excel_directory, athlete_uuid=athlete_uuid_env)
+        # The nightly run reports Drive problems; a single-athlete upload from the
+        # backend (ATHLETE_UUID) doesn't use Drive, so it isn't judged on it.
+        nightly = not athlete_uuid_env
+        report = process_mobility_directory(excel_directory, athlete_uuid=athlete_uuid_env,
+                                            drive_result=download_result if nightly else None) or {}
         
         logger.info("=" * 80)
         logger.info("All processing complete!")
         logger.info(f"Completion time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         logger.info("=" * 80)
+        # Exit code 4 = finished, but something critical needs a person (Drive sign-in or
+        # download failed, a sheet errored). Task Scheduler shows it as the last run result.
+        if os.getenv('AUTOMATED_RUN') == '1' and report.get('critical'):
+            return 4
+        return 0
     except Exception as e:
         logger.error("=" * 80)
         logger.error("PROCESSING FAILED!")
@@ -1277,4 +1678,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main() or 0)

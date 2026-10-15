@@ -35,14 +35,14 @@ export default async function DashboardPage() {
           </Card>
         </Link>
 
-        <Link href="/dashboard/athlete-tracking" style={{ textDecoration: "none", color: "inherit" }}>
+        <Link href="/coach" style={{ textDecoration: "none", color: "inherit" }}>
           <Card style={{ height: "100%", cursor: "pointer" }}>
             <Text size="xs" c="dimmed" mb={4} tt="uppercase" fw={600} style={{ letterSpacing: "0.04em" }}>
-              Athlete Tracking
+              Coach View
             </Text>
             <Text size="xl" fw={700} c="var(--accent)">Track & Compare</Text>
             <Text size="sm" c="dimmed" mt="xs">
-              Deep-dive metrics, percentile radar charts, and session comparisons.
+              Everything about an athlete: pitch data, biomechanics, assessments, readiness, Proteus, and side-by-side comparisons.
             </Text>
           </Card>
         </Link>

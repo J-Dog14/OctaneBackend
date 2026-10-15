@@ -1,0 +1,150 @@
+/* 8ctane biomechanics report — same design system as the biomech-pitching-breakdown PDF
+   (black + powder blue). Scoped to the report so it doesn't bleed into the app theme. */
+.report {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  container-type: inline-size;
+  --bg: #0a0a0a;
+  --card: #141414;
+  --elev: #1e1e1e;
+  --pb: #b0e0e6;
+  --pb-deep: #7bb4c7;
+  --pb-glow: #d8eef6;
+  --ice: #e8f4f8;
+  --hi: #f5f8fa;
+  --mid: #a8b5bd;
+  --dim: #6b7479;
+  background: var(--bg);
+  color: var(--hi);
+  font-family: Inter, "Helvetica Neue", var(--font-sans), Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  border-radius: 10px;
+  padding: 40px 44px 48px;
+  border: 1px solid #1d2a30;
+}
+.report p { margin: 0 0 0.7em; color: var(--ice); }
+
+/* cover */
+.cover { position: relative; padding: 18px 0 30px; margin-bottom: 36px; }
+.coverRule { height: 1px; background: linear-gradient(90deg, var(--pb), transparent 70%); margin-bottom: 26px; }
+.coverRuleBottom { height: 1px; background: linear-gradient(90deg, transparent, var(--pb) 30%, transparent 80%); margin-top: 30px; }
+.brand { font-size: 11px; letter-spacing: 0.4em; text-transform: uppercase; color: var(--pb); font-weight: 600; margin-bottom: 26px; }
+.name { font-size: clamp(40px, 6vw, 68px); font-weight: 800; letter-spacing: -0.02em; line-height: 1; margin: 0; color: var(--hi); }
+.tagline { font-size: 15px; color: var(--pb); letter-spacing: 0.18em; text-transform: uppercase; margin-top: 12px; }
+.coverMain { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 24px; align-items: center; margin-top: 34px; padding: 26px 0; border-top: 1px solid rgba(123, 180, 199, 0.25); border-bottom: 1px solid rgba(123, 180, 199, 0.25); }
+.veloNum { font-size: clamp(72px, 10vw, 120px); font-weight: 800; line-height: 0.9; color: var(--pb); letter-spacing: -0.04em; text-align: center; }
+.veloLabel { font-size: 12px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--mid); margin-top: 10px; text-align: center; }
+.overall { display: flex; align-items: center; gap: 18px; justify-content: center; }
+.overallNum { font-size: 64px; font-weight: 800; color: var(--pb-glow); line-height: 1; letter-spacing: -0.02em; }
+.overallPct { font-size: 13px; color: var(--pb); letter-spacing: 0.2em; text-transform: uppercase; font-weight: 600; }
+.overallSub { font-size: 12px; color: var(--mid); margin-top: 4px; }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; margin-top: 26px; }
+.statLabel { font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--pb); margin-bottom: 6px; font-weight: 600; }
+.statValue { font-size: 17px; font-weight: 700; color: var(--hi); }
+.coverFooter { font-size: 10px; color: var(--dim); letter-spacing: 0.15em; text-transform: uppercase; margin-top: 18px; }
+.coverFooter b { color: var(--pb); font-weight: 600; }
+
+/* sections */
+.section { margin: 0 0 40px; }
+.sectionHead { font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--pb); font-weight: 700; margin-bottom: 4px; }
+.sectionTitle { font-size: 28px; font-weight: 800; color: var(--hi); letter-spacing: -0.015em; margin: 0 0 18px; padding-bottom: 10px; border-bottom: 1px solid rgba(123, 180, 199, 0.32); }
+
+/* flags */
+.flag { background: var(--card); border-left: 4px solid #e8a04c; padding: 12px 16px; margin-bottom: 10px; color: var(--ice); font-size: 14px; }
+.flag b { color: #e8a04c; letter-spacing: 0.15em; font-size: 10px; text-transform: uppercase; display: block; margin-bottom: 2px; }
+
+/* release phase */
+.releasePhase { background: var(--card); border: 1px solid rgba(123, 180, 199, 0.25); padding: 18px 22px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-bottom: 36px; }
+.rpCell { border-left: 3px solid var(--pb); padding: 4px 12px; }
+.rpCell.cutRisk { border-left-color: #e26464; }
+.rpCell.runBias { border-left-color: #e8a04c; }
+.rpLabel { font-size: 10px; letter-spacing: 0.25em; text-transform: uppercase; color: var(--pb); font-weight: 700; }
+.rpValue { font-size: 26px; font-weight: 800; color: var(--hi); line-height: 1.1; margin-top: 4px; }
+.rpMeta { font-size: 12px; color: var(--mid); margin-top: 4px; }
+.rpFlag { font-size: 10px; font-weight: 800; color: #e26464; margin-top: 3px; letter-spacing: 0.08em; }
+.rpFlag.clean { color: #7bc97b; }
+.rpFlag.amber { color: #e8a04c; }
+
+/* radar */
+.radarWrap { text-align: center; }
+.radarWrap svg { width: 100%; max-width: 760px; height: auto; }
+.pill { display: inline-flex; align-items: center; gap: 12px; padding: 10px 28px; background: var(--elev); border: 1px solid var(--pb); border-radius: 100px; margin-top: 10px; }
+.pillNum { font-size: 34px; font-weight: 800; color: var(--pb-glow); line-height: 1; }
+.pillLabel { font-size: 11px; letter-spacing: 0.25em; color: var(--pb); text-transform: uppercase; font-weight: 600; }
+
+/* summary */
+.archetype { display: inline-block; margin-bottom: 12px; padding: 4px 12px; border: 1px solid var(--pb-deep); color: var(--pb); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; font-weight: 700; border-radius: 2px; }
+
+/* velocity */
+.veloStrip { display: flex; gap: 10px; margin: 14px 0; flex-wrap: wrap; }
+.veloCell { flex: 1; min-width: 80px; text-align: center; background: var(--card); border-radius: 4px; padding: 12px 6px; border-top: 2px solid var(--pb); }
+.veloCellNum { font-size: 26px; font-weight: 800; color: var(--hi); line-height: 1; }
+.veloCellLabel { font-size: 10px; color: var(--pb); margin-top: 6px; letter-spacing: 0.1em; }
+.veloSummary { background: var(--card); border: 1px solid rgba(176, 224, 230, 0.25); padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; }
+.veloSummaryNum { font-size: 44px; font-weight: 800; line-height: 1; color: var(--pb); letter-spacing: -0.02em; }
+.veloSummaryLabel { font-size: 11px; letter-spacing: 0.25em; text-transform: uppercase; color: var(--mid); margin-top: 4px; }
+.veloSummaryMeta { text-align: right; font-size: 13px; color: var(--mid); }
+.veloSummaryMeta b { color: var(--pb-glow); font-size: 15px; }
+
+/* cylinder cards */
+.cylGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 18px; }
+.cylCard { display: flex; align-items: center; padding: 14px; background: var(--card); border: 1px solid rgba(123, 180, 199, 0.2); border-left: 3px solid var(--pb); border-radius: 3px; gap: 12px; }
+.cylNum { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--elev); border: 1px solid var(--pb); color: var(--pb); font-weight: 800; font-size: 17px; flex-shrink: 0; }
+.cylBody { flex: 1; min-width: 0; }
+.cylName { font-size: 14px; font-weight: 700; color: var(--hi); line-height: 1.2; }
+.cylValue { font-size: 13px; font-weight: 600; color: var(--pb); margin-top: 3px; }
+.cylBench { font-size: 11px; color: var(--mid); margin-top: 2px; line-height: 1.3; }
+.cylPct { text-align: center; flex-shrink: 0; }
+.cylPctNum { font-size: 24px; font-weight: 800; color: var(--pb-glow); line-height: 1; }
+.cylPctLabel { font-size: 9px; letter-spacing: 0.15em; color: var(--dim); font-weight: 600; margin-top: 2px; }
+.chip { display: inline-block; padding: 3px 9px; border-radius: 2px; font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
+
+/* detail table */
+.tableWrap { overflow-x: auto; min-width: 0; max-width: 100%; }
+.detail { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--card); min-width: 640px; }
+.detail th { background: var(--elev); color: var(--pb); padding: 9px 12px; text-align: left; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600; border-bottom: 1px solid rgba(176, 224, 230, 0.3); }
+.detail td { padding: 7px 12px; border-bottom: 1px solid rgba(123, 180, 199, 0.12); color: var(--ice); }
+.detail tr:nth-child(even) td { background: #1a1a1a; }
+.detail .dmGroup { font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--dim); width: 9%; }
+.detail .dmLabel { font-weight: 600; color: var(--hi); width: 31%; }
+.detail .dmValue { font-weight: 700; color: var(--pb); width: 20%; text-align: center; }
+.detail .dmRef { font-size: 12px; color: var(--mid); width: 30%; }
+.detail .dmStatus { width: 10%; text-align: center; }
+.detail tr:hover td { background: var(--elev); }
+
+/* findings */
+.findingsGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 24px; }
+.finding { margin-bottom: 14px; padding: 12px 16px; background: var(--card); border-radius: 3px; }
+.finding h4 { font-size: 15px; font-weight: 700; margin: 0 0 4px; }
+.finding p { font-size: 14px; margin: 0; }
+.working .finding { border-left: 3px solid #5fbf5f; }
+.working .finding h4 { color: #7bc97b; }
+.leaking .finding { border-left: 3px solid #e26464; }
+.leaking .finding h4 { color: #e89090; }
+
+/* recommendations */
+.recList { list-style: none; padding: 0; margin: 0; counter-reset: rec; }
+.recItem { counter-increment: rec; position: relative; padding: 13px 14px 13px 54px; margin-bottom: 8px; background: var(--card); border-left: 3px solid var(--pb); border-radius: 3px; font-size: 14px; color: var(--ice); }
+.recItem::before { content: counter(rec); position: absolute; left: 14px; top: 12px; width: 26px; height: 26px; background: var(--elev); border: 1px solid var(--pb); color: var(--pb); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+.recBold { font-weight: 700; color: var(--pb); }
+
+/* bottom line */
+.bottomLine { background: var(--card); border: 1px solid rgba(176, 224, 230, 0.25); border-left: 4px solid var(--pb); padding: 26px 30px; border-radius: 4px; }
+.bottomLine p { font-size: 15px; line-height: 1.65; }
+.footnote { font-size: 11px; color: var(--dim); margin-top: 26px; letter-spacing: 0.04em; }
+
+@media (max-width: 860px) {
+  .report { padding: 22px 16px 28px; }
+  .coverMain, .cylGrid, .findingsGrid, .releasePhase { grid-template-columns: 1fr; }
+  .stats { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* The portal can be narrower than the browser viewport (e.g. a split window).
+   Adapt to the report's actual available width as well as viewport size. */
+@container (max-width: 720px) {
+  .coverMain, .cylGrid, .findingsGrid, .releasePhase { grid-template-columns: minmax(0, 1fr); }
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .veloSummary { flex-wrap: wrap; gap: 16px; }
+}

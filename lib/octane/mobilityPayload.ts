@@ -37,7 +37,7 @@ export type MobilityPayload = {
 // ---------------------------------------------------------------------------
 
 /** 9 radar groups. All GROUP metric scores are 0–100 (average of component scores). */
-const MOBILITY_GROUPS: Array<{
+export const MOBILITY_GROUPS: Array<{
   groupName: string;
   columns: Array<{ key: string; label: string }>;
 }> = [
@@ -169,7 +169,7 @@ const RANGE_OVERRIDES: Record<string, string> = {};
  * Hardcoded reference ranges for columns that have no stored optimal range
  * but can be reasonably scored.
  */
-const FALLBACK_RANGES: Record<string, string> = {
+export const FALLBACK_RANGES: Record<string, string> = {
   grip_strength_r: "> 50",
   gs_l: "> 50",
   grip_strength_r_at_90: "> 40",
@@ -247,7 +247,7 @@ function scoreAgainstRange(value: number, rangeStr: string): number {
  * Score a single component. Returns 0–100, or null if the column has no
  * applicable scoring method (raw measurement with no range reference).
  */
-function scoreComponent(
+export function scoreComponent(
   key: string,
   value: number | null,
   optimalRanges: Record<string, string>
@@ -280,7 +280,7 @@ function scoreComponent(
 // Raw value helper
 // ---------------------------------------------------------------------------
 
-function toNumber(v: unknown): number | null {
+export function toNumber(v: unknown): number | null {
   if (v == null) return null;
   if (typeof v === "number") return Number.isFinite(v) ? v : null;
   if (typeof v === "string") {
@@ -297,8 +297,9 @@ function toNumber(v: unknown): number | null {
   return null;
 }
 
-function getOrientation(key: string): Orientation {
+export function getOrientation(key: string): Orientation {
   if (key === "elbow_extension_rom") return "LOWER_IS_BETTER";
+  if (key === "hawkins_kennedy_test") return "LOWER_IS_BETTER"; // 0 = negative (pass), 1 = positive
   return "HIGHER_IS_BETTER";
 }
 
@@ -324,25 +325,33 @@ export async function buildMobilityPayload(
     ? Prisma.sql`WHERE athlete_uuid = ${athleteUuid} AND session_date = ${new Date(sessionDate)}::date`
     : Prisma.sql`WHERE athlete_uuid = ${athleteUuid}`;
 
+  // Each metric takes its latest non-blank value (over all sessions, or over the
+  // rows of the requested date): re-check sheets only fill in the metrics being
+  // re-tested, so the newest row alone would blank out everything else.
   const rows = await prisma.$queryRaw<Array<Record<string, unknown>>>(
     Prisma.sql`
       SELECT *
       FROM public.f_mobility
       ${whereClause}
       ORDER BY session_date DESC, created_at DESC
-      LIMIT 1
     `
   );
 
   if (!rows.length) throw notFound("No mobility data found for athlete");
 
-  const row = rows[0];
-
-  // optimal_ranges is JSONB → already a JS object when returned from the driver
-  const optimalRanges: Record<string, string> =
-    row.optimal_ranges != null && typeof row.optimal_ranges === "object"
-      ? (row.optimal_ranges as Record<string, string>)
-      : {};
+  const row: Record<string, unknown> = { ...rows[0] };
+  const optimalRanges: Record<string, string> = {};
+  for (const r of [...rows].reverse()) {
+    // optimal_ranges is JSONB → already a JS object when returned from the driver
+    if (r.optimal_ranges != null && typeof r.optimal_ranges === "object") Object.assign(optimalRanges, r.optimal_ranges as Record<string, string>);
+  }
+  for (const { columns } of MOBILITY_GROUPS) {
+    for (const { key } of columns) {
+      if (toNumber(row[key]) != null) continue;
+      const hit = rows.find((r) => toNumber(r[key]) != null);
+      if (hit) row[key] = hit[key];
+    }
+  }
 
   const metrics: MobilityPayloadMetric[] = [];
 

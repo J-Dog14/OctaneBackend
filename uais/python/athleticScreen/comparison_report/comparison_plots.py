@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import glob
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -112,58 +113,172 @@ def _hex_to_pastel_rgba(hex_color: str, alpha: float = 0.5):
     return (r, g, b, alpha)
 
 
-#: Extra headroom added above the tallest histogram bar so the session
-#: legend has somewhere to sit. Without it the legend prints on top of the
-#: bars, which is what made the old one hard to read.
-LEGEND_HEADROOM = 1.62
+def _short_date(date_str: str) -> str:
+    """'2025-10-13' -> '10/13/25'. Legends are tight; the page header carries
+    the full dates."""
+    from datetime import datetime
+    try:
+        return datetime.strptime(str(date_str), "%Y-%m-%d").strftime("%m/%d/%y")
+    except (ValueError, TypeError):
+        return format_session_label(date_str)
 
 
 def _draw_session_legend(ax, columns: List[str], rows: List[tuple], *,
-                         fontsize: int = 25, right: float = 0.985,
-                         top: float = 0.965) -> None:
-    """Aligned, color-keyed legend in the top-right of an axes.
+                         groups: Optional[List[tuple]] = None,
+                         fontsize: int = 30,
+                         avoid_points: Optional[np.ndarray] = None) -> float:
+    """Compact, color-keyed legend sized to its own text.
 
     ``columns`` are the value-column headings; ``rows`` is a list of
     ``(label, color, [value, ...])`` with one value per column. The label is
-    printed in its session color so the row ties to the line it describes,
-    while the numbers stay white and column-aligned — the old single
-    monospace blob relied on padding and drifted out of alignment as soon as
-    a number changed width.
+    printed in its session color so the row ties to the line it describes.
+
+    ``groups`` optionally adds a spanning heading row above the column
+    headings: ``(title, n_columns, linestyle)``. A short line sample in that
+    style is drawn beside the title, which is how the SLV legend says which
+    of the solid / dotted lines is the left leg.
+
+    Every width is measured from the rendered text rather than set as a fixed
+    fraction of the axes, which is what left the old panel half empty.
+
+    Placed top-right, unless ``avoid_points`` (N x 2, data coords) is given,
+    in which case it takes whichever corner covers the fewest of them.
+
+    Returns the legend's height as a fraction of the axes height, so a
+    caller can reserve that much headroom above its data.
     """
     if not rows:
-        return
+        return 0.0
 
-    n_cols = len(columns)
-    col_w = 0.105                      # axes-fraction width per value column
-    label_w = 0.185
-    block_w = label_w + n_cols * col_w
-    left = right - block_w
-    line_h = 0.068
-    height = line_h * (len(rows) + 1)
+    fig = ax.figure
+    renderer = fig.canvas.get_renderer()
+    ax_box = ax.get_window_extent(renderer)
+    ax_w, ax_h = ax_box.width, ax_box.height
+    em = fontsize * fig.dpi / 72.0
+    head_size = fontsize - 3
 
-    # Backing panel so the text reads over gridlines and bars.
+    def measure(text: str, size: int, bold: bool = False) -> float:
+        t = ax.text(0, 0, text, fontsize=size,
+                    fontweight="bold" if bold else "normal",
+                    transform=ax.transAxes)
+        w = t.get_window_extent(renderer).width
+        t.remove()
+        return w
+
+    gap = 0.9 * em
+    pad = 0.55 * em
+    sample_w = 1.8 * em          # line-style sample beside a group title
+    row_h = 1.3 * em
+
+    label_w = max(measure(label, fontsize, bold=True) for label, _, _ in rows)
+    col_w = []
+    for c, heading in enumerate(columns):
+        widest = max([measure(heading, head_size)] +
+                     [measure(str(vals[c]), fontsize) for _, _, vals in rows])
+        col_w.append(widest)
+
+    # Make each group's spanned columns wide enough for its title + sample.
+    if groups:
+        c0 = 0
+        for title, span, _style in groups:
+            need = sample_w + 0.4 * em + measure(title, head_size, bold=True)
+            have = sum(col_w[c0:c0 + span]) + gap * (span - 1)
+            if need > have:
+                extra = (need - have) / span
+                for c in range(c0, c0 + span):
+                    col_w[c] += extra
+            c0 += span
+
+    n_header_rows = 2 if groups else 1
+    box_w = 2 * pad + label_w + sum(gap + w for w in col_w)
+    box_h = 2 * pad + row_h * (n_header_rows + len(rows)) - 0.25 * em
+    margin = 0.5 * em
+
+    # Candidate corners, in pixels relative to the axes origin. Order is the
+    # tie-break: top-right wins whenever it covers no more than the others.
+    corners = [
+        (ax_w - margin - box_w, ax_h - margin - box_h),   # upper right
+        (margin, ax_h - margin - box_h),                  # upper left
+        (ax_w - margin - box_w, margin),                  # lower right
+        (margin, margin),                                 # lower left
+    ]
+    x0, y0 = corners[0]
+    if avoid_points is not None and len(avoid_points):
+        disp = ax.transData.transform(np.asarray(avoid_points, dtype=float))
+        disp -= np.array([ax_box.x0, ax_box.y0])
+
+        def covered(origin):
+            ox, oy = origin
+            inside = ((disp[:, 0] >= ox) & (disp[:, 0] <= ox + box_w) &
+                      (disp[:, 1] >= oy) & (disp[:, 1] <= oy + box_h))
+            return int(inside.sum())
+
+        x0, y0 = min(corners, key=covered)
+
+    def fx(px: float) -> float:
+        return px / ax_w
+
+    def fy(px: float) -> float:
+        return px / ax_h
+
     ax.add_patch(Rectangle(
-        (left - 0.015, top - height - 0.01),
-        block_w + 0.03, height + 0.02,
-        transform=ax.transAxes, facecolor=PAGE_BG, alpha=0.72,
-        edgecolor="#5a646b", linewidth=1.2, zorder=8,
+        (fx(x0), fy(y0)), fx(box_w), fy(box_h),
+        transform=ax.transAxes, facecolor=PAGE_BG, alpha=0.78,
+        edgecolor="#5a646b", linewidth=1.2, zorder=8, clip_on=False,
     ))
 
-    # Column headings
-    for c, heading in enumerate(columns):
-        ax.text(left + label_w + (c + 0.5) * col_w, top, heading,
-                transform=ax.transAxes, ha="center", va="top",
-                color="#98a4ad", fontsize=fontsize - 3, zorder=9)
+    # Column centres (px from the axes' left edge).
+    centres = []
+    cx = x0 + pad + label_w
+    for w in col_w:
+        cx += gap
+        centres.append(cx + w / 2)
+        cx += w
 
-    for r, (label, color, values) in enumerate(rows):
-        y = top - (r + 1) * line_h
-        ax.text(left, y, label, transform=ax.transAxes,
-                ha="left", va="top", color=color, fontsize=fontsize,
+    y = y0 + box_h - pad          # top of the first text row
+    if groups:
+        c0 = 0
+        for title, span, style in groups:
+            left = centres[c0] - col_w[c0] / 2
+            right = centres[c0 + span - 1] + col_w[c0 + span - 1] / 2
+            mid_y = y - 0.5 * row_h
+            title_w = measure(title, head_size, bold=True)
+            start = (left + right) / 2 - (sample_w + 0.4 * em + title_w) / 2
+            ax.plot([fx(start), fx(start + sample_w)], [fy(mid_y), fy(mid_y)],
+                    transform=ax.transAxes, color="white", linestyle=style,
+                    linewidth=4, zorder=9, clip_on=False)
+            ax.text(fx(start + sample_w + 0.4 * em), fy(mid_y), title,
+                    transform=ax.transAxes, ha="left", va="center",
+                    color="white", fontsize=head_size, fontweight="bold",
+                    zorder=9)
+            c0 += span
+        y -= row_h
+
+    for c, heading in enumerate(columns):
+        ax.text(fx(centres[c]), fy(y - 0.5 * row_h), heading,
+                transform=ax.transAxes, ha="center", va="center",
+                color="#98a4ad", fontsize=head_size, zorder=9)
+    y -= row_h
+
+    for label, color, values in rows:
+        mid = fy(y - 0.5 * row_h)
+        ax.text(fx(x0 + pad), mid, label, transform=ax.transAxes,
+                ha="left", va="center", color=color, fontsize=fontsize,
                 fontweight="bold", zorder=9)
         for c, value in enumerate(values):
-            ax.text(left + label_w + (c + 0.5) * col_w, y, value,
-                    transform=ax.transAxes, ha="center", va="top",
-                    color="white", fontsize=fontsize, zorder=9)
+            ax.text(fx(centres[c]), mid, str(value), transform=ax.transAxes,
+                    ha="center", va="center", color="white",
+                    fontsize=fontsize, zorder=9)
+        y -= row_h
+
+    return fy(box_h + margin)
+
+
+def _reserve_headroom(ax, data_top: float, legend_frac: float) -> None:
+    """Raise the y-limit just enough that ``data_top`` clears the legend."""
+    lo = ax.get_ylim()[0]
+    usable = max(0.35, 1.0 - legend_frac - 0.03)
+    ax.set_ylim(lo, lo + (data_top - lo) / usable)
 
 
 def _tier_color_map():
@@ -231,7 +346,7 @@ def comparison_bar_graph(ax, metric: str, sessions: List[Dict], population: pd.D
         pct = percentileofscore(pop_values, mean_val)
         fmt = "{:.2f}" if metric == "CT" else "{:.1f}"
         legend_rows.append((
-            format_session_label(sess["date"]), color,
+            _short_date(sess["date"]), color,
             [f"{int(pct)}", fmt.format(mean_val), fmt.format(extreme_val)],
         ))
 
@@ -240,12 +355,12 @@ def comparison_bar_graph(ax, metric: str, sessions: List[Dict], population: pd.D
                      ylabel="Frequency", label_size=30, tick_size=24)
     ax.grid(True, color="white", alpha=0.2, axis="y")
 
-    # Headroom first, so the legend panel sits above the bars rather than on
-    # top of them.
+    legend_frac = _draw_session_legend(
+        ax, ["%ile", "mean", "min" if use_min else "max"], legend_rows)
+    # Only as much headroom as the legend actually needs, so it sits above
+    # the bars rather than on them.
     if len(counts):
-        ax.set_ylim(0, counts.max() * LEGEND_HEADROOM)
-    _draw_session_legend(ax, ["%ile", "mean", "min" if use_min else "max"],
-                         legend_rows)
+        _reserve_headroom(ax, counts.max(), legend_frac)
 
 
 def slv_comparison_bar_graph(ax, metric: str, sessions: List[Dict],
@@ -296,14 +411,15 @@ def slv_comparison_bar_graph(ax, metric: str, sessions: List[Dict],
             ax.axvline(x=r_mean, color=color, linestyle=":",
                        linewidth=6.5, alpha=0.95)
 
-        l_pct = (percentileofscore(pop_values, l_mean)
-                 if not np.isnan(l_mean) else float("nan"))
-        r_pct = (percentileofscore(pop_values, r_mean)
-                 if not np.isnan(r_mean) else float("nan"))
+        def _pct(v: float) -> str:
+            return "-" if np.isnan(v) else f"{int(percentileofscore(pop_values, v))}"
+
+        def _val(v: float) -> str:
+            return "-" if np.isnan(v) else f"{v:.1f}"
+
         legend_rows.append((
-            format_session_label(sess["date"]), color,
-            [f"{int(l_pct)}" if not np.isnan(l_pct) else "–",
-             f"{int(r_pct)}" if not np.isnan(r_pct) else "–"],
+            _short_date(sess["date"]), color,
+            [_val(l_mean), _pct(l_mean), _val(r_mean), _pct(r_mean)],
         ))
 
     display_label = METRIC_LABELS.get(metric, metric)
@@ -311,12 +427,13 @@ def slv_comparison_bar_graph(ax, metric: str, sessions: List[Dict],
                      ylabel="Frequency", label_size=30, tick_size=24)
     ax.grid(True, color="white", alpha=0.2, axis="y")
 
+    # Group headings carry the line-style key: a solid sample beside "Left",
+    # a dotted one beside "Right".
+    legend_frac = _draw_session_legend(
+        ax, ["mean", "%ile", "mean", "%ile"], legend_rows,
+        groups=[("Left", 2, "-"), ("Right", 2, ":")])
     if len(counts):
-        ax.set_ylim(0, counts.max() * LEGEND_HEADROOM)
-    # Column headings carry the line-style key, so the separate
-    # "L = solid  R = dotted" line is no longer needed.
-    _draw_session_legend(ax, ["L %ile\n(solid)", "R %ile\n(dotted)"],
-                         legend_rows, fontsize=24)
+        _reserve_headroom(ax, counts.max(), legend_frac)
 
 
 # ---------------------------------------------------------------------------
@@ -447,6 +564,16 @@ def _draw_population_fv(ax, population: pd.DataFrame) -> None:
                linewidth=6.0, alpha=0.7, zorder=3)
 
 
+def _fv_avoid_points(population: pd.DataFrame, points: List[tuple]) -> np.ndarray:
+    """Points the FV legend should stay off: the population cloud, with the
+    athlete's own session dots weighted so they're never the ones covered."""
+    pop = population[["Force_at_PP", "Vel_at_PP"]].dropna().to_numpy(dtype=float)
+    if not points:
+        return pop
+    mine = np.repeat(np.asarray(points, dtype=float).reshape(-1, 2), 200, axis=0)
+    return np.vstack([pop, mine])
+
+
 def _annotate_fv_trajectory(ax, points: List[tuple]) -> None:
     """Draw arrows between consecutive (force, vel) tuples."""
     for (x0, y0), (x1, y1) in zip(points[:-1], points[1:]):
@@ -487,7 +614,7 @@ def comparison_fv_scatter(ax, sessions: List[Dict], population: pd.DataFrame) ->
         pp_pct = (percentileofscore(pp_pop, pp_mean)
                   if len(pp_pop) > 0 else 0)
         legend_rows.append((
-            format_session_label(sess["date"]), color, [f"{int(pp_pct)}"],
+            _short_date(sess["date"]), color, [f"{int(pp_pct)}"],
         ))
 
     if len(points) >= 2:
@@ -495,7 +622,8 @@ def comparison_fv_scatter(ax, sessions: List[Dict], population: pd.DataFrame) ->
 
     _style_dark_axes(ax, title="Force–Velocity Scatter", title_size=60,
                      xlabel="Force @ PP (N)", ylabel="Vel @ PP (m/s)")
-    _draw_session_legend(ax, ["PP %ile"], legend_rows, fontsize=25)
+    _draw_session_legend(ax, ["PP %ile"], legend_rows,
+                         avoid_points=_fv_avoid_points(population, points))
 
 
 def slv_comparison_fv_scatter(ax, sessions: List[Dict], population: pd.DataFrame,
@@ -530,7 +658,7 @@ def slv_comparison_fv_scatter(ax, sessions: List[Dict], population: pd.DataFrame
         pp_pct = (percentileofscore(pp_pop, pp_mean)
                   if len(pp_pop) > 0 else 0)
         legend_rows.append((
-            format_session_label(sess["date"]), color, [f"{int(pp_pct)}"],
+            _short_date(sess["date"]), color, [f"{int(pp_pct)}"],
         ))
 
     if len(points) >= 2:
@@ -538,30 +666,58 @@ def slv_comparison_fv_scatter(ax, sessions: List[Dict], population: pd.DataFrame
 
     _style_dark_axes(ax, title=f"{leg} Leg F–V Scatter", title_size=48,
                      xlabel="Force @ PP (N)", ylabel="Vel @ PP (m/s)")
-    _draw_session_legend(ax, ["PP %ile"], legend_rows, fontsize=23)
+    _draw_session_legend(ax, ["PP %ile"], legend_rows,
+                         avoid_points=_fv_avoid_points(population, points))
 
 
 # ---------------------------------------------------------------------------
 # Power curve (per-session mean curves overlaid)
 # ---------------------------------------------------------------------------
-def _load_session_power_curves(df: pd.DataFrame, power_files_dir: Optional[str]) -> List:
+def _archived_power_file(processed_dir: str, trial_name: str, date_str: str,
+                         athlete_name: str) -> Optional[str]:
+    """The archived Power.txt for exactly this athlete, date and trial.
+
+    main.py archives each processed file as
+    ``{trial}_{Name}_{YYYY-MM-DD}_Power.txt`` (plus ``_1``, ``_2`` ... when a
+    session is re-run). The old lookup globbed ``{trial}*_Power.txt``, which
+    matches that trial for *every* athlete on *every* date, so an older
+    session was drawn with whichever file came back first, usually today's.
+
+    Requires the date in the filename and every token of the athlete's name
+    in the name part. When a session was re-run, the newest file wins.
+    """
+    if not (processed_dir and trial_name and date_str and athlete_name):
+        return None
+    tokens = [t for t in re.split(r"[\s,_]+", athlete_name.lower()) if t]
+    if not tokens:
+        return None
+    pattern = os.path.join(processed_dir,
+                           f"{glob.escape(trial_name)}_*_{date_str}_Power*.txt")
+    matches = []
+    for path in glob.glob(pattern):
+        name_part = os.path.basename(path)[len(trial_name) + 1:]
+        name_part = name_part[:name_part.rfind(f"_{date_str}_Power")].lower()
+        if all(t in name_part for t in tokens):
+            matches.append(path)
+    if not matches:
+        return None
+    return max(matches, key=os.path.getmtime)
+
+
+def _load_session_power_curves(sess: Dict, df: pd.DataFrame,
+                               power_files_dir: Optional[str]) -> List:
     """Return a list of (t_norm, power) tuples, one per trial with real data.
 
-    REAL DATA ONLY. This used to fall back to a synthesized Gaussian
-    (``exp(-((t-0.35)**2)/0.06)``, normalized to 1.0) whenever a Power.txt
-    could not be found, which drew a perfectly plausible power curve out of
-    nothing — on an axis still labelled "Power (W)".
-
-    In a comparison that is worse than merely wrong: every session gets the
-    same synthetic bell, so two sessions look identical and a reader
-    concludes the athlete's power profile did not change. Trials without a
-    real Power.txt are now simply absent, and the callers say so on the page.
-
-    (The single-session report in pdf_report.py still synthesizes, but stamps
-    a red "SYNTHETIC" watermark over the panel. This module dropped that
-    watermark when it copied the loader.)
+    REAL DATA ONLY, and only this athlete's data for this session:
+      1. the curve stored in the warehouse at insert time
+         (``f_athletic_screen_power_curve``, via ``sess["stored_curves"]``);
+      2. otherwise an archived Power.txt whose filename carries this
+         athlete's name *and* this session's date.
+    Anything else contributes nothing, and the caller names the session as
+    missing a curve rather than drawing someone else's.
     """
     curves = []
+    stored = sess.get("stored_curves") or {}
     processed_dir = (os.path.join(power_files_dir, "Processed txt Files")
                      if power_files_dir else None)
     try:
@@ -569,34 +725,23 @@ def _load_session_power_curves(df: pd.DataFrame, power_files_dir: Optional[str])
     except Exception:
         load_power_txt = None  # type: ignore
 
-    for _, r in df.iterrows():
-        trial_name = r.get("trial_name") if "trial_name" in df.columns else None
-        power_file = None
-        if processed_dir and trial_name and load_power_txt is not None:
-            patterns = [
-                os.path.join(processed_dir, f"{trial_name}_Power.txt"),
-                os.path.join(processed_dir, f"{trial_name}*_Power.txt"),
-                os.path.join(power_files_dir, f"{trial_name}_Power.txt"),
-                os.path.join(power_files_dir, f"{trial_name}*_Power.txt"),
-            ]
-            for pattern in patterns:
-                matches = glob.glob(pattern)
-                if matches:
-                    power_file = matches[0]
-                    break
+    if "trial_name" not in df.columns:
+        return curves
 
-        if power_file and os.path.exists(power_file) and load_power_txt is not None:
-            try:
-                power_data = load_power_txt(power_file)
-                if len(power_data) > 0:
-                    t_norm = np.linspace(0, 1, len(power_data))
-                    curves.append((t_norm, power_data))
-                    continue
-            except Exception:  # pragma: no cover - fallback to synthesized
-                pass
+    for trial_name in df["trial_name"].dropna().astype(str):
+        power = stored.get(trial_name)
 
-        # No file, or it failed to load: contribute nothing. Never invent a
-        # curve — see this function's docstring.
+        if power is None and load_power_txt is not None and processed_dir:
+            path = _archived_power_file(processed_dir, trial_name, sess["date"],
+                                        sess.get("athlete_name") or "")
+            if path:
+                try:
+                    power = load_power_txt(path)
+                except Exception:
+                    power = None
+
+        if power is not None and len(power) > 0:
+            curves.append((np.linspace(0, 1, len(power)), np.asarray(power, dtype=float)))
 
     return curves
 
@@ -625,13 +770,13 @@ def _note_missing_power(ax, missing: List[str], any_plotted: bool) -> None:
     if not any_plotted:
         ax.text(0.5, 0.5,
                 "No power curve data\n"
-                "(no Power.txt found for these trials)",
+                "(none stored for these sessions)",
                 transform=ax.transAxes, ha="center", va="center",
                 color="#98a4ad", fontsize=34, fontweight="bold",
                 linespacing=1.5)
         return
     ax.text(0.5, 0.02,
-            "No power file for: " + ", ".join(missing),
+            "No stored power curve for: " + ", ".join(missing),
             transform=ax.transAxes, ha="center", va="bottom",
             color="#98a4ad", fontsize=24, style="italic")
 
@@ -650,7 +795,7 @@ def comparison_power_curve(ax, sessions: List[Dict],
         df = sess["df"]
         if df.empty:
             continue
-        curves = _load_session_power_curves(df, power_files_dir)
+        curves = _load_session_power_curves(sess, df, power_files_dir)
         mean = _mean_curve(curves)
         if mean is None:
             missing.append(format_session_label(sess["date"]))
@@ -685,7 +830,7 @@ def slv_comparison_power_curve(ax, sessions: List[Dict],
             sub = df[df["side"] == side]
             if sub.empty:
                 continue
-            curves = _load_session_power_curves(sub, power_files_dir)
+            curves = _load_session_power_curves(sess, sub, power_files_dir)
             mean = _mean_curve(curves)
             if mean is None:
                 missing.append(f"{format_session_label(sess['date'])} {marker}")

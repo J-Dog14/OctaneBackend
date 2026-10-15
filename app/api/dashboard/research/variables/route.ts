@@ -231,9 +231,9 @@ const JSONB_SQL_TABLES: Record<string, string> = {
 };
 
 /** Valid table keys (whitelist to prevent injection via table param) */
-export const VALID_TABLES = new Set(Object.keys(DIRECT_COLUMNS));
+const VALID_TABLES = new Set(Object.keys(DIRECT_COLUMNS));
 
-export const TABLE_LABELS: Record<string, string> = {
+const TABLE_LABELS: Record<string, string> = {
   pitching:              "Pitching (Trials)",
   hitting:               "Hitting (Trials)",
   athletic_screen_cmj:   "Athletic Screen — CMJ",

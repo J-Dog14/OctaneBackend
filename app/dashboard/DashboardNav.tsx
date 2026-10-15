@@ -1,14 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { Tabs, TabsList, TabsTab } from "@mantine/core";
 import { useUser, UserButton } from "@clerk/nextjs";
 
 const TABS = [
   { href: "/dashboard", label: "Dashboard", adminOnly: false },
   { href: "/dashboard/athletes", label: "Athletes", adminOnly: false },
-  { href: "/dashboard/athlete-tracking", label: "Athlete Tracking", adminOnly: false },
+  { href: "/coach", label: "Coach View", adminOnly: false },
   { href: "/dashboard/research", label: "Research", adminOnly: false },
   { href: "/dashboard/send-payload", label: "Send Payload", adminOnly: true },
   { href: "/dashboard/uais-maintenance", label: "UAIS Maintenance", adminOnly: true },
@@ -50,7 +51,14 @@ function NavTabs({ isAdmin }: { isAdmin: boolean }) {
 
 function DashboardNavWithClerk() {
   const { user, isLoaded } = useUser();
+  const router = useRouter();
   const isAdmin = !isLoaded || user?.publicMetadata?.role === "admin";
+  const isCoach = isLoaded && user?.publicMetadata?.role === "coach";
+
+  // Coach accounts live in the coach suite; the backend isn't for them.
+  useEffect(() => {
+    if (isCoach) router.replace("/coach");
+  }, [isCoach, router]);
   return (
     <>
       <NavTabs isAdmin={isAdmin} />

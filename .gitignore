@@ -59,3 +59,7 @@ next-env.d.ts
 
 # biomech images
 /public/biomech/
+
+# TrackMan portal pulls (athlete names / birth dates, browser sign-in)
+trackman_out/
+.trackman_profile/

@@ -3,7 +3,7 @@
  * Uses existing payload builders; computes percentile rank for each metric vs all other athletes.
  */
 
-import { unstable_cache } from "next/cache";
+import { definePopulation } from "@/lib/percentiles/populations";
 import { prisma } from "@/lib/db/prisma";
 import { buildPitchingPayload } from "@/lib/octane/pitchingPayload";
 import { buildHittingPayload } from "@/lib/octane/hittingPayload";
@@ -82,19 +82,19 @@ async function getAthleteUuidsWithPitching(): Promise<string[]> {
   return Array.from(set);
 }
 
-async function getPopulationPayloads<T>(
+async function getPopulationPayloads(
   uuids: string[],
   builder: (uuid: string) => Promise<{ athleteUuid: string; metrics: PayloadMetric[] }>
 ): Promise<PopulationByKey> {
   const byKey: PopulationByKey = {};
-  const batchSize = 15;
+  const batchSize = 4;
   for (let i = 0; i < uuids.length; i += batchSize) {
     const batch = uuids.slice(i, i + batchSize);
     const results = await Promise.allSettled(
       batch.map((uuid) => builder(uuid))
     );
     for (const result of results) {
-      if (result.status !== "fulfilled") continue;
+      if (result.status !== "fulfilled") throw new Error("Population member build failed", { cause: result.reason });
       const { athleteUuid, metrics } = result.value;
       for (const m of metrics) {
         if (m.value === null || !Number.isFinite(m.value)) continue;
@@ -113,12 +113,12 @@ export type DomainResult = {
 };
 
 // ---------------------------------------------------------------------------
-// Cached population builders (10-minute TTL).
-// The population map is expensive (150 × N DB queries) but rarely changes.
-// These are keyed by domain so each domain cache is independent.
+// Persistent population readers. Expensive builders run only in the worker.
+// Cohort selection and ranking conventions are preserved.
 // ---------------------------------------------------------------------------
 
-const getCachedPitchingPopulation = unstable_cache(
+const getCachedPitchingPopulation = definePopulation(
+  "population-pitching",
   async () => {
     const uuids = await getAthleteUuidsWithPitching();
     return getPopulationPayloads(uuids, async (uuid) => {
@@ -126,11 +126,11 @@ const getCachedPitchingPopulation = unstable_cache(
       return { athleteUuid: p.athleteUuid, metrics: p.metrics };
     });
   },
-  ["population-pitching"],
-  { revalidate: 3600 }
+  () => ({} as PopulationByKey),
 );
 
-const getCachedHittingPopulation = unstable_cache(
+const getCachedHittingPopulation = definePopulation(
+  "population-hitting",
   async () => {
     const uuids = await getAthleteUuidsWithHitting();
     return getPopulationPayloads(uuids, async (uuid) => {
@@ -138,11 +138,11 @@ const getCachedHittingPopulation = unstable_cache(
       return { athleteUuid: p.athleteUuid, metrics: p.metrics };
     });
   },
-  ["population-hitting"],
-  { revalidate: 3600 }
+  () => ({} as PopulationByKey),
 );
 
-const getCachedMobilityPopulation = unstable_cache(
+const getCachedMobilityPopulation = definePopulation(
+  "population-mobility",
   async () => {
     const uuids = await getAthleteUuidsWithMobility();
     return getPopulationPayloads(uuids, async (uuid) => {
@@ -150,11 +150,11 @@ const getCachedMobilityPopulation = unstable_cache(
       return { athleteUuid: p.athleteUuid, metrics: p.metrics };
     });
   },
-  ["population-mobility"],
-  { revalidate: 3600 }
+  () => ({} as PopulationByKey),
 );
 
-const getCachedAthleticScreenPopulation = unstable_cache(
+const getCachedAthleticScreenPopulation = definePopulation(
+  "population-athletic-screen",
   async () => {
     const uuids = await getAthleteUuidsWithAthleticScreen();
     return getPopulationPayloads(uuids, async (uuid) => {
@@ -162,11 +162,11 @@ const getCachedAthleticScreenPopulation = unstable_cache(
       return { athleteUuid: p.athleteUuid, metrics: p.metrics };
     });
   },
-  ["population-athletic-screen"],
-  { revalidate: 3600 }
+  () => ({} as PopulationByKey),
 );
 
-const getCachedAthleticScreenPopulationFemale = unstable_cache(
+const getCachedAthleticScreenPopulationFemale = definePopulation(
+  "population-athletic-screen-female",
   async () => {
     const rows = await prisma.f_athletic_screen_cmj.findMany({
       where: { d_athletes: { gender: "Female" } },
@@ -180,11 +180,11 @@ const getCachedAthleticScreenPopulationFemale = unstable_cache(
       return { athleteUuid: p.athleteUuid, metrics: p.metrics };
     });
   },
-  ["population-athletic-screen-female"],
-  { revalidate: 3600 }
+  () => ({} as PopulationByKey),
 );
 
-const getCachedArmActionPopulation = unstable_cache(
+const getCachedArmActionPopulation = definePopulation(
+  "population-arm-action",
   async () => {
     const uuids = await getAthleteUuidsWithArmAction();
     return getPopulationPayloads(uuids, async (uuid) => {
@@ -192,11 +192,11 @@ const getCachedArmActionPopulation = unstable_cache(
       return { athleteUuid: p.athleteUuid, metrics: p.metrics };
     });
   },
-  ["population-arm-action"],
-  { revalidate: 3600 }
+  () => ({} as PopulationByKey),
 );
 
-const getCachedProteusPitcherPopulation = unstable_cache(
+const getCachedProteusPitcherPopulation = definePopulation(
+  "population-proteus-pitcher",
   async () => {
     const uuids = await prisma.f_proteus.findMany({
       where: {
@@ -215,11 +215,11 @@ const getCachedProteusPitcherPopulation = unstable_cache(
       return { athleteUuid: p.athleteUuid, metrics: p.metrics };
     });
   },
-  ["population-proteus-pitcher"],
-  { revalidate: 3600 }
+  () => ({} as PopulationByKey),
 );
 
-const getCachedProteusHitterPopulation = unstable_cache(
+const getCachedProteusHitterPopulation = definePopulation(
+  "population-proteus-hitter",
   async () => {
     const uuids = await prisma.f_proteus.findMany({
       where: {
@@ -242,8 +242,7 @@ const getCachedProteusHitterPopulation = unstable_cache(
       return { athleteUuid: p.athleteUuid, metrics: p.metrics };
     });
   },
-  ["population-proteus-hitter"],
-  { revalidate: 3600 }
+  () => ({} as PopulationByKey),
 );
 
 export async function getPitchingWithPercentiles(
@@ -433,7 +432,8 @@ const DOMAIN_COUNT_KEYS: Record<DomainId, keyof ReportCounts> = {
 export async function buildDomainsWithPercentiles(
   athleteUuid: string,
   counts: ReportCounts,
-  sessionDates?: Partial<Record<DomainId, string>>
+  sessionDates?: Partial<Record<DomainId, string>>,
+  requestedDomains?: readonly DomainId[]
 ): Promise<DomainWithMetrics[]> {
   const domainBuilders: Array<{
     domainId: DomainId;
@@ -466,7 +466,7 @@ export async function buildDomainsWithPercentiles(
   ];
 
   const eligible = domainBuilders.filter(
-    ({ domainId }) => counts[DOMAIN_COUNT_KEYS[domainId]] > 0
+    ({ domainId }) => counts[DOMAIN_COUNT_KEYS[domainId]] > 0 && (!requestedDomains || requestedDomains.includes(domainId))
   );
 
   const settled = await Promise.allSettled(
@@ -489,21 +489,4 @@ export async function buildDomainsWithPercentiles(
     }
   }
   return results;
-}
-
-/**
- * Pre-warms all population caches. Call from instrumentation.ts at startup
- * (non-blocking) so the first real request hits a warm cache.
- */
-export async function warmPopulationCaches(): Promise<void> {
-  await Promise.allSettled([
-    getCachedPitchingPopulation(),
-    getCachedHittingPopulation(),
-    getCachedMobilityPopulation(),
-    getCachedAthleticScreenPopulation(),
-    getCachedAthleticScreenPopulationFemale(),
-    getCachedArmActionPopulation(),
-    getCachedProteusPitcherPopulation(),
-    getCachedProteusHitterPopulation(),
-  ]);
 }

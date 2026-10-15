@@ -114,6 +114,38 @@ export function formatMetricDisplayName(
   return toTitleCase(s);
 }
 
+const ATHLETIC_SCREEN_MOVEMENTS: Record<string, string> = {
+  CMJ: "Countermovement Jump",
+  DJ: "Drop Jump",
+  PPU: "Plyo Pushup",
+  SLV: "Single Leg Vertical",
+};
+const ATHLETIC_SCREEN_METRICS: Record<string, string> = {
+  JH: "Jump Height", CT: "Contact Time", RSI: "RSI", "Max RPD": "Max RPD", "Time to Max RPD": "Time to Max RPD",
+};
+
+/** Athletic screen movement for a metric category ("DJ", "SLV_Left"…), e.g. "Drop Jump", "Single Leg Vertical (Left)". */
+export function athleticScreenMovement(category: string | undefined): string | null {
+  if (!category) return null;
+  const [base, ...rest] = category.split("_");
+  const label = ATHLETIC_SCREEN_MOVEMENTS[base!.toUpperCase()];
+  if (!label) return null;
+  return rest.length ? `${label} (${rest.join(" ")})` : label;
+}
+
+/**
+ * Metric name with enough context to stand on its own in a mixed list (e.g.
+ * highlights): athletic screen metrics get their movement — "Drop Jump · RSI".
+ */
+export function formatMetricLabel(name: string, category?: string, domainId?: string): string {
+  if (domainId === "athleticScreen") {
+    const movement = athleticScreenMovement(category);
+    const metric = ATHLETIC_SCREEN_METRICS[name] ?? formatMetricDisplayName(name, category, domainId);
+    if (movement) return `${movement} · ${metric}`;
+  }
+  return formatMetricDisplayName(name, category, domainId);
+}
+
 function toTitleCase(s: string): string {
   return s
     .split(" ")

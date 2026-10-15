@@ -43,7 +43,14 @@ export function metricsToRadarData(metrics: MetricWithPercentile[], domainId?: s
 }
 
 /** Returns highlights (top 3) and lowlights (bottom 3) across all domains. */
-export function getHighlightsAndLowlights(domains: DomainWithMetrics[]) {
+/**
+ * Best and worst percentiles across every domain. `count` per side (default 3);
+ * `exclude` drops metrics whose key ("CATEGORY|name") or display name matches.
+ */
+export function getHighlightsAndLowlights(
+  domains: DomainWithMetrics[],
+  { count = 3, exclude }: { count?: number; exclude?: RegExp } = {},
+) {
   const all: Array<{ domainLabel: string; domainId: string; metric: MetricWithPercentile }> = [];
   for (const d of domains) {
     for (const m of d.metrics) {
@@ -53,14 +60,16 @@ export function getHighlightsAndLowlights(domains: DomainWithMetrics[]) {
         Number.isFinite(m.percentile) &&
         m.mobilityMetricKind !== "GROUP" &&
         m.mobilityMetricKind !== "COMPONENT" &&
-        !HIGHLIGHTS_EXCLUDE_KEYS.has(key)
+        !HIGHLIGHTS_EXCLUDE_KEYS.has(key) &&
+        !(exclude && (exclude.test(key) || exclude.test(formatMetricDisplayName(m.name, m.category, d.domainId))))
       ) {
         all.push({ domainLabel: d.label, domainId: d.domainId, metric: m });
       }
     }
   }
   all.sort((a, b) => (b.metric.percentile ?? 0) - (a.metric.percentile ?? 0));
-  return { highlights: all.slice(0, 3), lowlights: all.slice(-3).reverse() };
+  const n = Math.min(count, Math.floor(all.length / 2));
+  return { highlights: all.slice(0, n), lowlights: n ? all.slice(-n).reverse() : [] };
 }
 
 export function getPercentileStyle(percentile: number | null): React.CSSProperties | undefined {

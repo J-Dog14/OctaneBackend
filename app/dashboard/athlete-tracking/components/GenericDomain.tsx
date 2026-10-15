@@ -298,34 +298,23 @@ export function GenericDomain({
 
             return (
               <div key={section.id} className="card" style={{ marginBottom: "1rem" }}>
-                {hasDiagram ? (
-                  <div className="diagram-header">
+                {/* Diagram pinned to the left, title + table beside it (desktop layout). */}
+                <div style={{ display: "flex", alignItems: "flex-start", gap: "1.25rem" }}>
+                {hasDiagram && (
+                  <div style={{ width: 150, flexShrink: 0 }}>
                     <PitchingDiagram sectionId={section.id} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      {section.title ? (
-                        <h3 style={{ margin: "0 0 0.35rem", fontSize: "1rem" }}>{section.title}</h3>
-                      ) : null}
-                      <p
-                        className="text-muted"
-                        style={{ margin: 0, fontSize: "0.82rem", lineHeight: 1.45 }}
-                      >
-                        {section.description}
-                      </p>
-                    </div>
                   </div>
-                ) : (
-                  <>
-                    {section.title ? (
-                      <h3 style={{ margin: "0 0 0.35rem", fontSize: "1rem" }}>{section.title}</h3>
-                    ) : null}
-                    <p
-                      className="text-muted"
-                      style={{ margin: "0 0 0.75rem", fontSize: "0.82rem", lineHeight: 1.45 }}
-                    >
-                      {section.description}
-                    </p>
-                  </>
                 )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                {section.title ? (
+                  <h3 style={{ margin: "0 0 0.35rem", fontSize: "1rem" }}>{section.title}</h3>
+                ) : null}
+                <p
+                  className="text-muted"
+                  style={{ margin: "0 0 0.75rem", fontSize: "0.82rem", lineHeight: 1.45 }}
+                >
+                  {section.description}
+                </p>
                 <div className="table-scroll-wrapper">
                   <table>
                     <thead>
@@ -439,6 +428,8 @@ export function GenericDomain({
                     ))}
                   </div>
                 )}
+                </div>
+                </div>
               </div>
             );
           })}

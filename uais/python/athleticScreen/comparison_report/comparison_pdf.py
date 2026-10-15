@@ -40,6 +40,7 @@ from .data_loader import (
     sessions_with_data,
 )
 from .summary_page import summary_page
+from athleticScreen.power_curve_store import load_power_curves_for_sessions  # noqa: E402
 
 # Ideal kurtosis bands, borrowed from the single-session report so the
 # summary page scores curve shape the same way the movement pages do.
@@ -98,8 +99,9 @@ def create_comparison_pdf(
         Path to the 8ctane logo. Defaults to the shared logo file in the
         ``athleticScreen`` folder.
     power_files_dir : str, optional
-        Base folder for ``Power.txt`` files (passed through to the curve
-        plotter). When ``None`` the curves are synthesized.
+        Base folder whose ``Processed txt Files`` archive is searched for a
+        session's Power.txt when the warehouse has no stored curve for it.
+        Curves are never synthesized; a session with neither is labelled.
     skip_gender_filter : bool
         If True, compare against the full population regardless of gender.
     engine : SQLAlchemy engine, optional
@@ -202,11 +204,18 @@ def create_comparison_pdf(
             if renderer is None:
                 continue
 
+            # Real curves stored at insert time, one dict per session.
+            stored_curves = load_power_curves_for_sessions(
+                engine, athlete_uuid, iso_dates, movement)
+            for date_str, curves in zip(iso_dates, stored_curves):
+                print(f"{movement} {date_str}: {len(curves)} stored power curve(s)")
+
             renderer(pdf, per_session_dfs, pop_df,
                      athlete_name=athlete_name,
                      session_dates=iso_dates,
                      logo_path=logo_path,
-                     power_files_dir=power_files_dir)
+                     power_files_dir=power_files_dir,
+                     stored_curves=stored_curves)
             rendered_any_page = True
 
     if not rendered_any_page:
