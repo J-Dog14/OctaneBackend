@@ -1,15 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { Tabs, TabsList, TabsTab } from "@mantine/core";
 import { useUser, UserButton } from "@clerk/nextjs";
 
 const TABS = [
   { href: "/dashboard", label: "Dashboard", adminOnly: false },
   { href: "/dashboard/athletes", label: "Athletes", adminOnly: false },
-  { href: "/coach", label: "Coach View", adminOnly: false },
+  { href: "/coach", label: "Coach View", adminOnly: true },
   { href: "/dashboard/research", label: "Research", adminOnly: false },
   { href: "/dashboard/send-payload", label: "Send Payload", adminOnly: true },
   { href: "/dashboard/uais-maintenance", label: "UAIS Maintenance", adminOnly: true },
@@ -18,6 +17,7 @@ const TABS = [
   { href: "/dashboard/pitch-intel", label: "Pitch Intelligence", adminOnly: true },
   { href: "/dashboard/reports", label: "PDF Reports", adminOnly: true },
   { href: "/dashboard/settings", label: "Settings", adminOnly: true },
+  { href: "/dashboard/users", label: "Users", adminOnly: true },
   { href: "/dashboard/audit", label: "DB Audit", adminOnly: true },
 ] as const;
 
@@ -51,14 +51,8 @@ function NavTabs({ isAdmin }: { isAdmin: boolean }) {
 
 function DashboardNavWithClerk() {
   const { user, isLoaded } = useUser();
-  const router = useRouter();
   const isAdmin = !isLoaded || user?.publicMetadata?.role === "admin";
-  const isCoach = isLoaded && user?.publicMetadata?.role === "coach";
-
-  // Coach accounts live in the coach suite; the backend isn't for them.
-  useEffect(() => {
-    if (isCoach) router.replace("/coach");
-  }, [isCoach, router]);
+  // Coach accounts are redirected to /coach by the dashboard layout (server side).
   return (
     <>
       <NavTabs isAdmin={isAdmin} />

@@ -1,8 +1,8 @@
 "use client";
 
-import { useUser } from "@clerk/nextjs";
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { UserButton, useUser } from "@clerk/nextjs";
+import { Button, Center, Group, Stack, Text, Title } from "@mantine/core";
 import { CoachDataProvider } from "./_components/CoachDataProvider";
 
 const clerkConfigured = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
@@ -10,16 +10,36 @@ const ALLOWED = new Set(["coach", "admin"]);
 
 function Guard({ children }: { children: React.ReactNode }) {
   const { user, isLoaded } = useUser();
-  const router = useRouter();
   const role = user?.publicMetadata?.role as string | undefined;
   const allowed = !!role && ALLOWED.has(role);
 
-  useEffect(() => {
-    if (isLoaded && !allowed) router.replace("/dashboard");
-  }, [isLoaded, allowed, router]);
+  if (!isLoaded) return null;
+  if (!user) return <NoAccess message="You're signed out." />;
+  if (!allowed) {
+    const email = user.primaryEmailAddress?.emailAddress ?? "This account";
+    return (
+      <NoAccess
+        message={`${email} has role "${role ?? "user"}", which can't open the coach view. An admin can change it on the Users page.`}
+      />
+    );
+  }
+  return <CoachDataProvider key={user.id}>{children}</CoachDataProvider>;
+}
 
-  if (!isLoaded || !allowed) return null;
-  return <CoachDataProvider key={user!.id}>{children}</CoachDataProvider>;
+/** Shown instead of silently redirecting, so a wrong Clerk role is obvious. */
+function NoAccess({ message }: { message: string }) {
+  return (
+    <Center h="100vh" p="md">
+      <Stack align="center" gap="sm" maw={460}>
+        <Title order={3}>No coach access</Title>
+        <Text c="dimmed" ta="center">{message}</Text>
+        <Group>
+          <Button component={Link} href="/dashboard" variant="light">Back to dashboard</Button>
+          <UserButton />
+        </Group>
+      </Stack>
+    </Center>
+  );
 }
 
 /**
