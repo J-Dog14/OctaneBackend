@@ -81,7 +81,8 @@ const isoDaysAgo = (n: number) => {
 // Scatter chart with clickable pitches + type averages
 // ---------------------------------------------------------------------------
 
-type Pt = { x: number; y: number; id: string; type: PitchCode; avg?: boolean; n?: number };
+/** `x` is the plotted position; `rawX` the value itself (they differ only when the x axis is mirrored). */
+type Pt = { x: number; rawX: number; y: number; id: string; type: PitchCode; avg?: boolean; n?: number };
 
 interface ScatterProps {
   pitches: PitchRow[];
@@ -104,10 +105,13 @@ interface ScatterProps {
   fmtX?: (v: number) => string;
   fmtY?: (v: number) => string;
   height?: number;
+  /** Draw the x axis mirrored (LHP breaks). Tick labels and tooltips keep the raw values. */
+  mirrorX?: boolean;
 }
 
 function PitchScatter(props: ScatterProps) {
   const { pitches, summaries, x, y, avgX, avgY, show, selectedId, onSelect, onSolo, height = 300 } = props;
+  const sx = props.mirrorX ? -1 : 1;
   const types = typesIn(pitches);
   const byType = useMemo(() => {
     const m = new Map<PitchCode, Pt[]>();
@@ -116,20 +120,21 @@ function PitchScatter(props: ScatterProps) {
       const yv = y(p);
       if (xv == null || yv == null) continue;
       const arr = m.get(p.type) ?? [];
-      arr.push({ x: xv, y: yv, id: p.id, type: p.type });
+      arr.push({ x: xv * sx, rawX: xv, y: yv, id: p.id, type: p.type });
       m.set(p.type, arr);
     }
     return m;
-  }, [pitches, x, y]);
+  }, [pitches, x, y, sx]);
   const avgs = useMemo(() => {
     const out: Pt[] = [];
     for (const [t, s] of summaries) {
       const xv = avgX(s);
       const yv = avgY(s);
-      if (xv != null && yv != null) out.push({ x: xv, y: yv, id: `avg:${t}`, type: t, avg: true, n: s.n });
+      if (xv != null && yv != null) out.push({ x: xv * sx, rawX: xv, y: yv, id: `avg:${t}`, type: t, avg: true, n: s.n });
     }
     return out;
-  }, [summaries, avgX, avgY]);
+  }, [summaries, avgX, avgY, sx]);
+  const fmtTickX = (v: number) => (props.fmtX ? props.fmtX(v * sx + 0) : String(v * sx + 0));
   const plotted = [...byType.values()].reduce((a, b) => a + b.length, 0);
   if (!plotted) return <Text size="sm" c="dimmed" py="xl" ta="center">No data for this chart.</Text>;
 
@@ -180,7 +185,7 @@ function PitchScatter(props: ScatterProps) {
         <CartesianGrid stroke={GRID} />
         <XAxis
           type="number" dataKey="x" domain={props.xDomain ?? ["auto", "auto"]} tick={AXIS_TICK} tickLine={false}
-          axisLine={{ stroke: "rgba(255,255,255,0.12)" }} tickFormatter={props.fmtX} ticks={props.xTicks}
+          axisLine={{ stroke: "rgba(255,255,255,0.12)" }} tickFormatter={props.mirrorX ? fmtTickX : props.fmtX} ticks={props.xTicks}
           label={{ value: props.xLabel, position: "insideBottom", offset: -10, ...AXIS_LABEL }}
         />
         <YAxis
@@ -203,7 +208,7 @@ function PitchScatter(props: ScatterProps) {
                   {p.avg ? ` average (${p.n})` : ""}
                 </div>
                 <div>
-                  {props.xLabel.split(" (")[0]}: {props.fmtX ? props.fmtX(p.x) : fmt(p.x)} · {props.yLabel.split(" (")[0]}: {props.fmtY ? props.fmtY(p.y) : fmt(p.y)}
+                  {props.xLabel.split(" (")[0]}: {props.fmtX ? props.fmtX(p.rawX) : fmt(p.rawX)} · {props.yLabel.split(" (")[0]}: {props.fmtY ? props.fmtY(p.y) : fmt(p.y)}
                 </div>
                 <div style={{ opacity: 0.6, fontSize: "0.7rem" }}>{p.avg ? "click to show only this pitch" : "click to select"}</div>
               </div>
@@ -666,6 +671,8 @@ export function PitchReport({ athleteUuid }: { athleteUuid: string }) {
   ];
   const sessionInfo = !isRange ? sessions.find((s) => s.key === active) : null;
   const scatterCommon = { pitches, summaries, show, selectedId, onSelect: select, onSolo };
+  // Tagged LHP (most pitches in view): the break chart is mirrored so arm side reads on the left.
+  const lefty = pitches.length > 0 && pitches.filter((p) => p.throws === "L").length > pitches.length / 2;
 
   return (
     <Stack gap="md" className="pitch-report">
@@ -759,8 +766,8 @@ export function PitchReport({ athleteUuid }: { athleteUuid: string }) {
                 ...(pitches.some((p) => p.gyro != null) ? [{ label: "Gyro", get: (s: TypeSummary) => (s.gyro == null ? "—" : `${fmt(s.gyro)}°`) }] : []),
               ]} />
             </Panel>
-            <Panel title="Breaks" sub="glove side ← → arm side">
-              <PitchScatter {...scatterCommon} x={(p) => p.hbArm} y={(p) => p.ivb} avgX={(s) => s.hbArm} avgY={(s) => s.ivb}
+            <Panel title="Breaks" sub={lefty ? "arm side ← → glove side · LHP, drawn as it breaks" : "glove side ← → arm side"}>
+              <PitchScatter {...scatterCommon} mirrorX={lefty} x={(p) => p.hbArm} y={(p) => p.ivb} avgX={(s) => s.hbArm} avgY={(s) => s.ivb}
                 xLabel="Horizontal break (in)" yLabel="IVB (in)" xDomain={[-25, 25]} yDomain={[-25, 25]} xTicks={BREAK_TICKS} yTicks={BREAK_TICKS} zeroLines fmtX={(v) => v.toFixed(0)} fmtY={(v) => v.toFixed(0)} />
             </Panel>
             <Panel title="Spin direction" sub="clock tilt, pitcher's view · distance from center = spin efficiency">

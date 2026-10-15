@@ -1,0 +1,707 @@
+[
+ {
+  "metric_name": "PLANE.Bat_Angle_Frontal@Contact",
+  "frame": 1,
+  "value": -54.9689
+ },
+ {
+  "metric_name": "PLANE.Bat_Angle_Sagittal@Contact",
+  "frame": 1,
+  "value": -8.977104
+ },
+ {
+  "metric_name": "PLANE.Bat_Angle_Transversal@Contact",
+  "frame": 1,
+  "value": 6.319357
+ },
+ {
+  "metric_name": "PLANE.Horizontal_attack_angle",
+  "frame": 1,
+  "value": -10.73798
+ },
+ {
+  "metric_name": "PLANE.Vertical_attack_angle",
+  "frame": 1,
+  "value": 12.09389
+ },
+ {
+  "metric_name": "PROCESSED.Bat_travelled_distance_max",
+  "frame": 1,
+  "value": 2.698221
+ },
+ {
+  "metric_name": "PROCESSED.Cropped Measurement End Frame",
+  "frame": 1,
+  "value": 1230
+ },
+ {
+  "metric_name": "PROCESSED.Cropped Measurement Start Frame",
+  "frame": 1,
+  "value": 762
+ },
+ {
+  "metric_name": "PROCESSED.Frame_rate",
+  "frame": 1,
+  "value": 300
+ },
+ {
+  "metric_name": "PROCESSED.Head_Angle@Contact",
+  "frame": 1,
+  "value": 9.198936
+ },
+ {
+  "metric_name": "PROCESSED.Head_Angle@Lead_Foot_Down",
+  "frame": 1,
+  "value": 13.83934
+ },
+ {
+  "metric_name": "PROCESSED.Head_Angle@Setup",
+  "frame": 1,
+  "value": 13.30112
+ },
+ {
+  "metric_name": "PROCESSED.Lead_Elbow_Ang_Vel@Max_Lead_Elbow_Ext_Ang_Vel",
+  "frame": 1,
+  "value": 178.3268
+ },
+ {
+  "metric_name": "PROCESSED.Lead_Elbow_Ang_Vel@Max_Lead_Elbow_Ext_Ang_Vel_MEAN",
+  "frame": 1,
+  "value": 178.3268
+ },
+ {
+  "metric_name": "PROCESSED.Lead_Elbow_Ang_Vel@Max_Lead_Elbow_Sup_Ang_Vel",
+  "frame": 1,
+  "value": 894.2878
+ },
+ {
+  "metric_name": "PROCESSED.Lead_Elbow_Ang_Vel@Max_Lead_Elbow_Sup_Ang_Vel_MEAN",
+  "frame": 1,
+  "value": 894.2878
+ },
+ {
+  "metric_name": "PROCESSED.Lead_Elbow_Angle@Contact",
+  "frame": 1,
+  "value": 17.22364
+ },
+ {
+  "metric_name": "PROCESSED.Lead_Elbow_Angle@Contact_MEAN",
+  "frame": 1,
+  "value": 17.22364
+ },
+ {
+  "metric_name": "PROCESSED.Lead_Elbow_Angle@Lead_Foot_Down",
+  "frame": 1,
+  "value": 33.38427
+ },
+ {
+  "metric_name": "PROCESSED.Lead_Elbow_Angle@Lead_Foot_Down_MEAN",
+  "frame": 1,
+  "value": 33.38427
+ },
+ {
+  "metric_name": "PROCESSED.Lead_Elbow_Angle@Max_Lead_Elbow_Ext_Angle",
+  "frame": 1,
+  "value": 79.08215
+ },
+ {
+  "metric_name": "PROCESSED.Lead_Elbow_Angle@Max_Lead_Elbow_Ext_Angle_MEAN",
+  "frame": 1,
+  "value": 79.08215
+ },
+ {
+  "metric_name": "PROCESSED.Lead_Elbow_Angle@Max_Lead_Elbow_Sup_Angle",
+  "frame": 1,
+  "value": -65.91703
+ },
+ {
+  "metric_name": "PROCESSED.Lead_Elbow_Angle@Max_Lead_Elbow_Sup_Angle_MEAN",
+  "frame": 1,
+  "value": -65.91703
+ },
+ {
+  "metric_name": "PROCESSED.Lead_Foot_Segment_Angle@Contact",
+  "frame": 1,
+  "value": -2.545663
+ },
+ {
+  "metric_name": "PROCESSED.Lead_Foot_Segment_Angle@Lead_Foot_Down",
+  "frame": 1,
+  "value": 0.876877
+ },
+ {
+  "metric_name": "PROCESSED.Lead_Foot_Segment_Angle@Setup",
+  "frame": 1,
+  "value": -1.056405
+ },
+ {
+  "metric_name": "PROCESSED.Lead_Foot_Vel_mag_max",
+  "frame": 1,
+  "value": 1.292327
+ },
+ {
+  "metric_name": "PROCESSED.Lead_Knee_Ang_Vel@Contact",
+  "frame": 1,
+  "value": 180.7484
+ },
+ {
+  "metric_name": "PROCESSED.Lead_Knee_Ang_Vel@Contact_MEAN",
+  "frame": 1,
+  "value": 180.7484
+ },
+ {
+  "metric_name": "PROCESSED.Lead_Knee_Ang_Vel@Lead_Foot_Down",
+  "frame": 1,
+  "value": -84.40626
+ },
+ {
+  "metric_name": "PROCESSED.Lead_Knee_Ang_Vel@Lead_Foot_Down_MEAN",
+  "frame": 1,
+  "value": -84.40626
+ },
+ {
+  "metric_name": "PROCESSED.Lead_Knee_Ang_Vel_ext_max",
+  "frame": 1,
+  "value": -84.40626
+ },
+ {
+  "metric_name": "PROCESSED.Lead_Knee_Ang_Vel_ext_max_MEAN",
+  "frame": 1,
+  "value": -84.40626
+ },
+ {
+  "metric_name": "PROCESSED.Lead_Knee_Angle@Contact",
+  "frame": 1,
+  "value": 22.82321
+ },
+ {
+  "metric_name": "PROCESSED.Lead_Knee_Angle@Contact_MEAN",
+  "frame": 1,
+  "value": 22.82321
+ },
+ {
+  "metric_name": "PROCESSED.Lead_Knee_Angle@Lead_Foot_Down",
+  "frame": 1,
+  "value": 35.4269
+ },
+ {
+  "metric_name": "PROCESSED.Lead_Knee_Angle@Lead_Foot_Down_MEAN",
+  "frame": 1,
+  "value": 35.4269
+ },
+ {
+  "metric_name": "PROCESSED.Lead_Knee_Angle_ext_max",
+  "frame": 1,
+  "value": 22.82321
+ },
+ {
+  "metric_name": "PROCESSED.Lead_Knee_Angle_ext_max_MEAN",
+  "frame": 1,
+  "value": 22.82321
+ },
+ {
+  "metric_name": "PROCESSED.Lead_Shoulder_Ang_Vel@Contact",
+  "frame": 1,
+  "value": -313.9846
+ },
+ {
+  "metric_name": "PROCESSED.Lead_Shoulder_Ang_Vel@Lead_Foot_Down",
+  "frame": 1,
+  "value": -25.20026
+ },
+ {
+  "metric_name": "PROCESSED.Lead_Shoulder_Ang_Vel@Setup",
+  "frame": 1,
+  "value": 38.92519
+ },
+ {
+  "metric_name": "PROCESSED.Lead_Shoulder_Angle@Contact",
+  "frame": 1,
+  "value": 116.425
+ },
+ {
+  "metric_name": "PROCESSED.Lead_Shoulder_Angle@Lead_Foot_Down",
+  "frame": 1,
+  "value": 133.9087
+ },
+ {
+  "metric_name": "PROCESSED.Lead_Shoulder_Angle@Setup",
+  "frame": 1,
+  "value": 114.1796
+ },
+ {
+  "metric_name": "PROCESSED.Left_Wrist_Angle@Lead_Foot_Down",
+  "frame": 1,
+  "value": -27.76508
+ },
+ {
+  "metric_name": "PROCESSED.Left_Wrist_Angle@Lead_Foot_Down_MEAN",
+  "frame": 1,
+  "value": -27.76508
+ },
+ {
+  "metric_name": "PROCESSED.Max_Bat_Ang_Vel",
+  "frame": 1,
+  "value": 1761.843
+ },
+ {
+  "metric_name": "PROCESSED.Max_Bat_Ang_Vel_MEAN",
+  "frame": 1,
+  "value": 1761.843
+ },
+ {
+  "metric_name": "PROCESSED.Max_Bat_Linear_Vel",
+  "frame": 1,
+  "value": 22.38354
+ },
+ {
+  "metric_name": "PROCESSED.Max_Bat_Linear_Vel_MEAN",
+  "frame": 1,
+  "value": 22.38354
+ },
+ {
+  "metric_name": "PROCESSED.Max_Lead_Forearm_Ang_Vel",
+  "frame": 1,
+  "value": 911.4799
+ },
+ {
+  "metric_name": "PROCESSED.Max_Lead_Forearm_Ang_Vel_MEAN",
+  "frame": 1,
+  "value": 911.4799
+ },
+ {
+  "metric_name": "PROCESSED.Max_Lead_Hand_Ang_Vel",
+  "frame": 1,
+  "value": 1283.487
+ },
+ {
+  "metric_name": "PROCESSED.Max_Lead_Hand_Ang_Vel_MEAN",
+  "frame": 1,
+  "value": 1283.487
+ },
+ {
+  "metric_name": "PROCESSED.Max_Lead_Hand_Linear_Vel",
+  "frame": 1,
+  "value": 7.881872
+ },
+ {
+  "metric_name": "PROCESSED.Max_Lead_Hand_Linear_Vel_MEAN",
+  "frame": 1,
+  "value": 7.881872
+ },
+ {
+  "metric_name": "PROCESSED.Max_Pelvis_Ang_Vel",
+  "frame": 1,
+  "value": 568.114
+ },
+ {
+  "metric_name": "PROCESSED.Max_Pelvis_Ang_Vel_MEAN",
+  "frame": 1,
+  "value": 568.114
+ },
+ {
+  "metric_name": "PROCESSED.Max_RPV_CGPos_VLab_Linear_Vel",
+  "frame": 1,
+  "value": 0.8867583
+ },
+ {
+  "metric_name": "PROCESSED.Max_RPV_CGPos_VLab_Linear_Vel_MEAN",
+  "frame": 1,
+  "value": 0.8867583
+ },
+ {
+  "metric_name": "PROCESSED.Max_RTA_CGPos_VLab_Linear_Vel",
+  "frame": 1,
+  "value": 1.155775
+ },
+ {
+  "metric_name": "PROCESSED.Max_RTA_CGPos_VLab_Linear_Vel_MEAN",
+  "frame": 1,
+  "value": 1.155775
+ },
+ {
+  "metric_name": "PROCESSED.Max_Thorax_Ang_Vel",
+  "frame": 1,
+  "value": 651.0743
+ },
+ {
+  "metric_name": "PROCESSED.Max_Thorax_Ang_Vel_MEAN",
+  "frame": 1,
+  "value": 651.0743
+ },
+ {
+  "metric_name": "PROCESSED.Pelvis_Angle@Contact",
+  "frame": 1,
+  "value": -4.963095
+ },
+ {
+  "metric_name": "PROCESSED.Pelvis_Angle@Lead_Foot_Down",
+  "frame": 1,
+  "value": -5.921952
+ },
+ {
+  "metric_name": "PROCESSED.Pelvis_Angle@Lead_Foot_Down_MEAN",
+  "frame": 1,
+  "value": -5.921952
+ },
+ {
+  "metric_name": "PROCESSED.Pelvis_Angle@Setup",
+  "frame": 1,
+  "value": -2.185287
+ },
+ {
+  "metric_name": "PROCESSED.Pelvis_Shoulders_Separation@Contact",
+  "frame": 1,
+  "value": -5.348742
+ },
+ {
+  "metric_name": "PROCESSED.Pelvis_Shoulders_Separation@Contact_MEAN",
+  "frame": 1,
+  "value": -5.348742
+ },
+ {
+  "metric_name": "PROCESSED.Pelvis_Shoulders_Separation@Downswing",
+  "frame": 1,
+  "value": -5.666561
+ },
+ {
+  "metric_name": "PROCESSED.Pelvis_Shoulders_Separation@Downswing_MEAN",
+  "frame": 1,
+  "value": -5.666561
+ },
+ {
+  "metric_name": "PROCESSED.Pelvis_Shoulders_Separation@Lead_Foot_Down",
+  "frame": 1,
+  "value": 2.756629
+ },
+ {
+  "metric_name": "PROCESSED.Pelvis_Shoulders_Separation@Lead_Foot_Down_MEAN",
+  "frame": 1,
+  "value": 2.756629
+ },
+ {
+  "metric_name": "PROCESSED.Pelvis_Shoulders_Separation@Max_Bat_Ang_Vel",
+  "frame": 1,
+  "value": -10.20236
+ },
+ {
+  "metric_name": "PROCESSED.Pelvis_Shoulders_Separation@Max_Bat_Ang_Vel_MEAN",
+  "frame": 1,
+  "value": -10.20236
+ },
+ {
+  "metric_name": "PROCESSED.Pelvis_Shoulders_Separation@Max_Lead_Hand_Ang_Vel",
+  "frame": 1,
+  "value": -1.97021
+ },
+ {
+  "metric_name": "PROCESSED.Pelvis_Shoulders_Separation@Max_Lead_Hand_Ang_Vel_MEAN",
+  "frame": 1,
+  "value": -1.97021
+ },
+ {
+  "metric_name": "PROCESSED.Pelvis_Shoulders_Separation@Setup",
+  "frame": 1,
+  "value": -6.053553
+ },
+ {
+  "metric_name": "PROCESSED.Right_Wrist_Angle@Lead_Foot_Down",
+  "frame": 1,
+  "value": -6.763466
+ },
+ {
+  "metric_name": "PROCESSED.Right_Wrist_Angle@Lead_Foot_Down_MEAN",
+  "frame": 1,
+  "value": -6.763466
+ },
+ {
+  "metric_name": "PROCESSED.Stride_Width@Lead_Foot_Down",
+  "frame": 1,
+  "value": 0.7417908
+ },
+ {
+  "metric_name": "PROCESSED.Stride_Width@Lead_Foot_Down_MEAN",
+  "frame": 1,
+  "value": 0.7417908
+ },
+ {
+  "metric_name": "PROCESSED.Trail_Elbow_Ang_Vel@Max_Trail_Elbow_Ext_Ang_Vel",
+  "frame": 1,
+  "value": 19.78914
+ },
+ {
+  "metric_name": "PROCESSED.Trail_Elbow_Ang_Vel@Max_Trail_Elbow_Ext_Ang_Vel_MEAN",
+  "frame": 1,
+  "value": 19.78914
+ },
+ {
+  "metric_name": "PROCESSED.Trail_Elbow_Ang_Vel@Max_Trail_Elbow_Pron_Ang_Vel",
+  "frame": 1,
+  "value": -148.3176
+ },
+ {
+  "metric_name": "PROCESSED.Trail_Elbow_Ang_Vel@Max_Trail_Elbow_Pron_Ang_Vel_MEAN",
+  "frame": 1,
+  "value": -148.3176
+ },
+ {
+  "metric_name": "PROCESSED.Trail_Elbow_Angle@Contact",
+  "frame": 1,
+  "value": 56.17459
+ },
+ {
+  "metric_name": "PROCESSED.Trail_Elbow_Angle@Contact_MEAN",
+  "frame": 1,
+  "value": 56.17459
+ },
+ {
+  "metric_name": "PROCESSED.Trail_Elbow_Angle@Lead_Foot_Down",
+  "frame": 1,
+  "value": 107.1169
+ },
+ {
+  "metric_name": "PROCESSED.Trail_Elbow_Angle@Lead_Foot_Down_MEAN",
+  "frame": 1,
+  "value": 107.1169
+ },
+ {
+  "metric_name": "PROCESSED.Trail_Elbow_Angle@Max_Trail_Elbow_Ext_Angle",
+  "frame": 1,
+  "value": 129.8781
+ },
+ {
+  "metric_name": "PROCESSED.Trail_Elbow_Angle@Max_Trail_Elbow_Ext_Angle_MEAN",
+  "frame": 1,
+  "value": 129.8781
+ },
+ {
+  "metric_name": "PROCESSED.Trail_Elbow_Angle@Max_Trail_Elbow_Pron_Angle",
+  "frame": 1,
+  "value": -95.84699
+ },
+ {
+  "metric_name": "PROCESSED.Trail_Elbow_Angle@Max_Trail_Elbow_Pron_Angle_MEAN",
+  "frame": 1,
+  "value": -95.84699
+ },
+ {
+  "metric_name": "PROCESSED.Trail_Foot_Segment_Angle@Contact",
+  "frame": 1,
+  "value": -69.64172
+ },
+ {
+  "metric_name": "PROCESSED.Trail_Foot_Segment_Angle@Lead_Foot_Down",
+  "frame": 1,
+  "value": -6.901161
+ },
+ {
+  "metric_name": "PROCESSED.Trail_Foot_Segment_Angle@Setup",
+  "frame": 1,
+  "value": -3.001788
+ },
+ {
+  "metric_name": "PROCESSED.Trail_Shoulder_Angle@Contact",
+  "frame": 1,
+  "value": 87.11988
+ },
+ {
+  "metric_name": "PROCESSED.Trail_Shoulder_Angle@Lead_Foot_Down",
+  "frame": 1,
+  "value": 48.82862
+ },
+ {
+  "metric_name": "PROCESSED.Trail_Shoulder_Angle@Setup",
+  "frame": 1,
+  "value": 29.65179
+ },
+ {
+  "metric_name": "PROCESSED.Trunk_Angle@Contact",
+  "frame": 1,
+  "value": -22.27018
+ },
+ {
+  "metric_name": "PROCESSED.Trunk_Angle@Lead_Foot_Down",
+  "frame": 1,
+  "value": -16.26242
+ },
+ {
+  "metric_name": "PROCESSED.Trunk_Angle@Lead_Foot_Down_MEAN",
+  "frame": 1,
+  "value": -16.26242
+ },
+ {
+  "metric_name": "PROCESSED.Trunk_Angle@Setup",
+  "frame": 1,
+  "value": -5.522112
+ },
+ {
+  "metric_name": "PROCESSED.Uncropped Measurement Frames",
+  "frame": 1,
+  "value": 1699
+ },
+ {
+  "metric_name": "PROCESSED.Uncropped Measurement Length",
+  "frame": 1,
+  "value": 5.663
+ },
+ {
+  "metric_name": "TIMING.ContactTime",
+  "frame": 1,
+  "value": 0.6233335
+ },
+ {
+  "metric_name": "TIMING.ContactTime_pct",
+  "frame": 1,
+  "value": 0.8617513
+ },
+ {
+  "metric_name": "TIMING.DownswingTime",
+  "frame": 1,
+  "value": 0.6266667
+ },
+ {
+  "metric_name": "TIMING.DownswingTime_pct",
+  "frame": 1,
+  "value": 0.8663594
+ },
+ {
+  "metric_name": "TIMING.Lead_Foot_DownTime",
+  "frame": 1,
+  "value": 0.4266667
+ },
+ {
+  "metric_name": "TIMING.Lead_Foot_DownTime_pct",
+  "frame": 1,
+  "value": 0.5898618
+ },
+ {
+  "metric_name": "TIMING.Max_Bat_Ang_VelTime",
+  "frame": 1,
+  "value": 0.6633333
+ },
+ {
+  "metric_name": "TIMING.Max_Bat_Ang_VelTime_pct",
+  "frame": 1,
+  "value": 0.9170506
+ },
+ {
+  "metric_name": "TIMING.Max_Bat_Lin_VelTime",
+  "frame": 1,
+  "value": 0.6633333
+ },
+ {
+  "metric_name": "TIMING.Max_Bat_Lin_VelTime_pct",
+  "frame": 1,
+  "value": 0.9170506
+ },
+ {
+  "metric_name": "TIMING.Max_Lead_Elbow_Ext_Ang_VelTime",
+  "frame": 1,
+  "value": 0.7133334
+ },
+ {
+  "metric_name": "TIMING.Max_Lead_Elbow_Ext_Ang_VelTime_pct",
+  "frame": 1,
+  "value": 0.9861751
+ },
+ {
+  "metric_name": "TIMING.Max_Lead_Elbow_Sup_Ang_VelTime",
+  "frame": 1,
+  "value": 0.6666666
+ },
+ {
+  "metric_name": "TIMING.Max_Lead_Elbow_Sup_Ang_VelTime_pct",
+  "frame": 1,
+  "value": 0.9216589
+ },
+ {
+  "metric_name": "TIMING.Max_Lead_Forearm_Ang_VelTime",
+  "frame": 1,
+  "value": 0.5633334
+ },
+ {
+  "metric_name": "TIMING.Max_Lead_Forearm_Ang_VelTime_pct",
+  "frame": 1,
+  "value": 0.7788019
+ },
+ {
+  "metric_name": "TIMING.Max_Lead_Hand_Ang_VelTime",
+  "frame": 1,
+  "value": 0.5866667
+ },
+ {
+  "metric_name": "TIMING.Max_Lead_Hand_Ang_VelTime_pct",
+  "frame": 1,
+  "value": 0.81106
+ },
+ {
+  "metric_name": "TIMING.Max_Lead_Hand_Lin_VelTime",
+  "frame": 1,
+  "value": 0.5666667
+ },
+ {
+  "metric_name": "TIMING.Max_Lead_Hand_Lin_VelTime_pct",
+  "frame": 1,
+  "value": 0.7834102
+ },
+ {
+  "metric_name": "TIMING.Max_Pelvis_Ang_VelTime",
+  "frame": 1,
+  "value": 0.5266666
+ },
+ {
+  "metric_name": "TIMING.Max_Pelvis_Ang_VelTime_pct",
+  "frame": 1,
+  "value": 0.7281106
+ },
+ {
+  "metric_name": "TIMING.Max_Pelvis_Lin_VelTime",
+  "frame": 1,
+  "value": 0.3733333
+ },
+ {
+  "metric_name": "TIMING.Max_Pelvis_Lin_VelTime_pct",
+  "frame": 1,
+  "value": 0.516129
+ },
+ {
+  "metric_name": "TIMING.Max_Thorax_Ang_VelTime",
+  "frame": 1,
+  "value": 0.5466667
+ },
+ {
+  "metric_name": "TIMING.Max_Thorax_Ang_VelTime_pct",
+  "frame": 1,
+  "value": 0.7557604
+ },
+ {
+  "metric_name": "TIMING.Max_Thorax_Lin_VelTime",
+  "frame": 1,
+  "value": 0.4233333
+ },
+ {
+  "metric_name": "TIMING.Max_Thorax_Lin_VelTime_pct",
+  "frame": 1,
+  "value": 0.5852535
+ },
+ {
+  "metric_name": "TIMING.Max_Trail_Elbow_Ext_Ang_VelTime",
+  "frame": 1,
+  "value": 0.6966667
+ },
+ {
+  "metric_name": "TIMING.Max_Trail_Elbow_Ext_Ang_VelTime_pct",
+  "frame": 1,
+  "value": 0.9631337
+ },
+ {
+  "metric_name": "TIMING.Max_Trail_Elbow_Pron_Ang_VelTime",
+  "frame": 1,
+  "value": 0.5600001
+ },
+ {
+  "metric_name": "TIMING.Max_Trail_Elbow_Pron_Ang_VelTime_pct",
+  "frame": 1,
+  "value": 0.7741936
+ }
+]

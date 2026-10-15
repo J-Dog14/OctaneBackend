@@ -92,7 +92,7 @@ function ArsenalCompare({ bundles }: { bundles: AthleteBundle[] }) {
   const present = codes.filter((c) => withData.some((b) => b.pitching!.latest!.byType.some((r) => r.pitchType === c)));
   return (
     <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="md">
-      <MovementPlot sets={withData.map((b) => ({ name: b.summary?.athlete.name ?? b.uuid, rows: b.pitching!.latest!.byType }))} height={340} />
+      <MovementPlot sets={withData.map((b) => ({ name: b.summary?.athlete.name ?? b.uuid, rows: b.pitching!.latest!.byType, throws: b.pitching!.athlete.throws ?? b.summary?.athlete.throws ?? null }))} height={340} />
       <ScrollArea>
         <Table fz="sm" verticalSpacing={4} miw={160 + withData.length * 150}>
           <Table.Thead>
@@ -282,7 +282,7 @@ export function CompareBody({ ids, scope = "all" }: { ids: string[]; scope?: Com
     {(scope === "all" || scope === "pitching") && <div className="card" style={{ marginBottom: 0 }}>
       <h2 style={{ margin: "0 0 0.75rem", fontSize: "1rem" }}>Arsenal</h2><ArsenalCompare bundles={bundles} />
     </div>}
-    {(scope === "all" || ["biomechanics", "assessments", "mobility", "proteus"].includes(scope)) && <div className="card" style={{ marginBottom: 0 }}>
+    {(scope === "all" || ["biomechanics", "hitting", "assessments", "mobility", "proteus"].includes(scope)) && <div className="card" style={{ marginBottom: 0 }}>
       <h2 style={{ margin: "0 0 0.75rem", fontSize: "1rem" }}>{scope === "all" ? "Assessments" : COMPARISON_LABELS[scope]}</h2>
       <DomainCompare key={scope} bundles={bundles} />
     </div>}

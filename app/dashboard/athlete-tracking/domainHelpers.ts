@@ -218,6 +218,39 @@ export function getMetricInsight(key: string, value: number | null): string | nu
       if (value <= 77) return "On Time: Arm position at foot contact is in the ideal window (33–77°). Good timing allows the arm to sync with the body.";
       return "Early: Arm is ahead at foot contact (> 77°). Early arm timing can increase stress and reduce sequencing efficiency.";
     }
+    // ── Hitting (cut points: 8ctane hitters' p15/p33/p66/p85, scripts/output/kinematics-thresholds-corrected.json;
+    //    targets from the hitting-swing-breakdown checkpoints) ──
+    case "PROCESSED|Pelvis_Angle@Lead_Foot_Down":
+      if (value <= 61.93) return "Elite: The pelvis is well open when the front foot lands — the lower half is clearly leading the swing.";
+      if (value <= 71.83) return "Above Average: Pelvis is opening ahead of foot-down. Good lower-half lead.";
+      if (value <= 87.69) return "Average: Pelvis is starting to clear at plant (the checkpoint wants 90° or less).";
+      if (value <= 101.57) return "Developing: Pelvis is still fairly closed at foot-down. The hips should be firing open as the foot lands.";
+      return "Needs Improvement: Pelvis is very closed at foot-down — the lower half isn't leading, which limits separation.";
+    case "PROCESSED|Trunk_Angle@Lead_Foot_Down":
+      if (value > 139.17) return "Elite: The trunk stays very closed at foot-down — the coil is held while the hips start to open.";
+      if (value > 126.33) return "Above Average: Trunk holds closed well into foot-down.";
+      if (value > 106.82) return "Average: Trunk is moderately closed at foot-down. Holding it longer banks more separation.";
+      if (value > 92.91) return "Developing: Trunk is opening before foot-down, leaking the stretch.";
+      return "Needs Improvement: Trunk opens well before the front foot plants — the upper half is leading the swing.";
+    case "PROCESSED|Pelvis_Angle@Contact":
+    case "PROCESSED|Trunk_Angle@Contact": {
+      const seg = key.includes("Pelvis") ? "Pelvis" : "Trunk";
+      if (value < -15) return `Over-rotated: ${seg} has spun well past square at contact, bleeding force off the plane.`;
+      if (value < 0) return `Slightly past square: ${seg} is a little over-rotated at contact (the checkpoint wants 0° to +15°).`;
+      if (value <= 15) return `Square: ${seg} arrives square to slightly closed at contact — right in the 0° to +15° window.`;
+      if (value <= 25) return `A touch closed: ${seg} is still slightly closed at contact. Usually fine; watch it against timing.`;
+      return `Closed: ${seg} is well closed at contact — the swing may be late or arm-driven.`;
+    }
+    case "PROCESSED|Lead_Knee_Angle@Lead_Foot_Down":
+      if (value >= 40 && value <= 50) return "On Target: Lead knee lands with ~45° of flexion — the right amount of bend to post against.";
+      if (value < 40) return "Stiff Landing: Lead knee lands straighter than the ~45° target, leaving less room to post and brace.";
+      return "Soft Landing: Lead knee lands more bent than the ~45° target — the leg has further to extend before contact.";
+    case "PROCESSED|Lead_Knee_Extension":
+      if (value > 46.23) return "Elite: Big lead-leg extension from foot-down to contact — a firm post to rotate over.";
+      if (value > 37.34) return "Above Average: The front leg straightens well into contact.";
+      if (value > 27.07) return "Average: Moderate lead-leg extension. A firmer post gives the swing a better axis.";
+      if (value > 21.47) return "Developing: The front leg extends only a little before contact.";
+      return "Needs Improvement: Little lead-leg extension — the front side isn't bracing, so rotation has no firm axis.";
     default:
       return null;
   }

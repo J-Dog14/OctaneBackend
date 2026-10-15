@@ -96,7 +96,7 @@ export function OverviewTab({
             </Group>
             {latest ? (
               <>
-                <MovementPlot sets={[{ name: latest.label, rows: latest.byType }]} height={260} />
+                <MovementPlot sets={[{ name: latest.label, rows: latest.byType, throws: pitching.data?.athlete.throws ?? summary.athlete.throws }]} height={260} />
                 <PitchTypeTable rows={latest.byType} compact />
               </>
             ) : (

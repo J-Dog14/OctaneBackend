@@ -1,0 +1,49 @@
+/* Hitting report additions on top of biomechReport.module.css.
+   The hitting-swing-breakdown PDF uses pure black + the light-blue #5BC0EB accent. */
+.theme {
+  --bg: #000000;
+  --pb: #5bc0eb;
+  --pb-deep: #3e9cc6;
+  --pb-glow: #a9def3;
+  background: #000000;
+  border-color: #13303d;
+}
+
+.chart { width: 100%; height: auto; display: block; margin: 6px 0 4px; font-family: Inter, sans-serif; }
+
+.seqMeta { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-top: 14px; }
+.seqMeta > div { background: var(--card); border-top: 2px solid var(--pb); padding: 10px 12px; border-radius: 3px; }
+.seqMeta span { display: block; font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--mid); margin-bottom: 4px; }
+.seqMeta b { font-size: 15px; color: var(--hi); }
+
+.basis { font-size: 11px; color: #e8c08c; margin-top: 4px; line-height: 1.35; }
+.muted { color: var(--mid) !important; font-size: 13px; }
+
+.groupGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 18px; align-items: start; }
+.group { margin: 22px 0 6px; min-width: 0; display: flex; flex-direction: column; }
+.groupHead { font-size: 18px; font-weight: 800; color: var(--pb); letter-spacing: 0.02em; }
+.groupIntro { font-size: 13px; color: var(--mid); margin: 2px 0 10px; }
+.segGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 18px; }
+.segCard { background: var(--card); border: 1px solid rgba(91, 192, 235, 0.18); border-left: 3px solid var(--pb); border-radius: 3px; padding: 12px 14px; min-width: 0; }
+.segTitle { font-size: 14px; font-weight: 700; color: var(--hi); }
+.segDesc { font-size: 11px; color: var(--mid); margin: 2px 0 8px; line-height: 1.35; }
+.segTable { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.segTable th { text-align: left; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--pb); font-weight: 600; padding: 4px 6px; border-bottom: 1px solid rgba(91, 192, 235, 0.3); }
+.segTable td { padding: 4px 6px; border-bottom: 1px solid rgba(91, 192, 235, 0.08); color: var(--ice); }
+.segTable td:not(:first-child), .segTable th:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
+.segPeaks { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12px; color: var(--mid); margin-top: 8px; }
+.segPeaks b { color: var(--pb-glow); }
+
+.batGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.batCell { background: var(--card); border-top: 2px solid var(--pb); padding: 10px 12px; border-radius: 3px; }
+.batLabel { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--mid); }
+.batValue { font-size: 20px; font-weight: 800; color: var(--hi); margin-top: 2px; }
+
+@media (max-width: 860px) {
+  .segGrid, .groupGrid { grid-template-columns: 1fr; }
+  .seqMeta, .batGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container (max-width: 720px) {
+  .segGrid, .groupGrid { grid-template-columns: minmax(0, 1fr); }
+  .seqMeta, .batGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

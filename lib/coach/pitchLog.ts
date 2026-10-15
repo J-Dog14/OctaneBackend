@@ -8,7 +8,9 @@
  *   - hb, relSide, plateSide, haa: Trackman as stored; Savant's catcher-view
  *     values (pfx_x, release_pos_x, plate_x, vx) are negated.
  *   - hbArm: arm side positive (= hb for RHP, -hb for LHP), the suite's
- *     convention for movement plots and tables.
+ *     convention for movement plots and tables. LHP movement plots draw the x
+ *     axis mirrored (arm side on the left) but keep hbArm in ticks/tooltips;
+ *     stored and displayed values never change.
  * Savant VAA/HAA come from the release kinematics at the front of the plate
  * (y = 17/12 ft), the same physics as Ryan's parser.
  */

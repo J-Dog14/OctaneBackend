@@ -25,7 +25,8 @@ type HittingMetricSpec = {
   category: string;
   name: string;
   valueUnit: ValueUnit;
-  orientation: Orientation;
+  /** null = not better/worse (timing markers). */
+  orientation: Orientation | null;
   metricNameCandidates?: string[];
   computeFromMap?: (map: Map<string, number | null>) => number | null;
 };
@@ -169,7 +170,8 @@ const HITTING_METRIC_SPECS: HittingMetricSpec[] = [
         "PROCESSED.Lead_Knee_Angle@Lead_Foot_Down_MEAN",
       ]);
       if (contact == null || leadFootDown == null) return null;
-      return contact - leadFootDown;
+      // Extension = flexion lost from foot-down to contact (positive = the knee straightened), same as the thresholds script.
+      return leadFootDown - contact;
     },
   },
   {
@@ -334,6 +336,46 @@ const HITTING_METRIC_SPECS: HittingMetricSpec[] = [
       "PROCESSED.Lead_Knee_Ang_Vel_ext_max",
       "PROCESSED.Lead_Knee_Ang_Vel_ext_max_MEAN",
     ],
+  },
+  {
+    // Peak time (s) — only used to rank the kinematic-sequence order in the explorer.
+    category: "TIMING",
+    name: "PELVIS_TIME",
+    valueUnit: "NUMBER",
+    orientation: null,
+    metricNameCandidates: ["TIMING.Max_Pelvis_Ang_VelTime", "TIMING.Max_Pelvis_Ang_VelTime.X", "TIMING.Max_Pelvis_Ang_VelTime_MEAN"],
+  },
+  {
+    // Peak time (s) — only used to rank the kinematic-sequence order in the explorer.
+    category: "TIMING",
+    name: "THORAX_TIME",
+    valueUnit: "NUMBER",
+    orientation: null,
+    metricNameCandidates: ["TIMING.Max_Thorax_Ang_VelTime", "TIMING.Max_Thorax_Ang_VelTime.X", "TIMING.Max_Thorax_Ang_VelTime_MEAN"],
+  },
+  {
+    // Peak time (s) — only used to rank the kinematic-sequence order in the explorer.
+    category: "TIMING",
+    name: "FOREARM_TIME",
+    valueUnit: "NUMBER",
+    orientation: null,
+    metricNameCandidates: ["TIMING.Max_Lead_Forearm_Ang_VelTime", "TIMING.Max_Lead_Forearm_Ang_VelTime.X", "TIMING.Max_Lead_Forearm_Ang_VelTime_MEAN"],
+  },
+  {
+    // Peak time (s) — only used to rank the kinematic-sequence order in the explorer.
+    category: "TIMING",
+    name: "HAND_TIME",
+    valueUnit: "NUMBER",
+    orientation: null,
+    metricNameCandidates: ["TIMING.Max_Lead_Hand_Ang_VelTime", "TIMING.Max_Lead_Hand_Ang_VelTime.X", "TIMING.Max_Lead_Hand_Ang_VelTime_MEAN"],
+  },
+  {
+    // Peak time (s) — only used to rank the kinematic-sequence order in the explorer.
+    category: "TIMING",
+    name: "BAT_TIME",
+    valueUnit: "NUMBER",
+    orientation: null,
+    metricNameCandidates: ["TIMING.Max_Bat_Ang_VelTime", "TIMING.Max_Bat_Ang_VelTime.X", "TIMING.Max_Bat_Ang_VelTime_MEAN"],
   },
 ];
 

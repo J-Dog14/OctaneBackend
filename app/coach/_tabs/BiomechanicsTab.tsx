@@ -10,7 +10,7 @@ import { LoadState, pickDomains, useTracking } from "./shared";
 /**
  * Pitching 3D opens on the 8-cylinder report (same read as the
  * biomech-pitching-breakdown PDF). "Metrics explorer" keeps the percentile
- * tables, timelines and comparisons for pitching, hitting and arm action.
+ * tables, timelines and comparisons for pitching and arm action (hitting has its own tab).
  */
 export function BiomechanicsTab({ athleteUuid, summary }: { athleteUuid: string; summary: CoachAthleteSummary }) {
   const hasPitching = summary.trackingDomains.includes("pitching");
@@ -37,7 +37,7 @@ export function BiomechanicsTab({ athleteUuid, summary }: { athleteUuid: string;
       ) : (
         <DomainSwitcher
           athleteUuid={athleteUuid}
-          domains={pickDomains(data, ["pitching", "hitting", "armAction"])}
+          domains={pickDomains(data, ["pitching", "armAction"])}
           datesByDomain={summary.trackingDates}
           emptyText="No biomechanics captures for this athlete yet."
         />

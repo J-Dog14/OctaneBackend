@@ -29,6 +29,7 @@ const ProSupTab = dynamic(() => import("../_tabs/AssessmentsTab").then((m) => m.
 const ReadinessTab = dynamic(() => import("../_tabs/ReadinessTab").then((m) => m.ReadinessTab), { loading: () => <Loader size="sm" /> });
 const ProteusTab = dynamic(() => import("../_tabs/ProteusTab").then((m) => m.ProteusTab), { loading: () => <Loader size="sm" /> });
 const ProgramTab = dynamic(() => import("../_tabs/ProgramTab").then((m) => m.ProgramTab), { loading: () => <Loader size="sm" /> });
+const HittingTab = dynamic(() => import("../_tabs/HittingTab").then((m) => m.HittingTab), { loading: () => <Loader size="sm" /> });
 const ThrowingTab = dynamic(() => import("../_tabs/ThrowingTab").then((m) => m.ThrowingTab), { loading: () => <Loader size="sm" /> });
 
 type TabId = CoachTabId | "compare";
@@ -37,6 +38,7 @@ const TABS: Array<{ id: CoachTabId; label: string }> = [
   { id: "overview", label: "Overview" },
   { id: "pitching", label: "Pitching" },
   { id: "biomechanics", label: "Biomechanics" },
+  { id: "hitting", label: "Hitting" },
   { id: "assessments", label: "Athletic Screen" },
   { id: "mobility", label: "Mobility" },
   { id: "prosup", label: "Pro/Sup" },
@@ -290,6 +292,9 @@ function AthleteViewInner({ athleteUuid }: { athleteUuid: string }) {
           </Tabs.Panel>
           <Tabs.Panel value="biomechanics">
             <BiomechanicsTab athleteUuid={athleteUuid} summary={summary} />
+          </Tabs.Panel>
+          <Tabs.Panel value="hitting">
+            <HittingTab athleteUuid={athleteUuid} summary={summary} />
           </Tabs.Panel>
           <Tabs.Panel value="assessments">
             <AthleticScreenTab athleteUuid={athleteUuid} summary={summary} />

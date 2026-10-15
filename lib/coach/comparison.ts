@@ -3,7 +3,7 @@ import type { DomainId } from "@/lib/athlete-tracking/types";
 
 export type ComparisonScope = CoachTabId | "all";
 export const COMPARISON_LABELS: Record<ComparisonScope, string> = {
-  all: "All areas", overview: "Overview", pitching: "Pitching", biomechanics: "Biomechanics",
+  all: "All areas", overview: "Overview", pitching: "Pitching", biomechanics: "Biomechanics", hitting: "Hitting",
   assessments: "Athletic Screen", mobility: "Mobility", prosup: "Pro/Sup",
   curveball: "Curveball", readiness: "Readiness", proteus: "Proteus", program: "Program Lift", throwing: "Program Throwing",
 };
@@ -14,7 +14,8 @@ export function isComparisonScope(value: string): value is ComparisonScope {
 export function comparisonDomains(scope: ComparisonScope): DomainId[] {
   switch (scope) {
     case "all": case "overview": return TRACKING_DOMAINS;
-    case "biomechanics": return ["pitching", "hitting", "armAction"];
+    case "biomechanics": return ["pitching", "armAction"];
+    case "hitting": return ["hitting"];
     case "assessments": return ["athleticScreen"];
     case "mobility": return ["mobility"];
     case "proteus": return ["proteus"];

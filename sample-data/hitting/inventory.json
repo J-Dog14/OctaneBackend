@@ -1,0 +1,7468 @@
+{
+ "tables": [
+  {
+   "t": "f_hitting_trials",
+   "n": 741
+  },
+  {
+   "t": "f_hitting_3d_trials",
+   "n": 348
+  },
+  {
+   "t": "f_kinematics_hitting",
+   "n": 10901
+  },
+  {
+   "t": "hitting athletes",
+   "n": 74
+  }
+ ],
+ "rowKinds": {
+  "sessionData": 168,
+  "threeD": 103,
+  "other": 0
+ },
+ "sessionsScanned": 40,
+ "keys": [
+  {
+   "key": "AT_EVENT.Bat Angular Velocity@CONTACT",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 1803.626
+  },
+  {
+   "key": "AT_EVENT.Bat Angular Velocity@Lead_Foot_Down",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 487.6029
+  },
+  {
+   "key": "AT_EVENT.Bat Angular Velocity@Lead_Foot_Off",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 57.4152
+  },
+  {
+   "key": "AT_EVENT.Bat Angular Velocity@MaxKneeHeight",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 48.66199
+  },
+  {
+   "key": "AT_EVENT.Bat Angular Velocity@SETUP",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 40.94323
+  },
+  {
+   "key": "AT_EVENT.Bat Linear Velocity@CONTACT",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 24.24789
+  },
+  {
+   "key": "AT_EVENT.Bat Linear Velocity@Lead_Foot_Down",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 6.555319
+  },
+  {
+   "key": "AT_EVENT.Bat Linear Velocity@Lead_Foot_Off",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.7718883
+  },
+  {
+   "key": "AT_EVENT.Bat Linear Velocity@MaxKneeHeight",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.6542104
+  },
+  {
+   "key": "AT_EVENT.Bat Linear Velocity@SETUP",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.5504396
+  },
+  {
+   "key": "AT_EVENT.Head_Angle@CONTACT",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -29.90303
+  },
+  {
+   "key": "AT_EVENT.Head_Angle@CONTACT.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 11.93007
+  },
+  {
+   "key": "AT_EVENT.Head_Angle@CONTACT.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -49.16792
+  },
+  {
+   "key": "AT_EVENT.Head_Angle@CONTACT.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -29.90303
+  },
+  {
+   "key": "AT_EVENT.Head_Angle@Lead_Foot_Down",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -30.16503
+  },
+  {
+   "key": "AT_EVENT.Head_Angle@Lead_Foot_Down.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 18.94133
+  },
+  {
+   "key": "AT_EVENT.Head_Angle@Lead_Foot_Down.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -27.39449
+  },
+  {
+   "key": "AT_EVENT.Head_Angle@Lead_Foot_Down.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -30.16503
+  },
+  {
+   "key": "AT_EVENT.Head_Angle@Lead_Foot_Off",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -26.13198
+  },
+  {
+   "key": "AT_EVENT.Head_Angle@Lead_Foot_Off.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 17.78461
+  },
+  {
+   "key": "AT_EVENT.Head_Angle@Lead_Foot_Off.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -3.596814
+  },
+  {
+   "key": "AT_EVENT.Head_Angle@Lead_Foot_Off.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -26.13198
+  },
+  {
+   "key": "AT_EVENT.Head_Angle@MaxKneeHeight",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -26.22698
+  },
+  {
+   "key": "AT_EVENT.Head_Angle@MaxKneeHeight.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 19.58096
+  },
+  {
+   "key": "AT_EVENT.Head_Angle@MaxKneeHeight.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -9.134094
+  },
+  {
+   "key": "AT_EVENT.Head_Angle@MaxKneeHeight.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -26.22698
+  },
+  {
+   "key": "AT_EVENT.Head_Angle@SETUP",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -26.60571
+  },
+  {
+   "key": "AT_EVENT.Head_Angle@SETUP.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 16.43357
+  },
+  {
+   "key": "AT_EVENT.Head_Angle@SETUP.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -1.043886
+  },
+  {
+   "key": "AT_EVENT.Head_Angle@SETUP.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -26.60571
+  },
+  {
+   "key": "AT_EVENT.Lead Hand Linear Velocity@CONTACT",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 5.457317
+  },
+  {
+   "key": "AT_EVENT.Lead Hand Linear Velocity@Lead_Foot_Down",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 5.243841
+  },
+  {
+   "key": "AT_EVENT.Lead Hand Linear Velocity@Lead_Foot_Off",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.4338408
+  },
+  {
+   "key": "AT_EVENT.Lead Hand Linear Velocity@MaxKneeHeight",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.1013612
+  },
+  {
+   "key": "AT_EVENT.Lead Hand Linear Velocity@SETUP",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.2975581
+  },
+  {
+   "key": "AT_EVENT.Lead_Elbow_Ang_Vel@CONTACT",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -361.3003
+  },
+  {
+   "key": "AT_EVENT.Lead_Elbow_Ang_Vel@CONTACT.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -28.7222
+  },
+  {
+   "key": "AT_EVENT.Lead_Elbow_Ang_Vel@CONTACT.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 552.2761
+  },
+  {
+   "key": "AT_EVENT.Lead_Elbow_Ang_Vel@CONTACT.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -361.3003
+  },
+  {
+   "key": "AT_EVENT.Lead_Elbow_Ang_Vel@Lead_Foot_Down",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 96.80692
+  },
+  {
+   "key": "AT_EVENT.Lead_Elbow_Ang_Vel@Lead_Foot_Down.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 16.62348
+  },
+  {
+   "key": "AT_EVENT.Lead_Elbow_Ang_Vel@Lead_Foot_Down.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 142.0756
+  },
+  {
+   "key": "AT_EVENT.Lead_Elbow_Ang_Vel@Lead_Foot_Down.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 96.80692
+  },
+  {
+   "key": "AT_EVENT.Lead_Elbow_Ang_Vel@Lead_Foot_Off",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -13.26752
+  },
+  {
+   "key": "AT_EVENT.Lead_Elbow_Ang_Vel@Lead_Foot_Off.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.346386
+  },
+  {
+   "key": "AT_EVENT.Lead_Elbow_Ang_Vel@Lead_Foot_Off.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 17.36295
+  },
+  {
+   "key": "AT_EVENT.Lead_Elbow_Ang_Vel@Lead_Foot_Off.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -13.26752
+  },
+  {
+   "key": "AT_EVENT.Lead_Elbow_Ang_Vel@MaxKneeHeight",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 13.81213
+  },
+  {
+   "key": "AT_EVENT.Lead_Elbow_Ang_Vel@MaxKneeHeight.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.05556488
+  },
+  {
+   "key": "AT_EVENT.Lead_Elbow_Ang_Vel@MaxKneeHeight.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 3.034546
+  },
+  {
+   "key": "AT_EVENT.Lead_Elbow_Ang_Vel@MaxKneeHeight.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 13.81213
+  },
+  {
+   "key": "AT_EVENT.Lead_Elbow_Ang_Vel@SETUP",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 21.14819
+  },
+  {
+   "key": "AT_EVENT.Lead_Elbow_Ang_Vel@SETUP.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 2.449348
+  },
+  {
+   "key": "AT_EVENT.Lead_Elbow_Ang_Vel@SETUP.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 14.159
+  },
+  {
+   "key": "AT_EVENT.Lead_Elbow_Ang_Vel@SETUP.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 21.14819
+  },
+  {
+   "key": "AT_EVENT.Lead_Elbow_Angle@CONTACT",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -87.26283
+  },
+  {
+   "key": "AT_EVENT.Lead_Elbow_Angle@CONTACT.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 38.09406
+  },
+  {
+   "key": "AT_EVENT.Lead_Elbow_Angle@CONTACT.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.000003415095
+  },
+  {
+   "key": "AT_EVENT.Lead_Elbow_Angle@CONTACT.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -87.26283
+  },
+  {
+   "key": "AT_EVENT.Lead_Elbow_Angle@Lead_Foot_Down",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -96.62316
+  },
+  {
+   "key": "AT_EVENT.Lead_Elbow_Angle@Lead_Foot_Down.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 72.68622
+  },
+  {
+   "key": "AT_EVENT.Lead_Elbow_Angle@Lead_Foot_Down.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.000002347878
+  },
+  {
+   "key": "AT_EVENT.Lead_Elbow_Angle@Lead_Foot_Down.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -96.62316
+  },
+  {
+   "key": "AT_EVENT.Lead_Elbow_Angle@Lead_Foot_Off",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -91.16782
+  },
+  {
+   "key": "AT_EVENT.Lead_Elbow_Angle@Lead_Foot_Off.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 83.62897
+  },
+  {
+   "key": "AT_EVENT.Lead_Elbow_Angle@Lead_Foot_Off.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.000002561321
+  },
+  {
+   "key": "AT_EVENT.Lead_Elbow_Angle@Lead_Foot_Off.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -91.16782
+  },
+  {
+   "key": "AT_EVENT.Lead_Elbow_Angle@MaxKneeHeight",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -91.03744
+  },
+  {
+   "key": "AT_EVENT.Lead_Elbow_Angle@MaxKneeHeight.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 79.8241
+  },
+  {
+   "key": "AT_EVENT.Lead_Elbow_Angle@MaxKneeHeight.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.000003415096
+  },
+  {
+   "key": "AT_EVENT.Lead_Elbow_Angle@MaxKneeHeight.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -91.03744
+  },
+  {
+   "key": "AT_EVENT.Lead_Elbow_Angle@SETUP",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -95.61153
+  },
+  {
+   "key": "AT_EVENT.Lead_Elbow_Angle@SETUP.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 88.66006
+  },
+  {
+   "key": "AT_EVENT.Lead_Elbow_Angle@SETUP.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.000005122643
+  },
+  {
+   "key": "AT_EVENT.Lead_Elbow_Angle@SETUP.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -95.61153
+  },
+  {
+   "key": "AT_EVENT.Lead_Foot_Angle@CONTACT",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 14.09014
+  },
+  {
+   "key": "AT_EVENT.Lead_Foot_Angle@CONTACT.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -22.0519
+  },
+  {
+   "key": "AT_EVENT.Lead_Foot_Angle@CONTACT.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 12.94637
+  },
+  {
+   "key": "AT_EVENT.Lead_Foot_Angle@CONTACT.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 14.09014
+  },
+  {
+   "key": "AT_EVENT.Lead_Foot_Angle@Lead_Foot_Down",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -8.053126
+  },
+  {
+   "key": "AT_EVENT.Lead_Foot_Angle@Lead_Foot_Down.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.7840101
+  },
+  {
+   "key": "AT_EVENT.Lead_Foot_Angle@Lead_Foot_Down.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 10.97241
+  },
+  {
+   "key": "AT_EVENT.Lead_Foot_Angle@Lead_Foot_Down.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -8.053126
+  },
+  {
+   "key": "AT_EVENT.Lead_Foot_Angle@Lead_Foot_Off",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -8.610557
+  },
+  {
+   "key": "AT_EVENT.Lead_Foot_Angle@Lead_Foot_Off.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -15.85777
+  },
+  {
+   "key": "AT_EVENT.Lead_Foot_Angle@Lead_Foot_Off.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 11.37781
+  },
+  {
+   "key": "AT_EVENT.Lead_Foot_Angle@Lead_Foot_Off.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -8.610557
+  },
+  {
+   "key": "AT_EVENT.Lead_Foot_Angle@MaxKneeHeight",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -9.65392
+  },
+  {
+   "key": "AT_EVENT.Lead_Foot_Angle@MaxKneeHeight.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -19.94209
+  },
+  {
+   "key": "AT_EVENT.Lead_Foot_Angle@MaxKneeHeight.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 6.661457
+  },
+  {
+   "key": "AT_EVENT.Lead_Foot_Angle@MaxKneeHeight.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -9.65392
+  },
+  {
+   "key": "AT_EVENT.Lead_Foot_Angle@SETUP",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -9.435853
+  },
+  {
+   "key": "AT_EVENT.Lead_Foot_Angle@SETUP.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 14.61798
+  },
+  {
+   "key": "AT_EVENT.Lead_Foot_Angle@SETUP.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 12.98182
+  },
+  {
+   "key": "AT_EVENT.Lead_Foot_Angle@SETUP.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -9.435853
+  },
+  {
+   "key": "AT_EVENT.Lead_Foot_Segment_Angle@CONTACT",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 57.79714
+  },
+  {
+   "key": "AT_EVENT.Lead_Foot_Segment_Angle@CONTACT.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -5.032415
+  },
+  {
+   "key": "AT_EVENT.Lead_Foot_Segment_Angle@CONTACT.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.1178941
+  },
+  {
+   "key": "AT_EVENT.Lead_Foot_Segment_Angle@CONTACT.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 57.79714
+  },
+  {
+   "key": "AT_EVENT.Lead_Foot_Segment_Angle@Lead_Foot_Down",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 60.46648
+  },
+  {
+   "key": "AT_EVENT.Lead_Foot_Segment_Angle@Lead_Foot_Down.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 2.773517
+  },
+  {
+   "key": "AT_EVENT.Lead_Foot_Segment_Angle@Lead_Foot_Down.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -8.849668
+  },
+  {
+   "key": "AT_EVENT.Lead_Foot_Segment_Angle@Lead_Foot_Down.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 60.46648
+  },
+  {
+   "key": "AT_EVENT.Lead_Foot_Segment_Angle@Lead_Foot_Off",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 97.14408
+  },
+  {
+   "key": "AT_EVENT.Lead_Foot_Segment_Angle@Lead_Foot_Off.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 20.99416
+  },
+  {
+   "key": "AT_EVENT.Lead_Foot_Segment_Angle@Lead_Foot_Off.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -51.35003
+  },
+  {
+   "key": "AT_EVENT.Lead_Foot_Segment_Angle@Lead_Foot_Off.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 97.14408
+  },
+  {
+   "key": "AT_EVENT.Lead_Foot_Segment_Angle@MaxKneeHeight",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 102.411
+  },
+  {
+   "key": "AT_EVENT.Lead_Foot_Segment_Angle@MaxKneeHeight.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 26.59193
+  },
+  {
+   "key": "AT_EVENT.Lead_Foot_Segment_Angle@MaxKneeHeight.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -44.48425
+  },
+  {
+   "key": "AT_EVENT.Lead_Foot_Segment_Angle@MaxKneeHeight.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 102.411
+  },
+  {
+   "key": "AT_EVENT.Lead_Foot_Segment_Angle@SETUP",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 88.55074
+  },
+  {
+   "key": "AT_EVENT.Lead_Foot_Segment_Angle@SETUP.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 1.067938
+  },
+  {
+   "key": "AT_EVENT.Lead_Foot_Segment_Angle@SETUP.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -8.786935
+  },
+  {
+   "key": "AT_EVENT.Lead_Foot_Segment_Angle@SETUP.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 88.55074
+  },
+  {
+   "key": "AT_EVENT.Lead_Forearm_Ang_Vel_mag@CONTACT",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 935.934
+  },
+  {
+   "key": "AT_EVENT.Lead_Forearm_Ang_Vel_mag@Lead_Foot_Down",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 929.63
+  },
+  {
+   "key": "AT_EVENT.Lead_Forearm_Ang_Vel_mag@Lead_Foot_Off",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 51.29167
+  },
+  {
+   "key": "AT_EVENT.Lead_Forearm_Ang_Vel_mag@MaxKneeHeight",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 50.17343
+  },
+  {
+   "key": "AT_EVENT.Lead_Forearm_Ang_Vel_mag@SETUP",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 19.85016
+  },
+  {
+   "key": "AT_EVENT.Lead_Hand_Ang_Vel_mag@CONTACT",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 1357.115
+  },
+  {
+   "key": "AT_EVENT.Lead_Hand_Ang_Vel_mag@Lead_Foot_Down",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 881.0923
+  },
+  {
+   "key": "AT_EVENT.Lead_Hand_Ang_Vel_mag@Lead_Foot_Off",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 69.59621
+  },
+  {
+   "key": "AT_EVENT.Lead_Hand_Ang_Vel_mag@MaxKneeHeight",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 32.27467
+  },
+  {
+   "key": "AT_EVENT.Lead_Hand_Ang_Vel_mag@SETUP",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 67.15826
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Ang_Vel@CONTACT",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 19.68384
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Ang_Vel@CONTACT.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 230.1652
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Ang_Vel@CONTACT.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -26.63514
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Ang_Vel@CONTACT.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 19.68384
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Ang_Vel@Lead_Foot_Down",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 36.96588
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Ang_Vel@Lead_Foot_Down.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 64.99749
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Ang_Vel@Lead_Foot_Down.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -6.626317
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Ang_Vel@Lead_Foot_Down.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 36.96588
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Ang_Vel@Lead_Foot_Off",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 24.86635
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Ang_Vel@Lead_Foot_Off.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -181.1486
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Ang_Vel@Lead_Foot_Off.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 44.39098
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Ang_Vel@Lead_Foot_Off.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 24.86635
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Ang_Vel@MaxKneeHeight",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -8.394576
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Ang_Vel@MaxKneeHeight.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 25.43269
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Ang_Vel@MaxKneeHeight.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -2.067126
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Ang_Vel@MaxKneeHeight.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -8.394576
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Ang_Vel@SETUP",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 15.39711
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Ang_Vel@SETUP.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -55.9897
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Ang_Vel@SETUP.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -4.014843
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Ang_Vel@SETUP.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 15.39711
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Angle@CONTACT",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 7.250844
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Angle@CONTACT.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 19.87103
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Angle@CONTACT.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 4.604939
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Angle@CONTACT.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 7.250844
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Angle@Lead_Foot_Down",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 6.941248
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Angle@Lead_Foot_Down.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 41.31495
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Angle@Lead_Foot_Down.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 6.494022
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Angle@Lead_Foot_Down.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 6.941248
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Angle@Lead_Foot_Off",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 7.112178
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Angle@Lead_Foot_Off.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 52.61416
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Angle@Lead_Foot_Off.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 7.08077
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Angle@Lead_Foot_Off.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 7.112178
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Angle@MaxKneeHeight",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 7.587286
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Angle@MaxKneeHeight.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 74.22664
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Angle@MaxKneeHeight.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 7.924284
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Angle@MaxKneeHeight.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 7.587286
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Angle@SETUP",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 2.112794
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Angle@SETUP.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 13.07437
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Angle@SETUP.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 4.798973
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Angle@SETUP.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 2.112794
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Lead_Elbow_dist@CONTACT",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.7939274
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Lead_Elbow_dist@CONTACT.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.1359829
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Lead_Elbow_dist@CONTACT.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.1133322
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Lead_Elbow_dist@CONTACT.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.7939274
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Lead_Elbow_dist@Lead_Foot_Down",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.49497
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Lead_Elbow_dist@Lead_Foot_Down.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.2565565
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Lead_Elbow_dist@Lead_Foot_Down.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.3568228
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Lead_Elbow_dist@Lead_Foot_Down.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.49497
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Lead_Elbow_dist@Lead_Foot_Off",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.6231454
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Lead_Elbow_dist@Lead_Foot_Off.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.1519048
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Lead_Elbow_dist@Lead_Foot_Off.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.2138669
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Lead_Elbow_dist@Lead_Foot_Off.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.6231454
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Lead_Elbow_dist@MaxKneeHeight",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.4800318
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Lead_Elbow_dist@MaxKneeHeight.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.01636755
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Lead_Elbow_dist@MaxKneeHeight.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.146965
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Lead_Elbow_dist@MaxKneeHeight.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.4800318
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Lead_Elbow_dist@SETUP",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.7017704
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Lead_Elbow_dist@SETUP.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.3737127
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Lead_Elbow_dist@SETUP.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.2352557
+  },
+  {
+   "key": "AT_EVENT.Lead_Knee_Lead_Elbow_dist@SETUP.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.7017704
+  },
+  {
+   "key": "AT_EVENT.Lead_Shoulder_Ang_Vel@CONTACT",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -178.8815
+  },
+  {
+   "key": "AT_EVENT.Lead_Shoulder_Ang_Vel@CONTACT.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 75.94733
+  },
+  {
+   "key": "AT_EVENT.Lead_Shoulder_Ang_Vel@CONTACT.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -30.45671
+  },
+  {
+   "key": "AT_EVENT.Lead_Shoulder_Ang_Vel@CONTACT.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -178.8815
+  },
+  {
+   "key": "AT_EVENT.Lead_Shoulder_Ang_Vel@Lead_Foot_Down",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -11.68166
+  },
+  {
+   "key": "AT_EVENT.Lead_Shoulder_Ang_Vel@Lead_Foot_Down.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -151.003
+  },
+  {
+   "key": "AT_EVENT.Lead_Shoulder_Ang_Vel@Lead_Foot_Down.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 18.41003
+  },
+  {
+   "key": "AT_EVENT.Lead_Shoulder_Ang_Vel@Lead_Foot_Down.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -11.68166
+  },
+  {
+   "key": "AT_EVENT.Lead_Shoulder_Ang_Vel@Lead_Foot_Off",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 18.02646
+  },
+  {
+   "key": "AT_EVENT.Lead_Shoulder_Ang_Vel@Lead_Foot_Off.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -4.678555
+  },
+  {
+   "key": "AT_EVENT.Lead_Shoulder_Ang_Vel@Lead_Foot_Off.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 20.93384
+  },
+  {
+   "key": "AT_EVENT.Lead_Shoulder_Ang_Vel@Lead_Foot_Off.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 18.02646
+  },
+  {
+   "key": "AT_EVENT.Lead_Shoulder_Ang_Vel@MaxKneeHeight",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 30.4682
+  },
+  {
+   "key": "AT_EVENT.Lead_Shoulder_Ang_Vel@MaxKneeHeight.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 10.88905
+  },
+  {
+   "key": "AT_EVENT.Lead_Shoulder_Ang_Vel@MaxKneeHeight.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -13.13491
+  },
+  {
+   "key": "AT_EVENT.Lead_Shoulder_Ang_Vel@MaxKneeHeight.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 30.4682
+  },
+  {
+   "key": "AT_EVENT.Lead_Shoulder_Ang_Vel@SETUP",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 23.8161
+  },
+  {
+   "key": "AT_EVENT.Lead_Shoulder_Ang_Vel@SETUP.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -10.17756
+  },
+  {
+   "key": "AT_EVENT.Lead_Shoulder_Ang_Vel@SETUP.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 27.26923
+  },
+  {
+   "key": "AT_EVENT.Lead_Shoulder_Ang_Vel@SETUP.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 23.8161
+  },
+  {
+   "key": "AT_EVENT.Lead_Shoulder_Angle@CONTACT",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 27.97226
+  },
+  {
+   "key": "AT_EVENT.Lead_Shoulder_Angle@CONTACT.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 105.9824
+  },
+  {
+   "key": "AT_EVENT.Lead_Shoulder_Angle@CONTACT.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 76.46575
+  },
+  {
+   "key": "AT_EVENT.Lead_Shoulder_Angle@CONTACT.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 27.97226
+  },
+  {
+   "key": "AT_EVENT.Lead_Shoulder_Angle@Lead_Foot_Down",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 29.14963
+  },
+  {
+   "key": "AT_EVENT.Lead_Shoulder_Angle@Lead_Foot_Down.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 123.028
+  },
+  {
+   "key": "AT_EVENT.Lead_Shoulder_Angle@Lead_Foot_Down.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 72.53272
+  },
+  {
+   "key": "AT_EVENT.Lead_Shoulder_Angle@Lead_Foot_Down.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 29.14963
+  },
+  {
+   "key": "AT_EVENT.Lead_Shoulder_Angle@Lead_Foot_Off",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 54.89185
+  },
+  {
+   "key": "AT_EVENT.Lead_Shoulder_Angle@Lead_Foot_Off.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 128.8433
+  },
+  {
+   "key": "AT_EVENT.Lead_Shoulder_Angle@Lead_Foot_Off.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 61.48598
+  },
+  {
+   "key": "AT_EVENT.Lead_Shoulder_Angle@Lead_Foot_Off.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 54.89185
+  },
+  {
+   "key": "AT_EVENT.Lead_Shoulder_Angle@MaxKneeHeight",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 50.0372
+  },
+  {
+   "key": "AT_EVENT.Lead_Shoulder_Angle@MaxKneeHeight.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 132.1996
+  },
+  {
+   "key": "AT_EVENT.Lead_Shoulder_Angle@MaxKneeHeight.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 63.9729
+  },
+  {
+   "key": "AT_EVENT.Lead_Shoulder_Angle@MaxKneeHeight.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 50.0372
+  },
+  {
+   "key": "AT_EVENT.Lead_Shoulder_Angle@SETUP",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 55.96605
+  },
+  {
+   "key": "AT_EVENT.Lead_Shoulder_Angle@SETUP.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 126.0651
+  },
+  {
+   "key": "AT_EVENT.Lead_Shoulder_Angle@SETUP.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 65.66857
+  },
+  {
+   "key": "AT_EVENT.Lead_Shoulder_Angle@SETUP.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 55.96605
+  },
+  {
+   "key": "AT_EVENT.Lead_Wrist_Angle@CONTACT",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 19.8616
+  },
+  {
+   "key": "AT_EVENT.Lead_Wrist_Angle@CONTACT.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -5.294932
+  },
+  {
+   "key": "AT_EVENT.Lead_Wrist_Angle@CONTACT.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -15.32307
+  },
+  {
+   "key": "AT_EVENT.Lead_Wrist_Angle@CONTACT.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 19.8616
+  },
+  {
+   "key": "AT_EVENT.Lead_Wrist_Angle@Lead_Foot_Down",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 15.12624
+  },
+  {
+   "key": "AT_EVENT.Lead_Wrist_Angle@Lead_Foot_Down.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -22.12237
+  },
+  {
+   "key": "AT_EVENT.Lead_Wrist_Angle@Lead_Foot_Down.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 26.82885
+  },
+  {
+   "key": "AT_EVENT.Lead_Wrist_Angle@Lead_Foot_Down.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 15.12624
+  },
+  {
+   "key": "AT_EVENT.Lead_Wrist_Angle@Lead_Foot_Off",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 21.68878
+  },
+  {
+   "key": "AT_EVENT.Lead_Wrist_Angle@Lead_Foot_Off.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -22.73344
+  },
+  {
+   "key": "AT_EVENT.Lead_Wrist_Angle@Lead_Foot_Off.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 18.82996
+  },
+  {
+   "key": "AT_EVENT.Lead_Wrist_Angle@Lead_Foot_Off.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 21.68878
+  },
+  {
+   "key": "AT_EVENT.Lead_Wrist_Angle@MaxKneeHeight",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 18.38358
+  },
+  {
+   "key": "AT_EVENT.Lead_Wrist_Angle@MaxKneeHeight.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -25.77785
+  },
+  {
+   "key": "AT_EVENT.Lead_Wrist_Angle@MaxKneeHeight.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 23.17527
+  },
+  {
+   "key": "AT_EVENT.Lead_Wrist_Angle@MaxKneeHeight.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 18.38358
+  },
+  {
+   "key": "AT_EVENT.Lead_Wrist_Angle@SETUP",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 25.91903
+  },
+  {
+   "key": "AT_EVENT.Lead_Wrist_Angle@SETUP.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -18.01779
+  },
+  {
+   "key": "AT_EVENT.Lead_Wrist_Angle@SETUP.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 21.65708
+  },
+  {
+   "key": "AT_EVENT.Lead_Wrist_Angle@SETUP.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 25.91903
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Ang_Vel_mag@CONTACT",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 272.9804
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Ang_Vel_mag@Lead_Foot_Down",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 549.5585
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Ang_Vel_mag@Lead_Foot_Off",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 8.232586
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Ang_Vel_mag@MaxKneeHeight",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 24.90801
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Ang_Vel_mag@SETUP",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 8.763735
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Ang_Vel@CONTACT",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -268.3372
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Ang_Vel@CONTACT.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -30.03229
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Ang_Vel@CONTACT.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -40.14319
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Ang_Vel@CONTACT.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -268.3372
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Ang_Vel@Lead_Foot_Down",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -542.7081
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Ang_Vel@Lead_Foot_Down.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 79.75546
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Ang_Vel@Lead_Foot_Down.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 33.48882
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Ang_Vel@Lead_Foot_Down.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -542.7081
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Ang_Vel@Lead_Foot_Off",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -1.850078
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Ang_Vel@Lead_Foot_Off.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 7.088533
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Ang_Vel@Lead_Foot_Off.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -3.755713
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Ang_Vel@Lead_Foot_Off.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -1.850078
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Ang_Vel@MaxKneeHeight",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 24.36443
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Ang_Vel@MaxKneeHeight.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 3.287575
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Ang_Vel@MaxKneeHeight.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -3.996909
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Ang_Vel@MaxKneeHeight.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 24.36443
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Ang_Vel@SETUP",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -7.309674
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Ang_Vel@SETUP.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 3.969139
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Ang_Vel@SETUP.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -2.760012
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Ang_Vel@SETUP.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -7.309674
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Angle@CONTACT",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 4.80312
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Angle@CONTACT.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -6.143519
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Angle@CONTACT.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -17.52345
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Angle@CONTACT.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 4.80312
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Angle@Lead_Foot_Down",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 71.70459
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Angle@Lead_Foot_Down.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.224005
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Angle@Lead_Foot_Down.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -21.06881
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Angle@Lead_Foot_Down.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 71.70459
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Angle@Lead_Foot_Off",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 96.15792
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Angle@Lead_Foot_Off.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -10.17843
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Angle@Lead_Foot_Off.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -22.32011
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Angle@Lead_Foot_Off.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 96.15792
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Angle@MaxKneeHeight",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 106.0391
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Angle@MaxKneeHeight.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -14.23398
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Angle@MaxKneeHeight.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -19.41424
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Angle@MaxKneeHeight.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 106.0391
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Angle@SETUP",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 97.66853
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Angle@SETUP.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -11.45608
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Angle@SETUP.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -22.22226
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Angle@SETUP.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 97.66853
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Shoulders_Separation_vel@CONTACT",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -104.6951
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Shoulders_Separation_vel@CONTACT.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -161.6777
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Shoulders_Separation_vel@CONTACT.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -27.41661
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Shoulders_Separation_vel@CONTACT.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -104.6951
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Shoulders_Separation_vel@Lead_Foot_Down",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -44.46602
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Shoulders_Separation_vel@Lead_Foot_Down.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -6.604099
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Shoulders_Separation_vel@Lead_Foot_Down.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 247.3188
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Shoulders_Separation_vel@Lead_Foot_Down.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -44.46602
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Shoulders_Separation_vel@Lead_Foot_Off",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 5.978769
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Shoulders_Separation_vel@Lead_Foot_Off.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 22.84284
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Shoulders_Separation_vel@Lead_Foot_Off.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -17.80844
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Shoulders_Separation_vel@Lead_Foot_Off.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 5.978769
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Shoulders_Separation_vel@MaxKneeHeight",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 18.34849
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Shoulders_Separation_vel@MaxKneeHeight.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 7.958346
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Shoulders_Separation_vel@MaxKneeHeight.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.2583504
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Shoulders_Separation_vel@MaxKneeHeight.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 18.34849
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Shoulders_Separation_vel@SETUP",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 11.32811
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Shoulders_Separation_vel@SETUP.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 9.212923
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Shoulders_Separation_vel@SETUP.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -20.53728
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Shoulders_Separation_vel@SETUP.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 11.32811
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Shoulders_Separation@CONTACT",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.9913371
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Shoulders_Separation@CONTACT.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -1.87482
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Shoulders_Separation@CONTACT.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 25.43589
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Shoulders_Separation@CONTACT.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.9913371
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Shoulders_Separation@Lead_Foot_Down",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 19.09346
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Shoulders_Separation@Lead_Foot_Down.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 18.294
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Shoulders_Separation@Lead_Foot_Down.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 12.98842
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Shoulders_Separation@Lead_Foot_Down.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 19.09346
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Shoulders_Separation@Lead_Foot_Off",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.8232476
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Shoulders_Separation@Lead_Foot_Off.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -6.2387
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Shoulders_Separation@Lead_Foot_Off.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -16.35412
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Shoulders_Separation@Lead_Foot_Off.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.8232476
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Shoulders_Separation@MaxKneeHeight",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -3.393316
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Shoulders_Separation@MaxKneeHeight.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.6400467
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Shoulders_Separation@MaxKneeHeight.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -19.16324
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Shoulders_Separation@MaxKneeHeight.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -3.393316
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Shoulders_Separation@SETUP",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -3.384917
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Shoulders_Separation@SETUP.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -10.27762
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Shoulders_Separation@SETUP.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -11.82676
+  },
+  {
+   "key": "AT_EVENT.Pelvis_Shoulders_Separation@SETUP.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -3.384917
+  },
+  {
+   "key": "AT_EVENT.RPV_CGPos_VLab_Linear_Vel_Mag@CONTACT",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.8062512
+  },
+  {
+   "key": "AT_EVENT.RPV_CGPos_VLab_Linear_Vel_Mag@Lead_Foot_Down",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.9287575
+  },
+  {
+   "key": "AT_EVENT.RPV_CGPos_VLab_Linear_Vel_Mag@Lead_Foot_Off",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.2524166
+  },
+  {
+   "key": "AT_EVENT.RPV_CGPos_VLab_Linear_Vel_Mag@MaxKneeHeight",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.3254821
+  },
+  {
+   "key": "AT_EVENT.RPV_CGPos_VLab_Linear_Vel_Mag@SETUP",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.2586187
+  },
+  {
+   "key": "AT_EVENT.RPV_CGPos_VLab_zeroed@CONTACT",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.1603504
+  },
+  {
+   "key": "AT_EVENT.RPV_CGPos_VLab_zeroed@CONTACT.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.0933249
+  },
+  {
+   "key": "AT_EVENT.RPV_CGPos_VLab_zeroed@CONTACT.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.2867413
+  },
+  {
+   "key": "AT_EVENT.RPV_CGPos_VLab_zeroed@CONTACT.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.1603504
+  },
+  {
+   "key": "AT_EVENT.RPV_CGPos_VLab_zeroed@Lead_Foot_Down",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.09843469
+  },
+  {
+   "key": "AT_EVENT.RPV_CGPos_VLab_zeroed@Lead_Foot_Down.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.01339054
+  },
+  {
+   "key": "AT_EVENT.RPV_CGPos_VLab_zeroed@Lead_Foot_Down.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.3848934
+  },
+  {
+   "key": "AT_EVENT.RPV_CGPos_VLab_zeroed@Lead_Foot_Down.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.09843469
+  },
+  {
+   "key": "AT_EVENT.RPV_CGPos_VLab_zeroed@Lead_Foot_Off",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0
+  },
+  {
+   "key": "AT_EVENT.RPV_CGPos_VLab_zeroed@Lead_Foot_Off.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0
+  },
+  {
+   "key": "AT_EVENT.RPV_CGPos_VLab_zeroed@Lead_Foot_Off.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0
+  },
+  {
+   "key": "AT_EVENT.RPV_CGPos_VLab_zeroed@Lead_Foot_Off.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0
+  },
+  {
+   "key": "AT_EVENT.RPV_CGPos_VLab_zeroed@MaxKneeHeight",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.01388597
+  },
+  {
+   "key": "AT_EVENT.RPV_CGPos_VLab_zeroed@MaxKneeHeight.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.004651785
+  },
+  {
+   "key": "AT_EVENT.RPV_CGPos_VLab_zeroed@MaxKneeHeight.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.03884074
+  },
+  {
+   "key": "AT_EVENT.RPV_CGPos_VLab_zeroed@MaxKneeHeight.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.01388597
+  },
+  {
+   "key": "AT_EVENT.RPV_CGPos_VLab_zeroed@SETUP",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.01679265
+  },
+  {
+   "key": "AT_EVENT.RPV_CGPos_VLab_zeroed@SETUP.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.01293755
+  },
+  {
+   "key": "AT_EVENT.RPV_CGPos_VLab_zeroed@SETUP.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.08602238
+  },
+  {
+   "key": "AT_EVENT.RPV_CGPos_VLab_zeroed@SETUP.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.01679265
+  },
+  {
+   "key": "AT_EVENT.RTA_CGPos_VLab_Linear_Vel_Mag@CONTACT",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.6745817
+  },
+  {
+   "key": "AT_EVENT.RTA_CGPos_VLab_Linear_Vel_Mag@Lead_Foot_Down",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.7828596
+  },
+  {
+   "key": "AT_EVENT.RTA_CGPos_VLab_Linear_Vel_Mag@Lead_Foot_Off",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.2215759
+  },
+  {
+   "key": "AT_EVENT.RTA_CGPos_VLab_Linear_Vel_Mag@MaxKneeHeight",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.2130533
+  },
+  {
+   "key": "AT_EVENT.RTA_CGPos_VLab_Linear_Vel_Mag@SETUP",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.271785
+  },
+  {
+   "key": "AT_EVENT.RTA_CGPos_VLab_zeroed@CONTACT",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.1203225
+  },
+  {
+   "key": "AT_EVENT.RTA_CGPos_VLab_zeroed@CONTACT.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.005890846
+  },
+  {
+   "key": "AT_EVENT.RTA_CGPos_VLab_zeroed@CONTACT.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.3642255
+  },
+  {
+   "key": "AT_EVENT.RTA_CGPos_VLab_zeroed@CONTACT.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.1203225
+  },
+  {
+   "key": "AT_EVENT.RTA_CGPos_VLab_zeroed@Lead_Foot_Down",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.112692
+  },
+  {
+   "key": "AT_EVENT.RTA_CGPos_VLab_zeroed@Lead_Foot_Down.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.01368046
+  },
+  {
+   "key": "AT_EVENT.RTA_CGPos_VLab_zeroed@Lead_Foot_Down.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.4050925
+  },
+  {
+   "key": "AT_EVENT.RTA_CGPos_VLab_zeroed@Lead_Foot_Down.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.112692
+  },
+  {
+   "key": "AT_EVENT.RTA_CGPos_VLab_zeroed@Lead_Foot_Off",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0
+  },
+  {
+   "key": "AT_EVENT.RTA_CGPos_VLab_zeroed@Lead_Foot_Off.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0
+  },
+  {
+   "key": "AT_EVENT.RTA_CGPos_VLab_zeroed@Lead_Foot_Off.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0
+  },
+  {
+   "key": "AT_EVENT.RTA_CGPos_VLab_zeroed@Lead_Foot_Off.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0
+  },
+  {
+   "key": "AT_EVENT.RTA_CGPos_VLab_zeroed@MaxKneeHeight",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.01874876
+  },
+  {
+   "key": "AT_EVENT.RTA_CGPos_VLab_zeroed@MaxKneeHeight.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.005645871
+  },
+  {
+   "key": "AT_EVENT.RTA_CGPos_VLab_zeroed@MaxKneeHeight.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.01111487
+  },
+  {
+   "key": "AT_EVENT.RTA_CGPos_VLab_zeroed@MaxKneeHeight.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.01874876
+  },
+  {
+   "key": "AT_EVENT.RTA_CGPos_VLab_zeroed@SETUP",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.02101147
+  },
+  {
+   "key": "AT_EVENT.RTA_CGPos_VLab_zeroed@SETUP.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.00279665
+  },
+  {
+   "key": "AT_EVENT.RTA_CGPos_VLab_zeroed@SETUP.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.07514332
+  },
+  {
+   "key": "AT_EVENT.RTA_CGPos_VLab_zeroed@SETUP.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.02101147
+  },
+  {
+   "key": "AT_EVENT.Thorax_Ang_Vel_mag@CONTACT",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 326.0014
+  },
+  {
+   "key": "AT_EVENT.Thorax_Ang_Vel_mag@Lead_Foot_Down",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 640.2978
+  },
+  {
+   "key": "AT_EVENT.Thorax_Ang_Vel_mag@Lead_Foot_Off",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 23.03574
+  },
+  {
+   "key": "AT_EVENT.Thorax_Ang_Vel_mag@MaxKneeHeight",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 45.63923
+  },
+  {
+   "key": "AT_EVENT.Thorax_Ang_Vel_mag@SETUP",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 19.54682
+  },
+  {
+   "key": "AT_EVENT.Thorax_Ang_Vel@CONTACT",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -324.1368
+  },
+  {
+   "key": "AT_EVENT.Thorax_Ang_Vel@CONTACT.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -25.2738
+  },
+  {
+   "key": "AT_EVENT.Thorax_Ang_Vel@CONTACT.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -23.94687
+  },
+  {
+   "key": "AT_EVENT.Thorax_Ang_Vel@CONTACT.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -324.1368
+  },
+  {
+   "key": "AT_EVENT.Thorax_Ang_Vel@Lead_Foot_Down",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -637.454
+  },
+  {
+   "key": "AT_EVENT.Thorax_Ang_Vel@Lead_Foot_Down.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -41.53582
+  },
+  {
+   "key": "AT_EVENT.Thorax_Ang_Vel@Lead_Foot_Down.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -43.68504
+  },
+  {
+   "key": "AT_EVENT.Thorax_Ang_Vel@Lead_Foot_Down.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -637.454
+  },
+  {
+   "key": "AT_EVENT.Thorax_Ang_Vel@Lead_Foot_Off",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 4.411191
+  },
+  {
+   "key": "AT_EVENT.Thorax_Ang_Vel@Lead_Foot_Off.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -17.16497
+  },
+  {
+   "key": "AT_EVENT.Thorax_Ang_Vel@Lead_Foot_Off.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 14.71566
+  },
+  {
+   "key": "AT_EVENT.Thorax_Ang_Vel@Lead_Foot_Off.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 4.411191
+  },
+  {
+   "key": "AT_EVENT.Thorax_Ang_Vel@MaxKneeHeight",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 41.49836
+  },
+  {
+   "key": "AT_EVENT.Thorax_Ang_Vel@MaxKneeHeight.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -18.65652
+  },
+  {
+   "key": "AT_EVENT.Thorax_Ang_Vel@MaxKneeHeight.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -3.57212
+  },
+  {
+   "key": "AT_EVENT.Thorax_Ang_Vel@MaxKneeHeight.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 41.49836
+  },
+  {
+   "key": "AT_EVENT.Thorax_Ang_Vel@SETUP",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 1.608151
+  },
+  {
+   "key": "AT_EVENT.Thorax_Ang_Vel@SETUP.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -6.030567
+  },
+  {
+   "key": "AT_EVENT.Thorax_Ang_Vel@SETUP.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 18.52361
+  },
+  {
+   "key": "AT_EVENT.Thorax_Ang_Vel@SETUP.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 1.608151
+  },
+  {
+   "key": "AT_EVENT.Trail_Elbow_Ang_Vel@CONTACT",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 374.2274
+  },
+  {
+   "key": "AT_EVENT.Trail_Elbow_Ang_Vel@CONTACT.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -711.9931
+  },
+  {
+   "key": "AT_EVENT.Trail_Elbow_Ang_Vel@CONTACT.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -510.3728
+  },
+  {
+   "key": "AT_EVENT.Trail_Elbow_Ang_Vel@CONTACT.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 374.2274
+  },
+  {
+   "key": "AT_EVENT.Trail_Elbow_Ang_Vel@Lead_Foot_Down",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -306.5071
+  },
+  {
+   "key": "AT_EVENT.Trail_Elbow_Ang_Vel@Lead_Foot_Down.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -1.664205
+  },
+  {
+   "key": "AT_EVENT.Trail_Elbow_Ang_Vel@Lead_Foot_Down.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -86.41435
+  },
+  {
+   "key": "AT_EVENT.Trail_Elbow_Ang_Vel@Lead_Foot_Down.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -306.5071
+  },
+  {
+   "key": "AT_EVENT.Trail_Elbow_Ang_Vel@Lead_Foot_Off",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 50.39862
+  },
+  {
+   "key": "AT_EVENT.Trail_Elbow_Ang_Vel@Lead_Foot_Off.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -1.330745
+  },
+  {
+   "key": "AT_EVENT.Trail_Elbow_Ang_Vel@Lead_Foot_Off.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -2.38921
+  },
+  {
+   "key": "AT_EVENT.Trail_Elbow_Ang_Vel@Lead_Foot_Off.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 50.39862
+  },
+  {
+   "key": "AT_EVENT.Trail_Elbow_Ang_Vel@MaxKneeHeight",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -11.89484
+  },
+  {
+   "key": "AT_EVENT.Trail_Elbow_Ang_Vel@MaxKneeHeight.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 2.37324
+  },
+  {
+   "key": "AT_EVENT.Trail_Elbow_Ang_Vel@MaxKneeHeight.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 4.327083
+  },
+  {
+   "key": "AT_EVENT.Trail_Elbow_Ang_Vel@MaxKneeHeight.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -11.89484
+  },
+  {
+   "key": "AT_EVENT.Trail_Elbow_Ang_Vel@SETUP",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -8.899048
+  },
+  {
+   "key": "AT_EVENT.Trail_Elbow_Ang_Vel@SETUP.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -1.976299
+  },
+  {
+   "key": "AT_EVENT.Trail_Elbow_Ang_Vel@SETUP.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -5.770483
+  },
+  {
+   "key": "AT_EVENT.Trail_Elbow_Ang_Vel@SETUP.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -8.899048
+  },
+  {
+   "key": "AT_EVENT.Trail_Elbow_Angle@CONTACT",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -35.61005
+  },
+  {
+   "key": "AT_EVENT.Trail_Elbow_Angle@CONTACT.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 84.57185
+  },
+  {
+   "key": "AT_EVENT.Trail_Elbow_Angle@CONTACT.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0
+  },
+  {
+   "key": "AT_EVENT.Trail_Elbow_Angle@CONTACT.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -35.61005
+  },
+  {
+   "key": "AT_EVENT.Trail_Elbow_Angle@Lead_Foot_Down",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -88.11442
+  },
+  {
+   "key": "AT_EVENT.Trail_Elbow_Angle@Lead_Foot_Down.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 145.8424
+  },
+  {
+   "key": "AT_EVENT.Trail_Elbow_Angle@Lead_Foot_Down.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.000004268868
+  },
+  {
+   "key": "AT_EVENT.Trail_Elbow_Angle@Lead_Foot_Down.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -88.11442
+  },
+  {
+   "key": "AT_EVENT.Trail_Elbow_Angle@Lead_Foot_Off",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -60.3521
+  },
+  {
+   "key": "AT_EVENT.Trail_Elbow_Angle@Lead_Foot_Off.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 137.6384
+  },
+  {
+   "key": "AT_EVENT.Trail_Elbow_Angle@Lead_Foot_Off.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.000003415095
+  },
+  {
+   "key": "AT_EVENT.Trail_Elbow_Angle@Lead_Foot_Off.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -60.3521
+  },
+  {
+   "key": "AT_EVENT.Trail_Elbow_Angle@MaxKneeHeight",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -61.05646
+  },
+  {
+   "key": "AT_EVENT.Trail_Elbow_Angle@MaxKneeHeight.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 141.3692
+  },
+  {
+   "key": "AT_EVENT.Trail_Elbow_Angle@MaxKneeHeight.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.000001707548
+  },
+  {
+   "key": "AT_EVENT.Trail_Elbow_Angle@MaxKneeHeight.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -61.05646
+  },
+  {
+   "key": "AT_EVENT.Trail_Elbow_Angle@SETUP",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -68.14127
+  },
+  {
+   "key": "AT_EVENT.Trail_Elbow_Angle@SETUP.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 141.8672
+  },
+  {
+   "key": "AT_EVENT.Trail_Elbow_Angle@SETUP.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0
+  },
+  {
+   "key": "AT_EVENT.Trail_Elbow_Angle@SETUP.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -68.14127
+  },
+  {
+   "key": "AT_EVENT.Trail_Foot_Angle@CONTACT",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 4.583261
+  },
+  {
+   "key": "AT_EVENT.Trail_Foot_Angle@CONTACT.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 3.142869
+  },
+  {
+   "key": "AT_EVENT.Trail_Foot_Angle@CONTACT.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 16.24088
+  },
+  {
+   "key": "AT_EVENT.Trail_Foot_Angle@CONTACT.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 4.583261
+  },
+  {
+   "key": "AT_EVENT.Trail_Foot_Angle@Lead_Foot_Down",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -19.6735
+  },
+  {
+   "key": "AT_EVENT.Trail_Foot_Angle@Lead_Foot_Down.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 11.42874
+  },
+  {
+   "key": "AT_EVENT.Trail_Foot_Angle@Lead_Foot_Down.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 12.58307
+  },
+  {
+   "key": "AT_EVENT.Trail_Foot_Angle@Lead_Foot_Down.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -19.6735
+  },
+  {
+   "key": "AT_EVENT.Trail_Foot_Angle@Lead_Foot_Off",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -2.62328
+  },
+  {
+   "key": "AT_EVENT.Trail_Foot_Angle@Lead_Foot_Off.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 20.54354
+  },
+  {
+   "key": "AT_EVENT.Trail_Foot_Angle@Lead_Foot_Off.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -2.276186
+  },
+  {
+   "key": "AT_EVENT.Trail_Foot_Angle@Lead_Foot_Off.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -2.62328
+  },
+  {
+   "key": "AT_EVENT.Trail_Foot_Angle@MaxKneeHeight",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 2.765862
+  },
+  {
+   "key": "AT_EVENT.Trail_Foot_Angle@MaxKneeHeight.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 19.05778
+  },
+  {
+   "key": "AT_EVENT.Trail_Foot_Angle@MaxKneeHeight.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.7103813
+  },
+  {
+   "key": "AT_EVENT.Trail_Foot_Angle@MaxKneeHeight.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 2.765862
+  },
+  {
+   "key": "AT_EVENT.Trail_Foot_Angle@SETUP",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -2.315784
+  },
+  {
+   "key": "AT_EVENT.Trail_Foot_Angle@SETUP.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 19.70703
+  },
+  {
+   "key": "AT_EVENT.Trail_Foot_Angle@SETUP.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 2.199415
+  },
+  {
+   "key": "AT_EVENT.Trail_Foot_Angle@SETUP.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -2.315784
+  },
+  {
+   "key": "AT_EVENT.Trail_Foot_Segment_Angle@CONTACT",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 9.59186
+  },
+  {
+   "key": "AT_EVENT.Trail_Foot_Segment_Angle@CONTACT.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -73.15704
+  },
+  {
+   "key": "AT_EVENT.Trail_Foot_Segment_Angle@CONTACT.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -26.63567
+  },
+  {
+   "key": "AT_EVENT.Trail_Foot_Segment_Angle@CONTACT.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 9.59186
+  },
+  {
+   "key": "AT_EVENT.Trail_Foot_Segment_Angle@Lead_Foot_Down",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -75.42986
+  },
+  {
+   "key": "AT_EVENT.Trail_Foot_Segment_Angle@Lead_Foot_Down.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -29.08966
+  },
+  {
+   "key": "AT_EVENT.Trail_Foot_Segment_Angle@Lead_Foot_Down.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -21.5417
+  },
+  {
+   "key": "AT_EVENT.Trail_Foot_Segment_Angle@Lead_Foot_Down.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -75.42986
+  },
+  {
+   "key": "AT_EVENT.Trail_Foot_Segment_Angle@Lead_Foot_Off",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -75.62858
+  },
+  {
+   "key": "AT_EVENT.Trail_Foot_Segment_Angle@Lead_Foot_Off.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.6243677
+  },
+  {
+   "key": "AT_EVENT.Trail_Foot_Segment_Angle@Lead_Foot_Off.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -2.173665
+  },
+  {
+   "key": "AT_EVENT.Trail_Foot_Segment_Angle@Lead_Foot_Off.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -75.62858
+  },
+  {
+   "key": "AT_EVENT.Trail_Foot_Segment_Angle@MaxKneeHeight",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -77.1069
+  },
+  {
+   "key": "AT_EVENT.Trail_Foot_Segment_Angle@MaxKneeHeight.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.2082237
+  },
+  {
+   "key": "AT_EVENT.Trail_Foot_Segment_Angle@MaxKneeHeight.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -2.470769
+  },
+  {
+   "key": "AT_EVENT.Trail_Foot_Segment_Angle@MaxKneeHeight.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -77.1069
+  },
+  {
+   "key": "AT_EVENT.Trail_Foot_Segment_Angle@SETUP",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -75.96957
+  },
+  {
+   "key": "AT_EVENT.Trail_Foot_Segment_Angle@SETUP.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -1.59076
+  },
+  {
+   "key": "AT_EVENT.Trail_Foot_Segment_Angle@SETUP.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -2.706351
+  },
+  {
+   "key": "AT_EVENT.Trail_Foot_Segment_Angle@SETUP.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -75.96957
+  },
+  {
+   "key": "AT_EVENT.Trail_Knee_Ang_Vel@CONTACT",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -12.26741
+  },
+  {
+   "key": "AT_EVENT.Trail_Knee_Ang_Vel@CONTACT.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 54.91652
+  },
+  {
+   "key": "AT_EVENT.Trail_Knee_Ang_Vel@CONTACT.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 3.850117
+  },
+  {
+   "key": "AT_EVENT.Trail_Knee_Ang_Vel@CONTACT.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -12.26741
+  },
+  {
+   "key": "AT_EVENT.Trail_Knee_Ang_Vel@Lead_Foot_Down",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.8014743
+  },
+  {
+   "key": "AT_EVENT.Trail_Knee_Ang_Vel@Lead_Foot_Down.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -246.4489
+  },
+  {
+   "key": "AT_EVENT.Trail_Knee_Ang_Vel@Lead_Foot_Down.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 16.82858
+  },
+  {
+   "key": "AT_EVENT.Trail_Knee_Ang_Vel@Lead_Foot_Down.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.8014743
+  },
+  {
+   "key": "AT_EVENT.Trail_Knee_Ang_Vel@Lead_Foot_Off",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 2.452266
+  },
+  {
+   "key": "AT_EVENT.Trail_Knee_Ang_Vel@Lead_Foot_Off.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -3.522022
+  },
+  {
+   "key": "AT_EVENT.Trail_Knee_Ang_Vel@Lead_Foot_Off.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -7.879669
+  },
+  {
+   "key": "AT_EVENT.Trail_Knee_Ang_Vel@Lead_Foot_Off.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 2.452266
+  },
+  {
+   "key": "AT_EVENT.Trail_Knee_Ang_Vel@MaxKneeHeight",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -3.557419
+  },
+  {
+   "key": "AT_EVENT.Trail_Knee_Ang_Vel@MaxKneeHeight.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -12.79852
+  },
+  {
+   "key": "AT_EVENT.Trail_Knee_Ang_Vel@MaxKneeHeight.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 3.512886
+  },
+  {
+   "key": "AT_EVENT.Trail_Knee_Ang_Vel@MaxKneeHeight.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -3.557419
+  },
+  {
+   "key": "AT_EVENT.Trail_Knee_Ang_Vel@SETUP",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 5.880973
+  },
+  {
+   "key": "AT_EVENT.Trail_Knee_Ang_Vel@SETUP.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -30.21606
+  },
+  {
+   "key": "AT_EVENT.Trail_Knee_Ang_Vel@SETUP.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -5.613523
+  },
+  {
+   "key": "AT_EVENT.Trail_Knee_Ang_Vel@SETUP.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 5.880973
+  },
+  {
+   "key": "AT_EVENT.Trail_Knee_Angle@CONTACT",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 11.84149
+  },
+  {
+   "key": "AT_EVENT.Trail_Knee_Angle@CONTACT.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 77.22246
+  },
+  {
+   "key": "AT_EVENT.Trail_Knee_Angle@CONTACT.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 18.06313
+  },
+  {
+   "key": "AT_EVENT.Trail_Knee_Angle@CONTACT.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 11.84149
+  },
+  {
+   "key": "AT_EVENT.Trail_Knee_Angle@Lead_Foot_Down",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.5659607
+  },
+  {
+   "key": "AT_EVENT.Trail_Knee_Angle@Lead_Foot_Down.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 54.58714
+  },
+  {
+   "key": "AT_EVENT.Trail_Knee_Angle@Lead_Foot_Down.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 9.325262
+  },
+  {
+   "key": "AT_EVENT.Trail_Knee_Angle@Lead_Foot_Down.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.5659607
+  },
+  {
+   "key": "AT_EVENT.Trail_Knee_Angle@Lead_Foot_Off",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 3.140346
+  },
+  {
+   "key": "AT_EVENT.Trail_Knee_Angle@Lead_Foot_Off.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 45.12721
+  },
+  {
+   "key": "AT_EVENT.Trail_Knee_Angle@Lead_Foot_Off.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 15.02182
+  },
+  {
+   "key": "AT_EVENT.Trail_Knee_Angle@Lead_Foot_Off.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 3.140346
+  },
+  {
+   "key": "AT_EVENT.Trail_Knee_Angle@MaxKneeHeight",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 3.85495
+  },
+  {
+   "key": "AT_EVENT.Trail_Knee_Angle@MaxKneeHeight.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 46.87157
+  },
+  {
+   "key": "AT_EVENT.Trail_Knee_Angle@MaxKneeHeight.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 14.69164
+  },
+  {
+   "key": "AT_EVENT.Trail_Knee_Angle@MaxKneeHeight.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 3.85495
+  },
+  {
+   "key": "AT_EVENT.Trail_Knee_Angle@SETUP",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 2.120857
+  },
+  {
+   "key": "AT_EVENT.Trail_Knee_Angle@SETUP.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 40.18842
+  },
+  {
+   "key": "AT_EVENT.Trail_Knee_Angle@SETUP.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 13.70092
+  },
+  {
+   "key": "AT_EVENT.Trail_Knee_Angle@SETUP.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 2.120857
+  },
+  {
+   "key": "AT_EVENT.Trail_Shoulder_Ang_Vel@CONTACT",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -101.2692
+  },
+  {
+   "key": "AT_EVENT.Trail_Shoulder_Ang_Vel@CONTACT.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 280.0876
+  },
+  {
+   "key": "AT_EVENT.Trail_Shoulder_Ang_Vel@CONTACT.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -181.3357
+  },
+  {
+   "key": "AT_EVENT.Trail_Shoulder_Ang_Vel@CONTACT.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -101.2692
+  },
+  {
+   "key": "AT_EVENT.Trail_Shoulder_Ang_Vel@Lead_Foot_Down",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -300.4461
+  },
+  {
+   "key": "AT_EVENT.Trail_Shoulder_Ang_Vel@Lead_Foot_Down.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -201.549
+  },
+  {
+   "key": "AT_EVENT.Trail_Shoulder_Ang_Vel@Lead_Foot_Down.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -335.2743
+  },
+  {
+   "key": "AT_EVENT.Trail_Shoulder_Ang_Vel@Lead_Foot_Down.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -300.4461
+  },
+  {
+   "key": "AT_EVENT.Trail_Shoulder_Ang_Vel@Lead_Foot_Off",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 6.347883
+  },
+  {
+   "key": "AT_EVENT.Trail_Shoulder_Ang_Vel@Lead_Foot_Off.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -48.82648
+  },
+  {
+   "key": "AT_EVENT.Trail_Shoulder_Ang_Vel@Lead_Foot_Off.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 29.97995
+  },
+  {
+   "key": "AT_EVENT.Trail_Shoulder_Ang_Vel@Lead_Foot_Off.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 6.347883
+  },
+  {
+   "key": "AT_EVENT.Trail_Shoulder_Ang_Vel@MaxKneeHeight",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 7.880072
+  },
+  {
+   "key": "AT_EVENT.Trail_Shoulder_Ang_Vel@MaxKneeHeight.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -2.259209
+  },
+  {
+   "key": "AT_EVENT.Trail_Shoulder_Ang_Vel@MaxKneeHeight.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 32.97002
+  },
+  {
+   "key": "AT_EVENT.Trail_Shoulder_Ang_Vel@MaxKneeHeight.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 7.880072
+  },
+  {
+   "key": "AT_EVENT.Trail_Shoulder_Ang_Vel@SETUP",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 1.832567
+  },
+  {
+   "key": "AT_EVENT.Trail_Shoulder_Ang_Vel@SETUP.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -21.77595
+  },
+  {
+   "key": "AT_EVENT.Trail_Shoulder_Ang_Vel@SETUP.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 19.33152
+  },
+  {
+   "key": "AT_EVENT.Trail_Shoulder_Ang_Vel@SETUP.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 1.832567
+  },
+  {
+   "key": "AT_EVENT.Trail_Shoulder_Angle@CONTACT",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 88.61549
+  },
+  {
+   "key": "AT_EVENT.Trail_Shoulder_Angle@CONTACT.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 80.92655
+  },
+  {
+   "key": "AT_EVENT.Trail_Shoulder_Angle@CONTACT.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 41.82996
+  },
+  {
+   "key": "AT_EVENT.Trail_Shoulder_Angle@CONTACT.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 88.61549
+  },
+  {
+   "key": "AT_EVENT.Trail_Shoulder_Angle@Lead_Foot_Down",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 71.61074
+  },
+  {
+   "key": "AT_EVENT.Trail_Shoulder_Angle@Lead_Foot_Down.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 42.76552
+  },
+  {
+   "key": "AT_EVENT.Trail_Shoulder_Angle@Lead_Foot_Down.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 37.23076
+  },
+  {
+   "key": "AT_EVENT.Trail_Shoulder_Angle@Lead_Foot_Down.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 71.61074
+  },
+  {
+   "key": "AT_EVENT.Trail_Shoulder_Angle@Lead_Foot_Off",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 40.85956
+  },
+  {
+   "key": "AT_EVENT.Trail_Shoulder_Angle@Lead_Foot_Off.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 20.79395
+  },
+  {
+   "key": "AT_EVENT.Trail_Shoulder_Angle@Lead_Foot_Off.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 62.8354
+  },
+  {
+   "key": "AT_EVENT.Trail_Shoulder_Angle@Lead_Foot_Off.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 40.85956
+  },
+  {
+   "key": "AT_EVENT.Trail_Shoulder_Angle@MaxKneeHeight",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 35.97483
+  },
+  {
+   "key": "AT_EVENT.Trail_Shoulder_Angle@MaxKneeHeight.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 4.42195
+  },
+  {
+   "key": "AT_EVENT.Trail_Shoulder_Angle@MaxKneeHeight.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 66.11256
+  },
+  {
+   "key": "AT_EVENT.Trail_Shoulder_Angle@MaxKneeHeight.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 35.97483
+  },
+  {
+   "key": "AT_EVENT.Trail_Shoulder_Angle@SETUP",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 45.67459
+  },
+  {
+   "key": "AT_EVENT.Trail_Shoulder_Angle@SETUP.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 29.21986
+  },
+  {
+   "key": "AT_EVENT.Trail_Shoulder_Angle@SETUP.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 64.68314
+  },
+  {
+   "key": "AT_EVENT.Trail_Shoulder_Angle@SETUP.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 45.67459
+  },
+  {
+   "key": "AT_EVENT.Trail_Wrist_Angle@CONTACT",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 12.34366
+  },
+  {
+   "key": "AT_EVENT.Trail_Wrist_Angle@CONTACT.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -11.06652
+  },
+  {
+   "key": "AT_EVENT.Trail_Wrist_Angle@CONTACT.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.9541295
+  },
+  {
+   "key": "AT_EVENT.Trail_Wrist_Angle@CONTACT.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 12.34366
+  },
+  {
+   "key": "AT_EVENT.Trail_Wrist_Angle@Lead_Foot_Down",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -10.88562
+  },
+  {
+   "key": "AT_EVENT.Trail_Wrist_Angle@Lead_Foot_Down.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -15.37943
+  },
+  {
+   "key": "AT_EVENT.Trail_Wrist_Angle@Lead_Foot_Down.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 15.00523
+  },
+  {
+   "key": "AT_EVENT.Trail_Wrist_Angle@Lead_Foot_Down.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -10.88562
+  },
+  {
+   "key": "AT_EVENT.Trail_Wrist_Angle@Lead_Foot_Off",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -3.044491
+  },
+  {
+   "key": "AT_EVENT.Trail_Wrist_Angle@Lead_Foot_Off.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -6.983984
+  },
+  {
+   "key": "AT_EVENT.Trail_Wrist_Angle@Lead_Foot_Off.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 2.577459
+  },
+  {
+   "key": "AT_EVENT.Trail_Wrist_Angle@Lead_Foot_Off.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -3.044491
+  },
+  {
+   "key": "AT_EVENT.Trail_Wrist_Angle@MaxKneeHeight",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -2.016915
+  },
+  {
+   "key": "AT_EVENT.Trail_Wrist_Angle@MaxKneeHeight.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -12.38352
+  },
+  {
+   "key": "AT_EVENT.Trail_Wrist_Angle@MaxKneeHeight.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 7.185504
+  },
+  {
+   "key": "AT_EVENT.Trail_Wrist_Angle@MaxKneeHeight.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -2.016915
+  },
+  {
+   "key": "AT_EVENT.Trail_Wrist_Angle@SETUP",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -6.695009
+  },
+  {
+   "key": "AT_EVENT.Trail_Wrist_Angle@SETUP.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -7.988334
+  },
+  {
+   "key": "AT_EVENT.Trail_Wrist_Angle@SETUP.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 3.464548
+  },
+  {
+   "key": "AT_EVENT.Trail_Wrist_Angle@SETUP.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -6.695009
+  },
+  {
+   "key": "AT_EVENT.Trunk_Angle@CONTACT",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 6.690581
+  },
+  {
+   "key": "AT_EVENT.Trunk_Angle@CONTACT.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -10.91873
+  },
+  {
+   "key": "AT_EVENT.Trunk_Angle@CONTACT.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -42.69807
+  },
+  {
+   "key": "AT_EVENT.Trunk_Angle@CONTACT.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 6.690581
+  },
+  {
+   "key": "AT_EVENT.Trunk_Angle@Lead_Foot_Down",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 96.86005
+  },
+  {
+   "key": "AT_EVENT.Trunk_Angle@Lead_Foot_Down.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -15.93369
+  },
+  {
+   "key": "AT_EVENT.Trunk_Angle@Lead_Foot_Down.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -38.51316
+  },
+  {
+   "key": "AT_EVENT.Trunk_Angle@Lead_Foot_Down.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 96.86005
+  },
+  {
+   "key": "AT_EVENT.Trunk_Angle@Lead_Foot_Off",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 88.54025
+  },
+  {
+   "key": "AT_EVENT.Trunk_Angle@Lead_Foot_Off.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 7.363765
+  },
+  {
+   "key": "AT_EVENT.Trunk_Angle@Lead_Foot_Off.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -16.63281
+  },
+  {
+   "key": "AT_EVENT.Trunk_Angle@Lead_Foot_Off.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 88.54025
+  },
+  {
+   "key": "AT_EVENT.Trunk_Angle@MaxKneeHeight",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 95.30988
+  },
+  {
+   "key": "AT_EVENT.Trunk_Angle@MaxKneeHeight.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 6.10615
+  },
+  {
+   "key": "AT_EVENT.Trunk_Angle@MaxKneeHeight.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -21.80509
+  },
+  {
+   "key": "AT_EVENT.Trunk_Angle@MaxKneeHeight.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 95.30988
+  },
+  {
+   "key": "AT_EVENT.Trunk_Angle@SETUP",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 89.42316
+  },
+  {
+   "key": "AT_EVENT.Trunk_Angle@SETUP.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 1.222841
+  },
+  {
+   "key": "AT_EVENT.Trunk_Angle@SETUP.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": -12.32592
+  },
+  {
+   "key": "AT_EVENT.Trunk_Angle@SETUP.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 89.42316
+  },
+  {
+   "key": "ORIGINAL.Contact",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 1.243333
+  },
+  {
+   "key": "ORIGINAL.CONTACT_100MSAFTER",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 1.343333
+  },
+  {
+   "key": "ORIGINAL.CONTACT_200MSAFTER",
+   "count": 4,
+   "shapes": [
+    "number"
+   ],
+   "example": 1.404167
+  },
+  {
+   "key": "ORIGINAL.Downswing",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.3366667
+  },
+  {
+   "key": "ORIGINAL.Lead_Foot_Down",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 1.116667
+  },
+  {
+   "key": "ORIGINAL.Lead_Foot_Off",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.26
+  },
+  {
+   "key": "ORIGINAL.MaxKneeHeight",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.5733333
+  },
+  {
+   "key": "ORIGINAL.PLOTSTART_Lead_Foot_Off",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.2533333
+  },
+  {
+   "key": "ORIGINAL.PLOTSTART_SETUP",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.01666667
+  },
+  {
+   "key": "ORIGINAL.SETUP",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.02
+  },
+  {
+   "key": "PLANE.Bat_Angle_Frontal@Contact",
+   "count": 168,
+   "shapes": [
+    "number"
+   ],
+   "example": -54.9689
+  },
+  {
+   "key": "PLANE.Bat_Angle_Sagittal@Contact",
+   "count": 168,
+   "shapes": [
+    "number"
+   ],
+   "example": -8.977104
+  },
+  {
+   "key": "PLANE.Bat_Angle_Transversal@Contact",
+   "count": 144,
+   "shapes": [
+    "number"
+   ],
+   "example": 6.319357
+  },
+  {
+   "key": "PLANE.Horizontal_attack_angle",
+   "count": 144,
+   "shapes": [
+    "number"
+   ],
+   "example": -10.73798
+  },
+  {
+   "key": "PLANE.Vertical_attack_angle",
+   "count": 144,
+   "shapes": [
+    "number"
+   ],
+   "example": 12.09389
+  },
+  {
+   "key": "PROCESSED.Bat_travelled_distance_max",
+   "count": 144,
+   "shapes": [
+    "number"
+   ],
+   "example": 2.337574
+  },
+  {
+   "key": "PROCESSED.Bat_travelled_distance_max.X",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 2.896794
+  },
+  {
+   "key": "PROCESSED.Bat_travelled_distance_max.Y",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 3.401343
+  },
+  {
+   "key": "PROCESSED.Bat_travelled_distance_max.Z",
+   "count": 5,
+   "shapes": [
+    "number"
+   ],
+   "example": 2.369042
+  },
+  {
+   "key": "PROCESSED.Cropped Measurement End Frame",
+   "count": 168,
+   "shapes": [
+    "number"
+   ],
+   "example": 1230
+  },
+  {
+   "key": "PROCESSED.Cropped Measurement Start Frame",
+   "count": 168,
+   "shapes": [
+    "number"
+   ],
+   "example": 762
+  },
+  {
+   "key": "PROCESSED.Frame_rate",
+   "count": 168,
+   "shapes": [
+    "number"
+   ],
+   "example": 300
+  },
+  {
+   "key": "PROCESSED.Head_Angle@Contact",
+   "count": 168,
+   "shapes": [
+    "number"
+   ],
+   "example": 20.29551
+  },
+  {
+   "key": "PROCESSED.Head_Angle@Contact.X",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 11.93007
+  },
+  {
+   "key": "PROCESSED.Head_Angle@Contact.Y",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -49.16792
+  },
+  {
+   "key": "PROCESSED.Head_Angle@Contact.Z",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -29.90303
+  },
+  {
+   "key": "PROCESSED.Head_Angle@Lead_Foot_Down",
+   "count": 168,
+   "shapes": [
+    "number"
+   ],
+   "example": 23.92712
+  },
+  {
+   "key": "PROCESSED.Head_Angle@Lead_Foot_Down.X",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 18.94133
+  },
+  {
+   "key": "PROCESSED.Head_Angle@Lead_Foot_Down.Y",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -27.39449
+  },
+  {
+   "key": "PROCESSED.Head_Angle@Lead_Foot_Down.Z",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -30.16503
+  },
+  {
+   "key": "PROCESSED.Head_Angle@Setup",
+   "count": 163,
+   "shapes": [
+    "number"
+   ],
+   "example": 14.79801
+  },
+  {
+   "key": "PROCESSED.Head_Angle@Setup.X",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 16.43357
+  },
+  {
+   "key": "PROCESSED.Head_Angle@Setup.Y",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": -1.043886
+  },
+  {
+   "key": "PROCESSED.Head_Angle@Setup.Z",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": -26.60571
+  },
+  {
+   "key": "PROCESSED.Lead_Elbow_Ang_Vel@Max_Lead_Elbow_Ext_Ang_Vel",
+   "count": 162,
+   "shapes": [
+    "number"
+   ],
+   "example": 178.3268
+  },
+  {
+   "key": "PROCESSED.Lead_Elbow_Ang_Vel@Max_Lead_Elbow_Ext_Ang_Vel_MEAN",
+   "count": 162,
+   "shapes": [
+    "number"
+   ],
+   "example": 178.3268
+  },
+  {
+   "key": "PROCESSED.Lead_Elbow_Ang_Vel@Max_Lead_Elbow_Sup_Ang_Vel",
+   "count": 162,
+   "shapes": [
+    "number"
+   ],
+   "example": 894.2878
+  },
+  {
+   "key": "PROCESSED.Lead_Elbow_Ang_Vel@Max_Lead_Elbow_Sup_Ang_Vel_MEAN",
+   "count": 162,
+   "shapes": [
+    "number"
+   ],
+   "example": 894.2878
+  },
+  {
+   "key": "PROCESSED.Lead_Elbow_Angle@Contact",
+   "count": 168,
+   "shapes": [
+    "number"
+   ],
+   "example": -126.21
+  },
+  {
+   "key": "PROCESSED.Lead_Elbow_Angle@Contact_MEAN",
+   "count": 168,
+   "shapes": [
+    "number"
+   ],
+   "example": -126.21
+  },
+  {
+   "key": "PROCESSED.Lead_Elbow_Angle@Contact_MEAN.X",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 38.09406
+  },
+  {
+   "key": "PROCESSED.Lead_Elbow_Angle@Contact_MEAN.Y",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.000003415095
+  },
+  {
+   "key": "PROCESSED.Lead_Elbow_Angle@Contact_MEAN.Z",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -87.26283
+  },
+  {
+   "key": "PROCESSED.Lead_Elbow_Angle@Contact.X",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 38.09406
+  },
+  {
+   "key": "PROCESSED.Lead_Elbow_Angle@Contact.Y",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.000003415095
+  },
+  {
+   "key": "PROCESSED.Lead_Elbow_Angle@Contact.Z",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -87.26283
+  },
+  {
+   "key": "PROCESSED.Lead_Elbow_Angle@Lead_Foot_Down",
+   "count": 168,
+   "shapes": [
+    "number"
+   ],
+   "example": -132.0151
+  },
+  {
+   "key": "PROCESSED.Lead_Elbow_Angle@Lead_Foot_Down_MEAN",
+   "count": 168,
+   "shapes": [
+    "number"
+   ],
+   "example": -132.0151
+  },
+  {
+   "key": "PROCESSED.Lead_Elbow_Angle@Lead_Foot_Down_MEAN.X",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 72.68622
+  },
+  {
+   "key": "PROCESSED.Lead_Elbow_Angle@Lead_Foot_Down_MEAN.Y",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.000002347878
+  },
+  {
+   "key": "PROCESSED.Lead_Elbow_Angle@Lead_Foot_Down_MEAN.Z",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -96.62316
+  },
+  {
+   "key": "PROCESSED.Lead_Elbow_Angle@Lead_Foot_Down.X",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 72.68622
+  },
+  {
+   "key": "PROCESSED.Lead_Elbow_Angle@Lead_Foot_Down.Y",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.000002347878
+  },
+  {
+   "key": "PROCESSED.Lead_Elbow_Angle@Lead_Foot_Down.Z",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -96.62316
+  },
+  {
+   "key": "PROCESSED.Lead_Elbow_Angle@Max_Lead_Elbow_Ext_Angle",
+   "count": 162,
+   "shapes": [
+    "number"
+   ],
+   "example": 79.08215
+  },
+  {
+   "key": "PROCESSED.Lead_Elbow_Angle@Max_Lead_Elbow_Ext_Angle_MEAN",
+   "count": 162,
+   "shapes": [
+    "number"
+   ],
+   "example": 79.08215
+  },
+  {
+   "key": "PROCESSED.Lead_Elbow_Angle@Max_Lead_Elbow_Sup_Angle",
+   "count": 162,
+   "shapes": [
+    "number"
+   ],
+   "example": -65.91703
+  },
+  {
+   "key": "PROCESSED.Lead_Elbow_Angle@Max_Lead_Elbow_Sup_Angle_MEAN",
+   "count": 162,
+   "shapes": [
+    "number"
+   ],
+   "example": -65.91703
+  },
+  {
+   "key": "PROCESSED.Lead_Foot_Segment_Angle@Contact",
+   "count": 167,
+   "shapes": [
+    "number"
+   ],
+   "example": 51.2181
+  },
+  {
+   "key": "PROCESSED.Lead_Foot_Segment_Angle@Contact.X",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": -5.032415
+  },
+  {
+   "key": "PROCESSED.Lead_Foot_Segment_Angle@Contact.Y",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.1178941
+  },
+  {
+   "key": "PROCESSED.Lead_Foot_Segment_Angle@Contact.Z",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 57.79714
+  },
+  {
+   "key": "PROCESSED.Lead_Foot_Segment_Angle@Lead_Foot_Down",
+   "count": 167,
+   "shapes": [
+    "number"
+   ],
+   "example": 52.09581
+  },
+  {
+   "key": "PROCESSED.Lead_Foot_Segment_Angle@Lead_Foot_Down.X",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 2.773517
+  },
+  {
+   "key": "PROCESSED.Lead_Foot_Segment_Angle@Lead_Foot_Down.Y",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": -8.849668
+  },
+  {
+   "key": "PROCESSED.Lead_Foot_Segment_Angle@Lead_Foot_Down.Z",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 60.46648
+  },
+  {
+   "key": "PROCESSED.Lead_Foot_Segment_Angle@Setup",
+   "count": 163,
+   "shapes": [
+    "number"
+   ],
+   "example": 97.94629
+  },
+  {
+   "key": "PROCESSED.Lead_Foot_Segment_Angle@Setup.X",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 1.067938
+  },
+  {
+   "key": "PROCESSED.Lead_Foot_Segment_Angle@Setup.Y",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": -8.786935
+  },
+  {
+   "key": "PROCESSED.Lead_Foot_Segment_Angle@Setup.Z",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 88.55074
+  },
+  {
+   "key": "PROCESSED.Lead_Foot_Vel_mag_max",
+   "count": 144,
+   "shapes": [
+    "number"
+   ],
+   "example": 1.292327
+  },
+  {
+   "key": "PROCESSED.Lead_Knee_Ang_Vel_ext_max",
+   "count": 167,
+   "shapes": [
+    "number"
+   ],
+   "example": -84.40626
+  },
+  {
+   "key": "PROCESSED.Lead_Knee_Ang_Vel_ext_max_MEAN",
+   "count": 167,
+   "shapes": [
+    "number"
+   ],
+   "example": -84.40626
+  },
+  {
+   "key": "PROCESSED.Lead_Knee_Ang_Vel@Contact",
+   "count": 167,
+   "shapes": [
+    "number"
+   ],
+   "example": -44.56083
+  },
+  {
+   "key": "PROCESSED.Lead_Knee_Ang_Vel@Contact_MEAN",
+   "count": 167,
+   "shapes": [
+    "number"
+   ],
+   "example": -44.56083
+  },
+  {
+   "key": "PROCESSED.Lead_Knee_Ang_Vel@Contact_MEAN.X",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 230.1652
+  },
+  {
+   "key": "PROCESSED.Lead_Knee_Ang_Vel@Contact_MEAN.Y",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": -26.63514
+  },
+  {
+   "key": "PROCESSED.Lead_Knee_Ang_Vel@Contact_MEAN.Z",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 19.68384
+  },
+  {
+   "key": "PROCESSED.Lead_Knee_Ang_Vel@Contact.X",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 230.1652
+  },
+  {
+   "key": "PROCESSED.Lead_Knee_Ang_Vel@Contact.Y",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": -26.63514
+  },
+  {
+   "key": "PROCESSED.Lead_Knee_Ang_Vel@Contact.Z",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 19.68384
+  },
+  {
+   "key": "PROCESSED.Lead_Knee_Ang_Vel@Lead_Foot_Down",
+   "count": 167,
+   "shapes": [
+    "number"
+   ],
+   "example": -78.22162
+  },
+  {
+   "key": "PROCESSED.Lead_Knee_Ang_Vel@Lead_Foot_Down_MEAN",
+   "count": 167,
+   "shapes": [
+    "number"
+   ],
+   "example": -78.22162
+  },
+  {
+   "key": "PROCESSED.Lead_Knee_Ang_Vel@Lead_Foot_Down_MEAN.X",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 64.99749
+  },
+  {
+   "key": "PROCESSED.Lead_Knee_Ang_Vel@Lead_Foot_Down_MEAN.Y",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": -6.626317
+  },
+  {
+   "key": "PROCESSED.Lead_Knee_Ang_Vel@Lead_Foot_Down_MEAN.Z",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 36.96588
+  },
+  {
+   "key": "PROCESSED.Lead_Knee_Ang_Vel@Lead_Foot_Down.X",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 64.99749
+  },
+  {
+   "key": "PROCESSED.Lead_Knee_Ang_Vel@Lead_Foot_Down.Y",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": -6.626317
+  },
+  {
+   "key": "PROCESSED.Lead_Knee_Ang_Vel@Lead_Foot_Down.Z",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 36.96588
+  },
+  {
+   "key": "PROCESSED.Lead_Knee_Angle_ext_max",
+   "count": 167,
+   "shapes": [
+    "number"
+   ],
+   "example": 22.82321
+  },
+  {
+   "key": "PROCESSED.Lead_Knee_Angle_ext_max_MEAN",
+   "count": 167,
+   "shapes": [
+    "number"
+   ],
+   "example": 22.82321
+  },
+  {
+   "key": "PROCESSED.Lead_Knee_Angle@Contact",
+   "count": 167,
+   "shapes": [
+    "number"
+   ],
+   "example": 12.97231
+  },
+  {
+   "key": "PROCESSED.Lead_Knee_Angle@Contact_MEAN",
+   "count": 167,
+   "shapes": [
+    "number"
+   ],
+   "example": 12.97231
+  },
+  {
+   "key": "PROCESSED.Lead_Knee_Angle@Contact_MEAN.X",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 19.87103
+  },
+  {
+   "key": "PROCESSED.Lead_Knee_Angle@Contact_MEAN.Y",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 4.604939
+  },
+  {
+   "key": "PROCESSED.Lead_Knee_Angle@Contact_MEAN.Z",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 7.250844
+  },
+  {
+   "key": "PROCESSED.Lead_Knee_Angle@Contact.X",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 19.87103
+  },
+  {
+   "key": "PROCESSED.Lead_Knee_Angle@Contact.Y",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 4.604939
+  },
+  {
+   "key": "PROCESSED.Lead_Knee_Angle@Contact.Z",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 7.250844
+  },
+  {
+   "key": "PROCESSED.Lead_Knee_Angle@Lead_Foot_Down",
+   "count": 167,
+   "shapes": [
+    "number"
+   ],
+   "example": 7.860819
+  },
+  {
+   "key": "PROCESSED.Lead_Knee_Angle@Lead_Foot_Down_MEAN",
+   "count": 167,
+   "shapes": [
+    "number"
+   ],
+   "example": 7.860819
+  },
+  {
+   "key": "PROCESSED.Lead_Knee_Angle@Lead_Foot_Down_MEAN.X",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 41.31495
+  },
+  {
+   "key": "PROCESSED.Lead_Knee_Angle@Lead_Foot_Down_MEAN.Y",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 6.494022
+  },
+  {
+   "key": "PROCESSED.Lead_Knee_Angle@Lead_Foot_Down_MEAN.Z",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 6.941248
+  },
+  {
+   "key": "PROCESSED.Lead_Knee_Angle@Lead_Foot_Down.X",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 41.31495
+  },
+  {
+   "key": "PROCESSED.Lead_Knee_Angle@Lead_Foot_Down.Y",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 6.494022
+  },
+  {
+   "key": "PROCESSED.Lead_Knee_Angle@Lead_Foot_Down.Z",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 6.941248
+  },
+  {
+   "key": "PROCESSED.Lead_Shoulder_Ang_Vel@Contact",
+   "count": 168,
+   "shapes": [
+    "number"
+   ],
+   "example": 236.9161
+  },
+  {
+   "key": "PROCESSED.Lead_Shoulder_Ang_Vel@Contact.X",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 75.94733
+  },
+  {
+   "key": "PROCESSED.Lead_Shoulder_Ang_Vel@Contact.Y",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -30.45671
+  },
+  {
+   "key": "PROCESSED.Lead_Shoulder_Ang_Vel@Contact.Z",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -178.8815
+  },
+  {
+   "key": "PROCESSED.Lead_Shoulder_Ang_Vel@Lead_Foot_Down",
+   "count": 168,
+   "shapes": [
+    "number"
+   ],
+   "example": 41.1413
+  },
+  {
+   "key": "PROCESSED.Lead_Shoulder_Ang_Vel@Lead_Foot_Down.X",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -151.003
+  },
+  {
+   "key": "PROCESSED.Lead_Shoulder_Ang_Vel@Lead_Foot_Down.Y",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 18.41003
+  },
+  {
+   "key": "PROCESSED.Lead_Shoulder_Ang_Vel@Lead_Foot_Down.Z",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -11.68166
+  },
+  {
+   "key": "PROCESSED.Lead_Shoulder_Ang_Vel@Setup",
+   "count": 163,
+   "shapes": [
+    "number"
+   ],
+   "example": -31.43338
+  },
+  {
+   "key": "PROCESSED.Lead_Shoulder_Ang_Vel@Setup.X",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": -10.17756
+  },
+  {
+   "key": "PROCESSED.Lead_Shoulder_Ang_Vel@Setup.Y",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 27.26923
+  },
+  {
+   "key": "PROCESSED.Lead_Shoulder_Ang_Vel@Setup.Z",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 23.8161
+  },
+  {
+   "key": "PROCESSED.Lead_Shoulder_Angle@Contact",
+   "count": 168,
+   "shapes": [
+    "number"
+   ],
+   "example": 49.12535
+  },
+  {
+   "key": "PROCESSED.Lead_Shoulder_Angle@Contact.X",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 105.9824
+  },
+  {
+   "key": "PROCESSED.Lead_Shoulder_Angle@Contact.Y",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 76.46575
+  },
+  {
+   "key": "PROCESSED.Lead_Shoulder_Angle@Contact.Z",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 27.97226
+  },
+  {
+   "key": "PROCESSED.Lead_Shoulder_Angle@Lead_Foot_Down",
+   "count": 168,
+   "shapes": [
+    "number"
+   ],
+   "example": 38.79512
+  },
+  {
+   "key": "PROCESSED.Lead_Shoulder_Angle@Lead_Foot_Down.X",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 123.028
+  },
+  {
+   "key": "PROCESSED.Lead_Shoulder_Angle@Lead_Foot_Down.Y",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 72.53272
+  },
+  {
+   "key": "PROCESSED.Lead_Shoulder_Angle@Lead_Foot_Down.Z",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 29.14963
+  },
+  {
+   "key": "PROCESSED.Lead_Shoulder_Angle@Setup",
+   "count": 163,
+   "shapes": [
+    "number"
+   ],
+   "example": 43.05858
+  },
+  {
+   "key": "PROCESSED.Lead_Shoulder_Angle@Setup.X",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 126.0651
+  },
+  {
+   "key": "PROCESSED.Lead_Shoulder_Angle@Setup.Y",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 65.66857
+  },
+  {
+   "key": "PROCESSED.Lead_Shoulder_Angle@Setup.Z",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 55.96605
+  },
+  {
+   "key": "PROCESSED.Left_Wrist_Angle@Lead_Foot_Down",
+   "count": 168,
+   "shapes": [
+    "number"
+   ],
+   "example": -4.875901
+  },
+  {
+   "key": "PROCESSED.Left_Wrist_Angle@Lead_Foot_Down_MEAN",
+   "count": 168,
+   "shapes": [
+    "number"
+   ],
+   "example": -4.875901
+  },
+  {
+   "key": "PROCESSED.Left_Wrist_Angle@Lead_Foot_Down_MEAN.X",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -15.37943
+  },
+  {
+   "key": "PROCESSED.Left_Wrist_Angle@Lead_Foot_Down_MEAN.Y",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 15.00523
+  },
+  {
+   "key": "PROCESSED.Left_Wrist_Angle@Lead_Foot_Down_MEAN.Z",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -10.88562
+  },
+  {
+   "key": "PROCESSED.Left_Wrist_Angle@Lead_Foot_Down.X",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -15.37943
+  },
+  {
+   "key": "PROCESSED.Left_Wrist_Angle@Lead_Foot_Down.Y",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 15.00523
+  },
+  {
+   "key": "PROCESSED.Left_Wrist_Angle@Lead_Foot_Down.Z",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -10.88562
+  },
+  {
+   "key": "PROCESSED.Max_Bat_Ang_Vel",
+   "count": 163,
+   "shapes": [
+    "number"
+   ],
+   "example": 1761.843
+  },
+  {
+   "key": "PROCESSED.Max_Bat_Ang_Vel_MEAN",
+   "count": 163,
+   "shapes": [
+    "number"
+   ],
+   "example": 1761.843
+  },
+  {
+   "key": "PROCESSED.Max_Bat_Linear_Vel",
+   "count": 168,
+   "shapes": [
+    "number"
+   ],
+   "example": 22.38354
+  },
+  {
+   "key": "PROCESSED.Max_Bat_Linear_Vel_MEAN",
+   "count": 168,
+   "shapes": [
+    "number"
+   ],
+   "example": 22.38354
+  },
+  {
+   "key": "PROCESSED.Max_Lead_Forearm_Ang_Vel",
+   "count": 162,
+   "shapes": [
+    "number"
+   ],
+   "example": 911.4799
+  },
+  {
+   "key": "PROCESSED.Max_Lead_Forearm_Ang_Vel_MEAN",
+   "count": 162,
+   "shapes": [
+    "number"
+   ],
+   "example": 911.4799
+  },
+  {
+   "key": "PROCESSED.Max_Lead_Hand_Ang_Vel",
+   "count": 162,
+   "shapes": [
+    "number"
+   ],
+   "example": 1283.487
+  },
+  {
+   "key": "PROCESSED.Max_Lead_Hand_Ang_Vel_MEAN",
+   "count": 162,
+   "shapes": [
+    "number"
+   ],
+   "example": 1283.487
+  },
+  {
+   "key": "PROCESSED.Max_Lead_Hand_Linear_Vel",
+   "count": 163,
+   "shapes": [
+    "number"
+   ],
+   "example": 7.881872
+  },
+  {
+   "key": "PROCESSED.Max_Lead_Hand_Linear_Vel_MEAN",
+   "count": 163,
+   "shapes": [
+    "number"
+   ],
+   "example": 7.881872
+  },
+  {
+   "key": "PROCESSED.Max_Pelvis_Ang_Vel",
+   "count": 162,
+   "shapes": [
+    "number"
+   ],
+   "example": 568.114
+  },
+  {
+   "key": "PROCESSED.Max_Pelvis_Ang_Vel_MEAN",
+   "count": 162,
+   "shapes": [
+    "number"
+   ],
+   "example": 568.114
+  },
+  {
+   "key": "PROCESSED.Max_RPV_CGPos_VLab_Linear_Vel",
+   "count": 162,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.8867583
+  },
+  {
+   "key": "PROCESSED.Max_RPV_CGPos_VLab_Linear_Vel_MEAN",
+   "count": 162,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.8867583
+  },
+  {
+   "key": "PROCESSED.Max_RTA_CGPos_VLab_Linear_Vel",
+   "count": 162,
+   "shapes": [
+    "number"
+   ],
+   "example": 1.155775
+  },
+  {
+   "key": "PROCESSED.Max_RTA_CGPos_VLab_Linear_Vel_MEAN",
+   "count": 162,
+   "shapes": [
+    "number"
+   ],
+   "example": 1.155775
+  },
+  {
+   "key": "PROCESSED.Max_Thorax_Ang_Vel",
+   "count": 162,
+   "shapes": [
+    "number"
+   ],
+   "example": 651.0743
+  },
+  {
+   "key": "PROCESSED.Max_Thorax_Ang_Vel_MEAN",
+   "count": 162,
+   "shapes": [
+    "number"
+   ],
+   "example": 651.0743
+  },
+  {
+   "key": "PROCESSED.Pelvis_Angle@Contact",
+   "count": 168,
+   "shapes": [
+    "number"
+   ],
+   "example": 2.395273
+  },
+  {
+   "key": "PROCESSED.Pelvis_Angle@Contact.X",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -6.143519
+  },
+  {
+   "key": "PROCESSED.Pelvis_Angle@Contact.Y",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -17.52345
+  },
+  {
+   "key": "PROCESSED.Pelvis_Angle@Contact.Z",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 4.80312
+  },
+  {
+   "key": "PROCESSED.Pelvis_Angle@Lead_Foot_Down",
+   "count": 168,
+   "shapes": [
+    "number"
+   ],
+   "example": 78.49581
+  },
+  {
+   "key": "PROCESSED.Pelvis_Angle@Lead_Foot_Down_MEAN",
+   "count": 168,
+   "shapes": [
+    "number"
+   ],
+   "example": 78.49581
+  },
+  {
+   "key": "PROCESSED.Pelvis_Angle@Lead_Foot_Down_MEAN.X",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.224005
+  },
+  {
+   "key": "PROCESSED.Pelvis_Angle@Lead_Foot_Down_MEAN.Y",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -21.06881
+  },
+  {
+   "key": "PROCESSED.Pelvis_Angle@Lead_Foot_Down_MEAN.Z",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 71.70459
+  },
+  {
+   "key": "PROCESSED.Pelvis_Angle@Lead_Foot_Down.X",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.224005
+  },
+  {
+   "key": "PROCESSED.Pelvis_Angle@Lead_Foot_Down.Y",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -21.06881
+  },
+  {
+   "key": "PROCESSED.Pelvis_Angle@Lead_Foot_Down.Z",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 71.70459
+  },
+  {
+   "key": "PROCESSED.Pelvis_Angle@Setup",
+   "count": 163,
+   "shapes": [
+    "number"
+   ],
+   "example": 79.47314
+  },
+  {
+   "key": "PROCESSED.Pelvis_Angle@Setup.X",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": -11.45608
+  },
+  {
+   "key": "PROCESSED.Pelvis_Angle@Setup.Y",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": -22.22226
+  },
+  {
+   "key": "PROCESSED.Pelvis_Angle@Setup.Z",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 97.66853
+  },
+  {
+   "key": "PROCESSED.Pelvis_Shoulders_Separation@Contact",
+   "count": 168,
+   "shapes": [
+    "number"
+   ],
+   "example": -13.3149
+  },
+  {
+   "key": "PROCESSED.Pelvis_Shoulders_Separation@Contact_MEAN",
+   "count": 168,
+   "shapes": [
+    "number"
+   ],
+   "example": -13.3149
+  },
+  {
+   "key": "PROCESSED.Pelvis_Shoulders_Separation@Contact_MEAN.X",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -1.87482
+  },
+  {
+   "key": "PROCESSED.Pelvis_Shoulders_Separation@Contact_MEAN.Y",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 25.43589
+  },
+  {
+   "key": "PROCESSED.Pelvis_Shoulders_Separation@Contact_MEAN.Z",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.9913371
+  },
+  {
+   "key": "PROCESSED.Pelvis_Shoulders_Separation@Contact.X",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -1.87482
+  },
+  {
+   "key": "PROCESSED.Pelvis_Shoulders_Separation@Contact.Y",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 25.43589
+  },
+  {
+   "key": "PROCESSED.Pelvis_Shoulders_Separation@Contact.Z",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.9913371
+  },
+  {
+   "key": "PROCESSED.Pelvis_Shoulders_Separation@Downswing",
+   "count": 160,
+   "shapes": [
+    "number"
+   ],
+   "example": -12.79917
+  },
+  {
+   "key": "PROCESSED.Pelvis_Shoulders_Separation@Downswing_MEAN",
+   "count": 160,
+   "shapes": [
+    "number"
+   ],
+   "example": -12.79917
+  },
+  {
+   "key": "PROCESSED.Pelvis_Shoulders_Separation@Downswing_MEAN.X",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": -4.324697
+  },
+  {
+   "key": "PROCESSED.Pelvis_Shoulders_Separation@Downswing_MEAN.Y",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": -17.75226
+  },
+  {
+   "key": "PROCESSED.Pelvis_Shoulders_Separation@Downswing_MEAN.Z",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": -1.233552
+  },
+  {
+   "key": "PROCESSED.Pelvis_Shoulders_Separation@Downswing.X",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": -4.324697
+  },
+  {
+   "key": "PROCESSED.Pelvis_Shoulders_Separation@Downswing.Y",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": -17.75226
+  },
+  {
+   "key": "PROCESSED.Pelvis_Shoulders_Separation@Downswing.Z",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": -1.233552
+  },
+  {
+   "key": "PROCESSED.Pelvis_Shoulders_Separation@Lead_Foot_Down",
+   "count": 168,
+   "shapes": [
+    "number"
+   ],
+   "example": -19.71594
+  },
+  {
+   "key": "PROCESSED.Pelvis_Shoulders_Separation@Lead_Foot_Down_MEAN",
+   "count": 168,
+   "shapes": [
+    "number"
+   ],
+   "example": -19.71594
+  },
+  {
+   "key": "PROCESSED.Pelvis_Shoulders_Separation@Lead_Foot_Down_MEAN.X",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 18.294
+  },
+  {
+   "key": "PROCESSED.Pelvis_Shoulders_Separation@Lead_Foot_Down_MEAN.Y",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 12.98842
+  },
+  {
+   "key": "PROCESSED.Pelvis_Shoulders_Separation@Lead_Foot_Down_MEAN.Z",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 19.09346
+  },
+  {
+   "key": "PROCESSED.Pelvis_Shoulders_Separation@Lead_Foot_Down.X",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 18.294
+  },
+  {
+   "key": "PROCESSED.Pelvis_Shoulders_Separation@Lead_Foot_Down.Y",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 12.98842
+  },
+  {
+   "key": "PROCESSED.Pelvis_Shoulders_Separation@Lead_Foot_Down.Z",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 19.09346
+  },
+  {
+   "key": "PROCESSED.Pelvis_Shoulders_Separation@Max_Bat_Ang_Vel",
+   "count": 163,
+   "shapes": [
+    "number"
+   ],
+   "example": -5.538234
+  },
+  {
+   "key": "PROCESSED.Pelvis_Shoulders_Separation@Max_Bat_Ang_Vel_MEAN",
+   "count": 163,
+   "shapes": [
+    "number"
+   ],
+   "example": -5.538234
+  },
+  {
+   "key": "PROCESSED.Pelvis_Shoulders_Separation@Max_Bat_Ang_Vel_MEAN.X",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 2.958383
+  },
+  {
+   "key": "PROCESSED.Pelvis_Shoulders_Separation@Max_Bat_Ang_Vel_MEAN.Y",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 25.97299
+  },
+  {
+   "key": "PROCESSED.Pelvis_Shoulders_Separation@Max_Bat_Ang_Vel_MEAN.Z",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 1.76155
+  },
+  {
+   "key": "PROCESSED.Pelvis_Shoulders_Separation@Max_Bat_Ang_Vel.X",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 2.958383
+  },
+  {
+   "key": "PROCESSED.Pelvis_Shoulders_Separation@Max_Bat_Ang_Vel.Y",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 25.97299
+  },
+  {
+   "key": "PROCESSED.Pelvis_Shoulders_Separation@Max_Bat_Ang_Vel.Z",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 1.76155
+  },
+  {
+   "key": "PROCESSED.Pelvis_Shoulders_Separation@Max_Lead_Hand_Ang_Vel",
+   "count": 162,
+   "shapes": [
+    "number"
+   ],
+   "example": -19.21321
+  },
+  {
+   "key": "PROCESSED.Pelvis_Shoulders_Separation@Max_Lead_Hand_Ang_Vel_MEAN",
+   "count": 162,
+   "shapes": [
+    "number"
+   ],
+   "example": -19.21321
+  },
+  {
+   "key": "PROCESSED.Pelvis_Shoulders_Separation@Max_Lead_Hand_Ang_Vel_MEAN.X",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 9.19895
+  },
+  {
+   "key": "PROCESSED.Pelvis_Shoulders_Separation@Max_Lead_Hand_Ang_Vel_MEAN.Y",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 25.22894
+  },
+  {
+   "key": "PROCESSED.Pelvis_Shoulders_Separation@Max_Lead_Hand_Ang_Vel_MEAN.Z",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 6.710432
+  },
+  {
+   "key": "PROCESSED.Pelvis_Shoulders_Separation@Max_Lead_Hand_Ang_Vel.X",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 9.19895
+  },
+  {
+   "key": "PROCESSED.Pelvis_Shoulders_Separation@Max_Lead_Hand_Ang_Vel.Y",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 25.22894
+  },
+  {
+   "key": "PROCESSED.Pelvis_Shoulders_Separation@Max_Lead_Hand_Ang_Vel.Z",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 6.710432
+  },
+  {
+   "key": "PROCESSED.Pelvis_Shoulders_Separation@Setup",
+   "count": 163,
+   "shapes": [
+    "number"
+   ],
+   "example": 3.670811
+  },
+  {
+   "key": "PROCESSED.Pelvis_Shoulders_Separation@Setup.X",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": -10.27762
+  },
+  {
+   "key": "PROCESSED.Pelvis_Shoulders_Separation@Setup.Y",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": -11.82676
+  },
+  {
+   "key": "PROCESSED.Pelvis_Shoulders_Separation@Setup.Z",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": -3.384917
+  },
+  {
+   "key": "PROCESSED.Right_Wrist_Angle@Lead_Foot_Down",
+   "count": 168,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.055861
+  },
+  {
+   "key": "PROCESSED.Right_Wrist_Angle@Lead_Foot_Down_MEAN",
+   "count": 168,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.055861
+  },
+  {
+   "key": "PROCESSED.Right_Wrist_Angle@Lead_Foot_Down_MEAN.X",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -22.12237
+  },
+  {
+   "key": "PROCESSED.Right_Wrist_Angle@Lead_Foot_Down_MEAN.Y",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 26.82885
+  },
+  {
+   "key": "PROCESSED.Right_Wrist_Angle@Lead_Foot_Down_MEAN.Z",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 15.12624
+  },
+  {
+   "key": "PROCESSED.Right_Wrist_Angle@Lead_Foot_Down.X",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -22.12237
+  },
+  {
+   "key": "PROCESSED.Right_Wrist_Angle@Lead_Foot_Down.Y",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 26.82885
+  },
+  {
+   "key": "PROCESSED.Right_Wrist_Angle@Lead_Foot_Down.Z",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 15.12624
+  },
+  {
+   "key": "PROCESSED.Stride_Width@Lead_Foot_Down",
+   "count": 167,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.7417908
+  },
+  {
+   "key": "PROCESSED.Stride_Width@Lead_Foot_Down_MEAN",
+   "count": 167,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.7417908
+  },
+  {
+   "key": "PROCESSED.Trail_Elbow_Ang_Vel@Max_Trail_Elbow_Ext_Ang_Vel",
+   "count": 162,
+   "shapes": [
+    "number"
+   ],
+   "example": 19.78914
+  },
+  {
+   "key": "PROCESSED.Trail_Elbow_Ang_Vel@Max_Trail_Elbow_Ext_Ang_Vel_MEAN",
+   "count": 162,
+   "shapes": [
+    "number"
+   ],
+   "example": 19.78914
+  },
+  {
+   "key": "PROCESSED.Trail_Elbow_Ang_Vel@Max_Trail_Elbow_Pron_Ang_Vel",
+   "count": 162,
+   "shapes": [
+    "number"
+   ],
+   "example": -148.3176
+  },
+  {
+   "key": "PROCESSED.Trail_Elbow_Ang_Vel@Max_Trail_Elbow_Pron_Ang_Vel_MEAN",
+   "count": 162,
+   "shapes": [
+    "number"
+   ],
+   "example": -148.3176
+  },
+  {
+   "key": "PROCESSED.Trail_Elbow_Angle@Contact",
+   "count": 168,
+   "shapes": [
+    "number"
+   ],
+   "example": -63.90266
+  },
+  {
+   "key": "PROCESSED.Trail_Elbow_Angle@Contact_MEAN",
+   "count": 168,
+   "shapes": [
+    "number"
+   ],
+   "example": -63.90266
+  },
+  {
+   "key": "PROCESSED.Trail_Elbow_Angle@Contact_MEAN.X",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 84.57185
+  },
+  {
+   "key": "PROCESSED.Trail_Elbow_Angle@Contact_MEAN.Y",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 0
+  },
+  {
+   "key": "PROCESSED.Trail_Elbow_Angle@Contact_MEAN.Z",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -35.61005
+  },
+  {
+   "key": "PROCESSED.Trail_Elbow_Angle@Contact.X",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 84.57185
+  },
+  {
+   "key": "PROCESSED.Trail_Elbow_Angle@Contact.Y",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 0
+  },
+  {
+   "key": "PROCESSED.Trail_Elbow_Angle@Contact.Z",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -35.61005
+  },
+  {
+   "key": "PROCESSED.Trail_Elbow_Angle@Lead_Foot_Down",
+   "count": 168,
+   "shapes": [
+    "number"
+   ],
+   "example": -67.90893
+  },
+  {
+   "key": "PROCESSED.Trail_Elbow_Angle@Lead_Foot_Down_MEAN",
+   "count": 168,
+   "shapes": [
+    "number"
+   ],
+   "example": -67.90893
+  },
+  {
+   "key": "PROCESSED.Trail_Elbow_Angle@Lead_Foot_Down_MEAN.X",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 145.8424
+  },
+  {
+   "key": "PROCESSED.Trail_Elbow_Angle@Lead_Foot_Down_MEAN.Y",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.000004268868
+  },
+  {
+   "key": "PROCESSED.Trail_Elbow_Angle@Lead_Foot_Down_MEAN.Z",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -88.11442
+  },
+  {
+   "key": "PROCESSED.Trail_Elbow_Angle@Lead_Foot_Down.X",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 145.8424
+  },
+  {
+   "key": "PROCESSED.Trail_Elbow_Angle@Lead_Foot_Down.Y",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -0.000004268868
+  },
+  {
+   "key": "PROCESSED.Trail_Elbow_Angle@Lead_Foot_Down.Z",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -88.11442
+  },
+  {
+   "key": "PROCESSED.Trail_Elbow_Angle@Max_Trail_Elbow_Ext_Angle",
+   "count": 162,
+   "shapes": [
+    "number"
+   ],
+   "example": 129.8781
+  },
+  {
+   "key": "PROCESSED.Trail_Elbow_Angle@Max_Trail_Elbow_Ext_Angle_MEAN",
+   "count": 162,
+   "shapes": [
+    "number"
+   ],
+   "example": 129.8781
+  },
+  {
+   "key": "PROCESSED.Trail_Elbow_Angle@Max_Trail_Elbow_Pron_Angle",
+   "count": 162,
+   "shapes": [
+    "number"
+   ],
+   "example": -95.84699
+  },
+  {
+   "key": "PROCESSED.Trail_Elbow_Angle@Max_Trail_Elbow_Pron_Angle_MEAN",
+   "count": 162,
+   "shapes": [
+    "number"
+   ],
+   "example": -95.84699
+  },
+  {
+   "key": "PROCESSED.Trail_Foot_Segment_Angle@Contact",
+   "count": 168,
+   "shapes": [
+    "number"
+   ],
+   "example": -26.62897
+  },
+  {
+   "key": "PROCESSED.Trail_Foot_Segment_Angle@Contact.X",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -73.15704
+  },
+  {
+   "key": "PROCESSED.Trail_Foot_Segment_Angle@Contact.Y",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -26.63567
+  },
+  {
+   "key": "PROCESSED.Trail_Foot_Segment_Angle@Contact.Z",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 9.59186
+  },
+  {
+   "key": "PROCESSED.Trail_Foot_Segment_Angle@Lead_Foot_Down",
+   "count": 168,
+   "shapes": [
+    "number"
+   ],
+   "example": -89.71012
+  },
+  {
+   "key": "PROCESSED.Trail_Foot_Segment_Angle@Lead_Foot_Down.X",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -29.08966
+  },
+  {
+   "key": "PROCESSED.Trail_Foot_Segment_Angle@Lead_Foot_Down.Y",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -21.5417
+  },
+  {
+   "key": "PROCESSED.Trail_Foot_Segment_Angle@Lead_Foot_Down.Z",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -75.42986
+  },
+  {
+   "key": "PROCESSED.Trail_Foot_Segment_Angle@Setup",
+   "count": 163,
+   "shapes": [
+    "number"
+   ],
+   "example": -88.88259
+  },
+  {
+   "key": "PROCESSED.Trail_Foot_Segment_Angle@Setup.X",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": -1.59076
+  },
+  {
+   "key": "PROCESSED.Trail_Foot_Segment_Angle@Setup.Y",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": -2.706351
+  },
+  {
+   "key": "PROCESSED.Trail_Foot_Segment_Angle@Setup.Z",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": -75.96957
+  },
+  {
+   "key": "PROCESSED.Trail_Shoulder_Angle@Contact",
+   "count": 168,
+   "shapes": [
+    "number"
+   ],
+   "example": 97.5668
+  },
+  {
+   "key": "PROCESSED.Trail_Shoulder_Angle@Contact.X",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 80.92655
+  },
+  {
+   "key": "PROCESSED.Trail_Shoulder_Angle@Contact.Y",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 41.82996
+  },
+  {
+   "key": "PROCESSED.Trail_Shoulder_Angle@Contact.Z",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 88.61549
+  },
+  {
+   "key": "PROCESSED.Trail_Shoulder_Angle@Lead_Foot_Down",
+   "count": 168,
+   "shapes": [
+    "number"
+   ],
+   "example": 84.86047
+  },
+  {
+   "key": "PROCESSED.Trail_Shoulder_Angle@Lead_Foot_Down.X",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 42.76552
+  },
+  {
+   "key": "PROCESSED.Trail_Shoulder_Angle@Lead_Foot_Down.Y",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 37.23076
+  },
+  {
+   "key": "PROCESSED.Trail_Shoulder_Angle@Lead_Foot_Down.Z",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 71.61074
+  },
+  {
+   "key": "PROCESSED.Trail_Shoulder_Angle@Setup",
+   "count": 163,
+   "shapes": [
+    "number"
+   ],
+   "example": 42.80518
+  },
+  {
+   "key": "PROCESSED.Trail_Shoulder_Angle@Setup.X",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 29.21986
+  },
+  {
+   "key": "PROCESSED.Trail_Shoulder_Angle@Setup.Y",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 64.68314
+  },
+  {
+   "key": "PROCESSED.Trail_Shoulder_Angle@Setup.Z",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 45.67459
+  },
+  {
+   "key": "PROCESSED.Trunk_Angle@Contact",
+   "count": 168,
+   "shapes": [
+    "number"
+   ],
+   "example": 25.16075
+  },
+  {
+   "key": "PROCESSED.Trunk_Angle@Contact.X",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -10.91873
+  },
+  {
+   "key": "PROCESSED.Trunk_Angle@Contact.Y",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -42.69807
+  },
+  {
+   "key": "PROCESSED.Trunk_Angle@Contact.Z",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 6.690581
+  },
+  {
+   "key": "PROCESSED.Trunk_Angle@Lead_Foot_Down",
+   "count": 168,
+   "shapes": [
+    "number"
+   ],
+   "example": 102.79
+  },
+  {
+   "key": "PROCESSED.Trunk_Angle@Lead_Foot_Down_MEAN",
+   "count": 168,
+   "shapes": [
+    "number"
+   ],
+   "example": 102.79
+  },
+  {
+   "key": "PROCESSED.Trunk_Angle@Lead_Foot_Down_MEAN.X",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -15.93369
+  },
+  {
+   "key": "PROCESSED.Trunk_Angle@Lead_Foot_Down_MEAN.Y",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -38.51316
+  },
+  {
+   "key": "PROCESSED.Trunk_Angle@Lead_Foot_Down_MEAN.Z",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 96.86005
+  },
+  {
+   "key": "PROCESSED.Trunk_Angle@Lead_Foot_Down.X",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -15.93369
+  },
+  {
+   "key": "PROCESSED.Trunk_Angle@Lead_Foot_Down.Y",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": -38.51316
+  },
+  {
+   "key": "PROCESSED.Trunk_Angle@Lead_Foot_Down.Z",
+   "count": 9,
+   "shapes": [
+    "number"
+   ],
+   "example": 96.86005
+  },
+  {
+   "key": "PROCESSED.Trunk_Angle@Setup",
+   "count": 163,
+   "shapes": [
+    "number"
+   ],
+   "example": 76.53395
+  },
+  {
+   "key": "PROCESSED.Trunk_Angle@Setup.X",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 1.222841
+  },
+  {
+   "key": "PROCESSED.Trunk_Angle@Setup.Y",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": -12.32592
+  },
+  {
+   "key": "PROCESSED.Trunk_Angle@Setup.Z",
+   "count": 8,
+   "shapes": [
+    "number"
+   ],
+   "example": 89.42316
+  },
+  {
+   "key": "PROCESSED.Uncropped Measurement Frames",
+   "count": 168,
+   "shapes": [
+    "number"
+   ],
+   "example": 1699
+  },
+  {
+   "key": "PROCESSED.Uncropped Measurement Length",
+   "count": 168,
+   "shapes": [
+    "number"
+   ],
+   "example": 5.663
+  },
+  {
+   "key": "TIMING.ContactTime",
+   "count": 168,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.6233335
+  },
+  {
+   "key": "TIMING.ContactTime_pct",
+   "count": 164,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.8617513
+  },
+  {
+   "key": "TIMING.DownswingTime",
+   "count": 160,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.6266667
+  },
+  {
+   "key": "TIMING.DownswingTime_pct",
+   "count": 157,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.8663594
+  },
+  {
+   "key": "TIMING.Lead_Foot_DownTime",
+   "count": 168,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.4266667
+  },
+  {
+   "key": "TIMING.Lead_Foot_DownTime_pct",
+   "count": 164,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.5898618
+  },
+  {
+   "key": "TIMING.Max_Bat_Ang_VelTime",
+   "count": 163,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.6633333
+  },
+  {
+   "key": "TIMING.Max_Bat_Ang_VelTime_pct",
+   "count": 160,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.9170506
+  },
+  {
+   "key": "TIMING.Max_Bat_Lin_VelTime",
+   "count": 164,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.6633333
+  },
+  {
+   "key": "TIMING.Max_Bat_Lin_VelTime_pct",
+   "count": 164,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.9170506
+  },
+  {
+   "key": "TIMING.Max_Lead_Elbow_Ext_Ang_VelTime",
+   "count": 162,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.7133334
+  },
+  {
+   "key": "TIMING.Max_Lead_Elbow_Ext_Ang_VelTime_pct",
+   "count": 159,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.9861751
+  },
+  {
+   "key": "TIMING.Max_Lead_Elbow_Sup_Ang_VelTime",
+   "count": 162,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.6666666
+  },
+  {
+   "key": "TIMING.Max_Lead_Elbow_Sup_Ang_VelTime_pct",
+   "count": 159,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.9216589
+  },
+  {
+   "key": "TIMING.Max_Lead_Forearm_Ang_VelTime",
+   "count": 159,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.5633334
+  },
+  {
+   "key": "TIMING.Max_Lead_Forearm_Ang_VelTime_pct",
+   "count": 159,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.7788019
+  },
+  {
+   "key": "TIMING.Max_Lead_Hand_Ang_VelTime",
+   "count": 162,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.5866667
+  },
+  {
+   "key": "TIMING.Max_Lead_Hand_Ang_VelTime_pct",
+   "count": 159,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.81106
+  },
+  {
+   "key": "TIMING.Max_Lead_Hand_Lin_VelTime",
+   "count": 160,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.5666667
+  },
+  {
+   "key": "TIMING.Max_Lead_Hand_Lin_VelTime_pct",
+   "count": 160,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.7834102
+  },
+  {
+   "key": "TIMING.Max_Pelvis_Ang_VelTime",
+   "count": 162,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.5266666
+  },
+  {
+   "key": "TIMING.Max_Pelvis_Ang_VelTime_pct",
+   "count": 159,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.7281106
+  },
+  {
+   "key": "TIMING.Max_Pelvis_Lin_VelTime",
+   "count": 162,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.3733333
+  },
+  {
+   "key": "TIMING.Max_Pelvis_Lin_VelTime_pct",
+   "count": 159,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.516129
+  },
+  {
+   "key": "TIMING.Max_Thorax_Ang_VelTime",
+   "count": 162,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.5466667
+  },
+  {
+   "key": "TIMING.Max_Thorax_Ang_VelTime_pct",
+   "count": 159,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.7557604
+  },
+  {
+   "key": "TIMING.Max_Thorax_Lin_VelTime",
+   "count": 162,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.4233333
+  },
+  {
+   "key": "TIMING.Max_Thorax_Lin_VelTime_pct",
+   "count": 159,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.5852535
+  },
+  {
+   "key": "TIMING.Max_Trail_Elbow_Ext_Ang_VelTime",
+   "count": 162,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.6966667
+  },
+  {
+   "key": "TIMING.Max_Trail_Elbow_Ext_Ang_VelTime_pct",
+   "count": 159,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.9631337
+  },
+  {
+   "key": "TIMING.Max_Trail_Elbow_Pron_Ang_VelTime",
+   "count": 162,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.5600001
+  },
+  {
+   "key": "TIMING.Max_Trail_Elbow_Pron_Ang_VelTime_pct",
+   "count": 159,
+   "shapes": [
+    "number"
+   ],
+   "example": 0.7741936
+  }
+ ]
+}

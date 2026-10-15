@@ -30,7 +30,8 @@ export async function athleteDataFilter(scope: ComparisonScope, domain?: DomainI
       });
       break;
     }
-    case "biomechanics": tables = [...DOMAIN_TABLES.pitching, ...DOMAIN_TABLES.hitting, ...DOMAIN_TABLES.armAction]; break;
+    case "biomechanics": tables = [...DOMAIN_TABLES.pitching, ...DOMAIN_TABLES.armAction]; break;
+    case "hitting": tables = DOMAIN_TABLES.hitting; break;
     case "assessments": tables = DOMAIN_TABLES.athleticScreen; break;
     case "mobility": tables = DOMAIN_TABLES.mobility; break;
     case "proteus": tables = DOMAIN_TABLES.proteus; break;

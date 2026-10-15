@@ -133,19 +133,26 @@ export function PitchTypeTable({ rows, compact = false }: { rows: PitchTypeSumma
   );
 }
 
-type MovementPoint = { x: number; y: number; z: number; code: PitchCode; label: string; velo: number | null; series: string };
+type MovementPoint = { x: number; y: number; z: number; hbArm: number; code: PitchCode; label: string; velo: number | null; series: string };
 
 /**
  * Pitch movement plot (IVB vs arm-side HB, inches). One dot per pitch type,
  * sized by usage, labeled with the pitch code. With several `sets` (compare
  * view) each set gets its own marker shape and a legend entry.
+ *
+ * Left-handers: the plot is mirrored so arm side sits on the left, the way a
+ * lefty's break actually looks. Only the drawing flips — tick labels, tooltips
+ * and tables keep the arm-side-positive values. A mixed-hand compare stays
+ * unmirrored (one axis can't face both ways).
  */
-export function MovementPlot({ sets, height = 320 }: { sets: Array<{ name: string; rows: PitchTypeSummary[] }>; height?: number }) {
+export function MovementPlot({ sets, height = 320 }: { sets: Array<{ name: string; rows: PitchTypeSummary[]; throws?: "L" | "R" | null }>; height?: number }) {
   const shapes = ["circle", "diamond", "triangle", "square"] as const;
+  const mirror = sets.length > 0 && sets.every((s) => s.throws === "L");
+  const sx = mirror ? -1 : 1;
   const data = sets.map((s) =>
     s.rows
       .filter((r) => r.ivb != null && r.hbArm != null && r.pitchType !== "OTHER")
-      .map<MovementPoint>((r) => ({ x: r.hbArm!, y: r.ivb!, z: r.usagePct ?? 10, code: r.pitchType, label: r.label, velo: r.velo, series: s.name })),
+      .map<MovementPoint>((r) => ({ x: r.hbArm! * sx, y: r.ivb!, z: r.usagePct ?? 10, hbArm: r.hbArm!, code: r.pitchType, label: r.label, velo: r.velo, series: s.name })),
   );
   if (!data.some((d) => d.length)) {
     return <Text size="sm" c="dimmed">No movement data.</Text>;
@@ -156,7 +163,8 @@ export function MovementPlot({ sets, height = 320 }: { sets: Array<{ name: strin
       <ScatterChart margin={{ top: 10, right: 16, bottom: 20, left: 0 }}>
         <CartesianGrid stroke={GRID} />
         <XAxis type="number" dataKey="x" domain={[-lim, lim]} tick={AXIS_TICK} tickLine={false} axisLine={{ stroke: "rgba(255,255,255,0.12)" }}
-          label={{ value: "Horizontal break, arm side → (in)", position: "insideBottom", offset: -10, fill: "rgba(255,255,255,0.5)", fontSize: 11 }} />
+          tickFormatter={(v: number) => String(v * sx + 0)}
+          label={{ value: mirror ? "← arm side · horizontal break (in) · LHP" : "Horizontal break, arm side → (in)", position: "insideBottom", offset: -10, fill: "rgba(255,255,255,0.5)", fontSize: 11 }} />
         <YAxis type="number" dataKey="y" domain={[-lim, lim]} tick={AXIS_TICK} tickLine={false} axisLine={false} width={36}
           label={{ value: "IVB (in)", angle: -90, position: "insideLeft", offset: 14, fill: "rgba(255,255,255,0.5)", fontSize: 11 }} />
         <ZAxis type="number" dataKey="z" range={[80, 420]} domain={[0, 60]} />
@@ -175,7 +183,7 @@ export function MovementPlot({ sets, height = 320 }: { sets: Array<{ name: strin
                   {p.label}
                   {sets.length > 1 ? ` · ${p.series}` : ""}
                 </div>
-                <div>IVB {fmt(p.y)} in · HB {fmt(p.x)} in</div>
+                <div>IVB {fmt(p.y)} in · HB {fmt(p.hbArm)} in</div>
                 <div>{fmt(p.velo)} mph · {fmt(p.z)}% usage</div>
               </div>
             );

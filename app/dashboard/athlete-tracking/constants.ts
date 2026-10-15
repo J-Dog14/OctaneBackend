@@ -26,6 +26,9 @@ export const HITTING_RADAR_ALLOWLIST = new Set([
 ]);
 
 export const HIGHLIGHTS_EXCLUDE_KEYS = new Set([
+  // Peak-time markers: they order the kinematic sequence, they aren't better or worse.
+  "KINEMATIC_SEQUENCE|PELVIS_TIME", "KINEMATIC_SEQUENCE|TORSO_TIME", "KINEMATIC_SEQUENCE|ARM_TIME", "KINEMATIC_SEQUENCE|HAND_TIME",
+  "TIMING|PELVIS_TIME", "TIMING|THORAX_TIME", "TIMING|FOREARM_TIME", "TIMING|HAND_TIME", "TIMING|BAT_TIME",
   "HIP_SHOULDER_PROGRESS|GAIN_OR_LOSS",
   "ABDUCTION_PROGRESS|GAIN_OR_LOSS",
 ]);
@@ -134,6 +137,15 @@ export const PITCHING_TABLE_SECTIONS: PitchingSection[] = [
   },
 ];
 
+/** Kinematic-sequence velocity → its peak-time marker (explorer "Peak Order" row). */
+export const HITTING_SEQUENCE_TIMING: Record<string, string> = {
+  "PROCESSED|Max_Pelvis_Ang_Vel": "TIMING|PELVIS_TIME",
+  "PROCESSED|Max_Thorax_Ang_Vel": "TIMING|THORAX_TIME",
+  "PROCESSED|Max_Lead_Forearm_Ang_Vel": "TIMING|FOREARM_TIME",
+  "PROCESSED|Max_Lead_Hand_Ang_Vel": "TIMING|HAND_TIME",
+  "PROCESSED|Max_Bat_Ang_Vel": "TIMING|BAT_TIME",
+};
+
 export const HITTING_TABLE_SECTIONS: HittingSection[] = [
   {
     id: "kinematic-sequence",
@@ -180,6 +192,7 @@ export const HITTING_TABLE_SECTIONS: HittingSection[] = [
       { key: "PROCESSED|Lead_Knee_Angle@Lead_Foot_Down", label: "Lead Knee Angle @ FC" },
       { key: "PROCESSED|Lead_Knee_Angle@Contact", label: "Lead Knee Angle @ Contact" },
     ],
+    insightKeys: ["PROCESSED|Lead_Knee_Angle@Lead_Foot_Down", "PROCESSED|Lead_Knee_Extension"],
   },
   {
     id: "pelvis",
@@ -191,6 +204,7 @@ export const HITTING_TABLE_SECTIONS: HittingSection[] = [
       { key: "PROCESSED|Pelvis_Angle@Contact", label: "Pelvis @ Contact" },
       { key: "PROCESSED|Pelvis_Total_Rotation", label: "Total Pelvis Rotation" },
     ],
+    insightKeys: ["PROCESSED|Pelvis_Angle@Lead_Foot_Down", "PROCESSED|Pelvis_Angle@Contact"],
   },
   {
     id: "hip-shoulder-separation",
@@ -219,6 +233,7 @@ export const HITTING_TABLE_SECTIONS: HittingSection[] = [
       { key: "PROCESSED|Trunk_Angle@Contact", label: "Trunk @ Contact" },
       { key: "PROCESSED|Trunk_Total_Rotation", label: "Total Trunk Rotation" },
     ],
+    insightKeys: ["PROCESSED|Trunk_Angle@Lead_Foot_Down", "PROCESSED|Trunk_Angle@Contact"],
   },
   {
     id: "stride-width",

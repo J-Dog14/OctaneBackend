@@ -11,6 +11,7 @@ export function athleteWarmKeys(summary: CoachAthleteSummary): string[] {
     ...(summary.tabs.pitching ? [pitchingKey(uuid), `${base}/pitches/sessions`, `${base}/pitches/trends`] : []),
     ...(summary.tabs.readiness ? [readinessKey(uuid)] : []),
     ...(summary.trackingDomains.includes("pitching") ? [`${base}/biomech-report`] : []),
+    ...(summary.tabs.hitting ? [`${base}/hitting-report`] : []),
     ...(summary.tabs.assessments ? [`${base}/athletic-screen-report`] : []),
     ...(summary.tabs.mobility ? [`${base}/mobility`] : []),
     ...(summary.tabs.prosup ? [`${base}/pro-sup-report`] : []),

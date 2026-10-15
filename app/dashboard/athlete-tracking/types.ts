@@ -63,6 +63,7 @@ export type HittingSection = {
   title: string;
   description: string;
   items: HittingSectionMetricItem[];
+  insightKeys?: string[];
 };
 
 export type AthleticVariableDetail = {

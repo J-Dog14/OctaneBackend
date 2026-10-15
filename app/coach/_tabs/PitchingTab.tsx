@@ -54,7 +54,7 @@ function ArsenalView({ d }: { d: CoachPitching }) {
             {cmp && <ArsenalBadge arsenal={cmp.arsenal} size="md" />}
           </Group>
         </Group>
-        <MovementPlot sets={cmp ? [{ name: cur.label, rows: cur.byType }, { name: cmp.label, rows: cmp.byType }] : [{ name: cur.label, rows: cur.byType }]} />
+        <MovementPlot sets={cmp ? [{ name: cur.label, rows: cur.byType, throws: d.athlete.throws }, { name: cmp.label, rows: cmp.byType, throws: d.athlete.throws }] : [{ name: cur.label, rows: cur.byType, throws: d.athlete.throws }]} />
       </div>
       <div className="card" style={{ marginBottom: 0 }}>
         <SectionHead title={cur.label} sub="HB arm-side positive · IVB and HB in inches" />

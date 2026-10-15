@@ -4,7 +4,8 @@ import React, { Fragment } from "react";
 import dynamic from "next/dynamic";
 import type { RadarDataSeries } from "../MetricRadarChart";
 import type { DomainWithMetrics } from "../types";
-import { PITCHING_TABLE_SECTIONS, HITTING_TABLE_SECTIONS } from "../constants";
+import { PITCHING_TABLE_SECTIONS, HITTING_TABLE_SECTIONS, HITTING_SEQUENCE_TIMING } from "../constants";
+import { HittingDiagram, hasHittingDiagram } from "../HittingDiagram";
 import {
   getPercentileStyle,
   formatMetricValueParts,
@@ -442,8 +443,40 @@ export function GenericDomain({
               label,
               cells: buildHittingDisplayCells(cd.metrics, section.items),
             }));
+
+            // Peak order from the TIMING markers (same row as the pitching explorer).
+            const peakOrderRanks: Record<string, number> = {};
+            if (section.id === "kinematic-sequence") {
+              const withTime = section.items
+                .map(({ key }) => {
+                  const timeKey = HITTING_SEQUENCE_TIMING[key];
+                  const m = timeKey ? domain.metrics.find((met) => met.category && `${met.category}|${met.name}` === timeKey) : undefined;
+                  return { key, time: m?.value ?? null };
+                })
+                .filter((t): t is { key: string; time: number } => t.time != null && Number.isFinite(t.time));
+              withTime.sort((a, b) => a.time - b.time);
+              withTime.forEach((t, idx) => { peakOrderRanks[t.key] = idx + 1; });
+            }
+
+            const insights: Array<{ label: string; text: string }> = [];
+            for (const iKey of section.insightKeys ?? []) {
+              const m = domain.metrics.find((met) => met.category && `${met.category}|${met.name}` === iKey);
+              const text = getMetricInsight(iKey, m?.value ?? null);
+              if (text) insights.push({ label: cells.find((c) => c.key === iKey)?.label ?? iKey, text });
+            }
+
+            const hasDiagram = hasHittingDiagram(section.id);
+
             return (
               <div key={section.id} className="card" style={{ marginBottom: "1rem" }}>
+                {/* Diagram pinned to the left, title + table beside it (same layout as pitching). */}
+                <div style={{ display: "flex", alignItems: "flex-start", gap: "1.25rem" }}>
+                {hasDiagram && (
+                  <div style={{ width: 150, flexShrink: 0 }}>
+                    <HittingDiagram sectionId={section.id} />
+                  </div>
+                )}
+                <div style={{ flex: 1, minWidth: 0 }}>
                 <h3 style={{ margin: "0 0 0.35rem", fontSize: "1rem" }}>{section.title}</h3>
                 <p
                   className="text-muted"
@@ -462,12 +495,14 @@ export function GenericDomain({
                     </thead>
                     <tbody>
                       <tr>
-                        {cells.map((cell, cellIdx) => (
+                        {cells.map((cell, cellIdx) => {
+                          const valueStyle = cell.percentile != null ? (getPercentileStyle(cell.percentile) ?? undefined) : undefined;
+                          return (
                           <td key={`${section.id}-${cell.key}-value`}>
                             {cell.valuePart === "—" ? "—" : (
                               <>
-                                <strong>{cell.valuePart}</strong>
-                                {cell.unitPart}
+                                <strong style={valueStyle}>{cell.valuePart}</strong>
+                                {cell.unitPart && <span style={valueStyle}>{cell.unitPart}</span>}
                               </>
                             )}
                             <div
@@ -501,11 +536,48 @@ export function GenericDomain({
                               );
                             })}
                           </td>
-                        ))}
+                          );
+                        })}
                       </tr>
+                      {section.id === "kinematic-sequence" && Object.keys(peakOrderRanks).length > 0 && (
+                        <tr>
+                          {cells.map((cell) => (
+                            <td key={`${section.id}-${cell.key}-peak-order`} style={{ fontSize: "0.82rem" }}>
+                              {peakOrderRanks[cell.key] != null ? (
+                                <span style={{ color: "rgba(255,255,255,0.55)" }}>
+                                  Peak Order: <strong style={{ color: "var(--text-primary)" }}>#{peakOrderRanks[cell.key]}</strong>
+                                </span>
+                              ) : "—"}
+                            </td>
+                          ))}
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>{/* /table-scroll-wrapper */}
+                {insights.length > 0 && (
+                  <div
+                    style={{
+                      marginTop: "0.75rem",
+                      padding: "0.6rem 0.75rem",
+                      background: "rgba(255,255,255,0.04)",
+                      borderRadius: "6px",
+                      borderLeft: "3px solid rgba(255,255,255,0.15)",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "0.4rem",
+                    }}
+                  >
+                    {insights.map(({ label, text }) => (
+                      <div key={label} style={{ fontSize: "0.8rem", lineHeight: 1.5 }}>
+                        <span style={{ fontWeight: 600, color: "rgba(255,255,255,0.65)", marginRight: "0.4rem" }}>{label}:</span>
+                        <span className="text-muted">{text}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                </div>
+                </div>
               </div>
             );
           })}

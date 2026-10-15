@@ -10,7 +10,7 @@ import { getTrackingSessionDates } from "@/lib/athlete-tracking/sessionDates";
 import { programSummary } from "@/lib/coach/program";
 import type { DomainId } from "@/lib/athlete-tracking/types";
 
-export type CoachTabId = "overview" | "pitching" | "biomechanics" | "assessments" | "mobility" | "prosup" | "curveball" | "readiness" | "proteus" | "program" | "throwing";
+export type CoachTabId = "overview" | "pitching" | "biomechanics" | "hitting" | "assessments" | "mobility" | "prosup" | "curveball" | "readiness" | "proteus" | "program" | "throwing";
 
 export interface DataSource {
   id: string;
@@ -83,7 +83,7 @@ function ageFrom(dob: Date | null): number | null {
 
 const DOMAIN_SOURCE: Record<DomainId, { label: string; tab: CoachTabId }> = {
   pitching: { label: "Pitching 3D", tab: "biomechanics" },
-  hitting: { label: "Hitting 3D", tab: "biomechanics" },
+  hitting: { label: "Hitting 3D", tab: "hitting" },
   armAction: { label: "Arm action", tab: "biomechanics" },
   athleticScreen: { label: "Athletic screen", tab: "assessments" },
   mobility: { label: "Mobility", tab: "mobility" },
@@ -192,6 +192,7 @@ export async function getCoachAthleteSummary(athleteUuid: string): Promise<Coach
       overview: true,
       pitching: has("pitching") || links.length > 0,
       biomechanics: has("biomechanics"),
+      hitting: has("hitting"),
       assessments: has("assessments"),
       mobility: has("mobility"),
       prosup: has("prosup"),
