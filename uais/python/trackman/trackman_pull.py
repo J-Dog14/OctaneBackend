@@ -321,7 +321,7 @@ def normalize_session(s: dict) -> dict | None:
         return None
     local = pick(s, "localDate", "localTime", "dateLocal", "localDateTime", "date")
     utc = pick(s, "utcDate", "utcTime", "dateUtc", "utcDateTime", "createdAt")
-    players_raw = pick(s, "players", "playersInSession", "sessionPlayers") or []
+    players_raw = pick(s, "players", "playersInSession", "sessionPlayers", "sessionLineup") or []
     players = [x for x in (normalize_player(p) for p in players_raw if isinstance(p, dict)) if x]
     plays = pick(s, "plays", "playCount", "playsCount", "numberOfPlays")
     pcount = pick(s, "playerCount", "playersCount", "numberOfPlayers")
@@ -335,7 +335,7 @@ def normalize_session(s: dict) -> dict | None:
         "plays": int(plays) if str(plays or "").isdigit() else None,
         "player_count": int(pcount) if str(pcount or "").isdigit() else (len(players) or None),
         "players": players,
-        "raw": {k: v for k, v in s.items() if k not in ("players", "playersInSession", "sessionPlayers")},
+        "raw": {k: v for k, v in s.items() if k not in ("players", "playersInSession", "sessionPlayers", "sessionLineup")},
     }
 
 

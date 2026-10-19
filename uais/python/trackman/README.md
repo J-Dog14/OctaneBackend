@@ -38,6 +38,7 @@ runs from any folder):
 $s = "C:\Users\Joey\PycharmProjects\OctaneBiomechBackend\uais\python\trackman\setup_trackman_task.ps1"
 powershell -ExecutionPolicy Bypass -File $s -Year 2026     # backfill one year in the background (re-run to resume)
 powershell -ExecutionPolicy Bypass -File $s -Year 2025     # then the next year back
+powershell -ExecutionPolicy Bypass -File $s -Year 2026 -Rescan   # walk finished months again (only pitchers not yet pulled)
 powershell -ExecutionPolicy Bypass -File $s -Nightly       # "UAIS TrackMan Nightly", 3:15 AM
 ```
 
@@ -145,3 +146,29 @@ The portal's Data Integration page (Management → Data integration) says API
 access has to be enabled by TrackMan. Once it is, swap the scrape for the API
 and keep the loader: it only needs `sessions.json`, `roster.json` and
 `pitches.jsonl` in the same shape.
+
+## Session lineups (fixed Oct 2026)
+
+The sessions API returns every pitcher in `sessionLineup`. Before the fix the puller didn't read
+that key and fell back to the portal's "Players in session" dialog, which only shows 10, so any
+session with more than 10 pitchers lost the rest (about 990 pitcher-sessions across 2026).
+Months backfilled before the fix need one `-Rescan` pass; done.json skips anyone already pulled.
+
+Windows PowerShell 5.1 reads the logs as ANSI, so names with ’ or emoji look garbled in
+`Get-Content` unless you add `-Encoding UTF8`. The files themselves are UTF-8.
+
+## Team game files (in-season TrackMan CSVs)
+
+A team's game export (e.g. Ryan Chasse's 2026 High Point season) goes through the app's
+uploader (Dashboard -> Pitch Intel -> Upload), which links the pitcher, saves pitches as
+`session_type = 'game'` with pitch calls / counts / results, and keeps every column in `raw`.
+Clean the file first:
+
+    python uais/python/trackman/prepare_trackman_game_csv.py "<file>.csv" --pitcher-id <id> --pitcher "Last, First" --types auto
+
+It fixes Excel's \r\r\n line endings, name typos / blank PitcherId (single-pitcher files),
+adds PitchNo (the exports have none and Time is often mm:ss with the hour dropped), and with
+`--types auto` uses AutoPitchType for every pitch (game operators' tags were unreliable in
+Chasse's file; theirs is kept as OperatorTaggedPitchType). Re-uploading the same cleaned file
+updates the same pitches. Side measures in these files are pitcher's view, the same as the
+portal data (checked: LHP RelSide < 0, fastball HB < 0, hit-by-pitch on a RHB at PlateLocSide > 0).

@@ -85,7 +85,7 @@ def keep_awake(on: bool) -> None:
 
 def load_state() -> dict:
     try:
-        return json.loads(STATE.read_text())
+        return json.loads(STATE.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return {}
 
@@ -99,7 +99,7 @@ def save_state(st: dict) -> None:
 
 def read_json(p: Path, default):
     try:
-        return json.loads(p.read_text())
+        return json.loads(p.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return default
 
@@ -200,12 +200,12 @@ def cmd_backfill(args) -> int:
     worked = 0
     for key, a, b in month_ranges(newest, oldest):
         m = months.get(key, {})
-        if m.get("status") == "done":
+        if m.get("status") == "done" and not args.rescan:
             empty_streak = empty_streak + 1 if m.get("sessions") == 0 else 0
             if not args.from_date and empty_streak >= EMPTY_MONTHS_TO_STOP:
                 break
             continue
-        if m.get("attempts", 0) >= MAX_MONTH_ATTEMPTS and not args.retry:
+        if m.get("attempts", 0) >= MAX_MONTH_ATTEMPTS and not (args.retry or args.rescan):
             log(f"{key}: skipped after {m['attempts']} tries ({m.get('note')}); `backfill --retry` to try again")
             continue
         run_dir = OUT / "runs" / f"backfill-{key}"
@@ -280,6 +280,8 @@ def main() -> int:
     b.add_argument("--from", dest="from_date", help="YYYY-MM-DD; default: walk back until 6 empty months")
     b.add_argument("--to", help="YYYY-MM-DD; default: today")
     b.add_argument("--retry", action="store_true", help="also retry months that failed 3 times")
+    b.add_argument("--rescan", action="store_true",
+                   help="walk months already marked done again; pitcher-sessions already pulled are skipped (done.json)")
     b.add_argument("--show", action="store_true", help="show the browser window (debugging)")
     sub.add_parser("status")
     sub.add_parser("login")

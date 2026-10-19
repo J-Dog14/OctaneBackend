@@ -193,3 +193,22 @@ Picker filters run in SQL before search pagination, using indexed EXISTS checks 
 The main header uses tab filters; the metrics explorer additionally uses an exact `domain` filter. Athlete switching/browsing remains unfiltered. Shared comparison selections retain their identities across tabs, but missing-area athletes are omitted from each area's comparison. Editing a partially eligible shared selection creates a local override, so unrelated tabs keep their selection. Historical comparisons build only the requested domains; Pro/Sup and curveball comparisons fetch only their respective histories. The originally selected athlete's background tab warming remains enabled.
 
 Validation: `npm run test:coach-comparison` checks independent/shared/legacy URL selections, eligibility and payload/domain isolation. `npm run test:coach-comparison:db` verifies real SQL filters, stale flags, DJ-only screens, pagination and literal search characters inside an isolated rolled-back PostgreSQL schema.
+
+## Data download (Oct 2026)
+
+"Download data" under the Compare button on an athlete's header opens
+`/coach/athletes/[uuid]/download`. One column per data type the athlete has
+(Pitching · TrackMan, Pitching · Savant, Biomechanics, Athletic screen, Mobility,
+Proteus, Other assessments), one checkbox per session date; a column header
+selects every date. "Download all" or "Download selected" returns a ZIP with a
+README and one CSV per table (JSON columns split into `raw.*` / `metrics.*` /
+`raw_extra.*`). Raw 3D time series (marker / segment / force-plate JSON) are
+opt-in via a switch.
+
+- API: `GET /api/coach/athletes/:uuid/export` (listing) and `POST` (ZIP), both
+  behind `requireCoachForAthlete`.
+- What's exportable lives in `lib/coach/export/registry.ts` (table, date column,
+  file name, listing group). Add a table there and it appears on the page.
+  Table/column names only come from the registry; the request only carries
+  category ids and YYYY-MM-DD dates, both validated.
+- ZIP writer and CSV builder are dependency-free (`lib/coach/export/zip.ts`, `csv.ts`).

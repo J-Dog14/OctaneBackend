@@ -148,10 +148,10 @@ def pitch_uid(p: dict) -> str:
 # ---------------------------------------------------------------------------
 
 def read_pull(folder: Path):
-    sessions = json.loads((folder / "sessions.json").read_text()) if (folder / "sessions.json").exists() else []
+    sessions = json.loads((folder / "sessions.json").read_text(encoding="utf-8")) if (folder / "sessions.json").exists() else []
     # A run folder (trackman_out/runs/...) shares the roster saved one or two levels up.
     roster_file = next((d / "roster.json" for d in (folder, folder.parent, folder.parent.parent) if (d / "roster.json").exists()), None)
-    roster = json.loads(roster_file.read_text()) if roster_file else []
+    roster = json.loads(roster_file.read_text(encoding="utf-8")) if roster_file else []
     pitches = []
     pj = folder / "pitches.jsonl"
     if pj.exists():
@@ -293,10 +293,17 @@ class Resolver:
         if existing:
             ex_dob = existing.get("date_of_birth")
             ex_dob = ex_dob.isoformat() if hasattr(ex_dob, "isoformat") else (str(ex_dob) if ex_dob else None)
+            dob_fix = ""
             if dob and ex_dob and dob != ex_dob:
-                return None, "conflict", f"name matches {existing['name']} ({existing['athlete_uuid']}) but DOB {ex_dob} != TrackMan {dob}"
+                if not placeholder_dob(ex_dob) or placeholder_dob(dob):
+                    return None, "conflict", f"name matches {existing['name']} ({existing['athlete_uuid']}) but DOB {ex_dob} != TrackMan {dob}"
+                # Octane's birth date is this year or later (typed as the current year by mistake):
+                # TrackMan's is the real one, so take it and link.
+                dob_fix = f"; Octane DOB {ex_dob} replaced with TrackMan {dob}"
+                if not self.dry_run:
+                    set_athlete_dob(self.conn, existing["athlete_uuid"], dob)
             status = "matched_exact" if (existing.get("normalized_name") or "") == normalized else "matched_fuzzy"
-            note = f"{existing['name']}" + ("" if status == "matched_exact" else f" (fuzzy from '{display}')")
+            note = f"{existing['name']}" + ("" if status == "matched_exact" else f" (fuzzy from '{display}')") + dob_fix
             if self.dry_run:
                 return existing["athlete_uuid"], status, note
             uuid, _created = self.am.get_or_create_athlete(name=athlete_name(player["name"]), date_of_birth=dob,
@@ -426,7 +433,10 @@ def load(conn, folder: Path, dry_run: bool) -> dict:
         throws, throws_note = (player["throws"], "portal") if player.get("throws") in ("L", "R") else infer_throws(prow)
         last_date = max((r["session_date"] for r in prow if r["session_date"]), default=None)
         summary["status"][status] += 1
-        if status in ("conflict", "matched_fuzzy", "created", "unmatched") or throws is None:
+        prev = current.get(pid)
+        new_here = not prev or prev.get("match_status") != status or prev.get("athlete_uuid") != athlete_uuid
+        # Open items every run; created / fuzzy only the run they happen (`--report` lists all open ones).
+        if status in ("conflict", "unmatched") or throws is None or (new_here and status in ("matched_fuzzy", "created")):
             summary["review"].append({"player_id": pid, "name": player["name"], "dob": player.get("dob"), "status": status,
                                       "note": note, "throws": throws or f"unknown ({throws_note})", "pitches": len(prow)})
         if dry_run:
@@ -469,6 +479,18 @@ def load(conn, folder: Path, dry_run: bool) -> dict:
     return summary
 
 
+def placeholder_dob(d: str | None) -> bool:
+    """A birth date that can't be real for a pitcher: this year or later, or TrackMan's 1970-01-01."""
+    return bool(d) and (d[:4].isdigit() and int(d[:4]) >= date.today().year or d.startswith("1970-01-01"))
+
+
+def set_athlete_dob(conn, athlete_uuid: str, dob: str) -> None:
+    from python.common.age_utils import calculate_age, parse_date
+    with conn.cursor() as cur:
+        cur.execute("UPDATE analytics.d_athletes SET date_of_birth = %s, age = %s WHERE athlete_uuid = %s",
+                    (dob, calculate_age(parse_date(dob)), athlete_uuid))
+
+
 def link_player(conn, pid: str, athlete_uuid: str) -> None:
     with conn.cursor() as cur:
         cur.execute("SELECT name FROM analytics.d_athletes WHERE athlete_uuid = %s", (athlete_uuid,))
@@ -496,7 +518,7 @@ def link_player(conn, pid: str, athlete_uuid: str) -> None:
     print(f"Linked {player['name']} ({pid}) -> {athlete_uuid}; {n} pitches attached.")
 
 
-def create_player(conn, pid: str) -> None:
+def create_player(conn, pid: str, force: bool = False) -> None:
     """A held player is a different person from the suggested match: create a new athlete (origin trackman)."""
     from python.common import athlete_manager as am
     with conn.cursor() as cur:
@@ -504,10 +526,19 @@ def create_player(conn, pid: str) -> None:
         row = cur.fetchone()
     if not row:
         raise SystemExit(f"No TrackMan player {pid}; load a pull first")
-    existing = am.find_existing_athlete_by_name_or_email(conn, am.normalize_name_for_matching(athlete_name(row[0])), date_of_birth=row[1])
-    if existing:
-        raise SystemExit(f"{row[0]} already matches {existing['name']} ({existing['athlete_uuid']}) under the 90% rule; use --link instead")
-    uuid, created = am.get_or_create_athlete(name=athlete_name(row[0]), date_of_birth=row[1], source_system=SOURCE_SYSTEM, source_athlete_id=pid)
+    name = athlete_name(row[0])
+    normalized = am.normalize_name_for_matching(name)
+    if force:
+        # A different kid whose name is within the 90% rule of someone else ("Jacob Kearns" / "Jacob Fearns"):
+        # skip name matching entirely. create_athlete_in_warehouse still refuses an exact duplicate name.
+        uuid, created = am.create_athlete_in_warehouse(name=name, normalized_name=normalized, date_of_birth=row[1],
+                                                       source_system=SOURCE_SYSTEM, source_athlete_id=pid), True
+    else:
+        existing = am.find_existing_athlete_by_name_or_email(conn, normalized, date_of_birth=row[1])
+        if existing:
+            raise SystemExit(f"{row[0]} already matches {existing['name']} ({existing['athlete_uuid']}) under the 90% rule; "
+                             f"use --link if it's the same person, or --create {pid} --force if it's a different person")
+        uuid, created = am.get_or_create_athlete(name=name, date_of_birth=row[1], source_system=SOURCE_SYSTEM, source_athlete_id=pid)
     print(f"{'Created' if created else 'Found'} athlete {row[0]} ({uuid}), origin trackman")
     link_player(conn, pid, uuid)
 
@@ -542,7 +573,10 @@ def main() -> int:
     ap.add_argument("--relink", action="store_true", help="re-run matching for players without an athlete")
     ap.add_argument("--link", nargs=2, metavar=("PLAYER_ID", "ATHLETE_UUID"), help="link one TrackMan player by hand")
     ap.add_argument("--create", metavar="PLAYER_ID", help="held player is a new person: create the athlete (origin trackman)")
+    ap.add_argument("--force", action="store_true", help="with --create: create even if the name is within 90%% of another athlete")
     ap.add_argument("--report", action="store_true", help="list players that need a look")
+    ap.add_argument("--accept-fuzzy", action="store_true",
+                    help="mark every current fuzzy match as reviewed (status manual) so it leaves --report")
     args = ap.parse_args()
 
     from python.common.athlete_manager import get_warehouse_connection
@@ -557,7 +591,16 @@ def main() -> int:
             link_player(conn, *args.link)
             return 0
         if args.create:
-            create_player(conn, args.create)
+            create_player(conn, args.create, force=args.force)
+            return 0
+        if args.accept_fuzzy:
+            with conn.cursor() as cur:
+                cur.execute("""UPDATE pitch_intel.trackman_players
+                                  SET match_status = 'manual', match_note = 'fuzzy match accepted: ' || COALESCE(match_note, ''), updated_at = NOW()
+                                WHERE match_status = 'matched_fuzzy' AND athlete_uuid IS NOT NULL""")
+                n = cur.rowcount
+            conn.commit()
+            print(f"Accepted {n} fuzzy match(es).")
             return 0
         if args.report:
             report(conn)

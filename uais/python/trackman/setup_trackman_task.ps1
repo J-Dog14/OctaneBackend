@@ -4,6 +4,7 @@
 #   $s = "C:\Users\Joey\PycharmProjects\OctaneBiomechBackend\uais\python\trackman\setup_trackman_task.ps1"
 #   powershell -ExecutionPolicy Bypass -File $s -Year 2026      # backfill one year, in the background, starting now
 #   powershell -ExecutionPolicy Bypass -File $s -Year 2025      # next year (re-registers the backfill task)
+#   powershell -ExecutionPolicy Bypass -File $s -Year 2026 -Rescan   # walk done months again for pitchers missed earlier
 #   powershell -ExecutionPolicy Bypass -File $s -Nightly        # daily 3:15 AM pull of new sessions
 #   powershell -ExecutionPolicy Bypass -File $s -Nightly -At 4:00am
 #
@@ -13,7 +14,7 @@
 # Why not "run whether signed in or not" (like Proteus)? Proteus types a password each
 # run; TrackMan reuses the browser's saved sign-in, which Windows only unlocks for a
 # signed-in user. After a reboot the task runs as soon as you sign in.
-param([switch]$Nightly, [int]$Year = 0, [string]$From = "", [string]$To = "", [string]$At = "3:15am")
+param([switch]$Nightly, [switch]$Rescan, [int]$Year = 0, [string]$From = "", [string]$To = "", [string]$At = "3:15am")
 
 $vbs = Join-Path $PSScriptRoot "run_hidden.vbs"   # runs run_nightly.bat with no console window
 $root = (Resolve-Path (Join-Path $PSScriptRoot "..\..\..")).Path
@@ -44,6 +45,7 @@ function Register-TrackmanTask($name, $argsText, $trigger, $hours, $description)
 
 if ($Year -ne 0 -or $From -ne "") {
     if ($Year -ne 0) { $bfArgs = "backfill --year $Year" } else { $bfArgs = "backfill --from $From" + $(if ($To) { " --to $To" } else { "" }) }
+    if ($Rescan) { $bfArgs += " --rescan" }
     Register-TrackmanTask "UAIS TrackMan Backfill" $bfArgs (New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1)) 72 `
         "TrackMan history backfill, month by month (resumable): $bfArgs"
     Start-ScheduledTask -TaskName "UAIS TrackMan Backfill"

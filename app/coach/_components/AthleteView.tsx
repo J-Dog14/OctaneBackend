@@ -117,31 +117,36 @@ function Header({
             {facts.length ? facts.join(" · ") : "No demographics on file"}
           </Text>
         </div>
-        <Group gap="xs" wrap="wrap" justify="flex-end">
-          {vs.map((uuid, i) => (
-            <CompareChip key={uuid} uuid={uuid} index={i + 1} scope={scope} onRemove={() => onRemoveCompare(uuid)} />
-          ))}
-          {vs.length < MAX_COMPARE &&
-            (adding ? (
-              <AthleteSearchSelect
-                key={scope}
-                dataScope={scope}
-                value={null}
-                exclude={[a.athleteUuid, ...vs]}
-                placeholder={`Search ${COMPARISON_LABELS[scope].toLowerCase()} athletes…`}
-                size="xs"
-                w={240}
-                onChange={(v) => {
-                  if (v) onAddCompare(v);
-                  setAdding(false);
-                }}
-              />
-            ) : (
-              <Button variant="light" size="xs" onClick={() => setAdding(true)}>
-                {comparing ? "+ Add athlete" : `Compare ${scope === "all" ? "athletes" : COMPARISON_LABELS[scope]}`}
-              </Button>
+        <Stack gap={6} align="flex-end">
+          <Group gap="xs" wrap="wrap" justify="flex-end">
+            {vs.map((uuid, i) => (
+              <CompareChip key={uuid} uuid={uuid} index={i + 1} scope={scope} onRemove={() => onRemoveCompare(uuid)} />
             ))}
-        </Group>
+            {vs.length < MAX_COMPARE &&
+              (adding ? (
+                <AthleteSearchSelect
+                  key={scope}
+                  dataScope={scope}
+                  value={null}
+                  exclude={[a.athleteUuid, ...vs]}
+                  placeholder={`Search ${COMPARISON_LABELS[scope].toLowerCase()} athletes…`}
+                  size="xs"
+                  w={240}
+                  onChange={(v) => {
+                    if (v) onAddCompare(v);
+                    setAdding(false);
+                  }}
+                />
+              ) : (
+                <Button variant="light" size="xs" onClick={() => setAdding(true)}>
+                  {comparing ? "+ Add athlete" : `Compare ${scope === "all" ? "athletes" : COMPARISON_LABELS[scope]}`}
+                </Button>
+              ))}
+          </Group>
+          <Button component={Link} href={`/coach/athletes/${encodeURIComponent(a.athleteUuid)}/download`} variant="subtle" size="xs">
+            Download data
+          </Button>
+        </Stack>
       </Group>
       {comparing && scope !== "all" && <Group gap="xs" mt="sm" justify="flex-end">
         <Text size="xs" c="dimmed">{shared ? "Selection applied across tabs" : `Comparing ${COMPARISON_LABELS[scope]} only`}</Text>
