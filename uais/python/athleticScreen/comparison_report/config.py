@@ -39,11 +39,12 @@ MOVEMENT_TITLES = {
 }
 
 # PostgreSQL fact-table names per movement (mirrors pdf_report.py constants).
+# v2 tables (rebuilt from c3d) - the legacy f_athletic_screen_* tables are no longer read.
 MOVEMENT_TO_PG_TABLE = {
-    "CMJ": "f_athletic_screen_cmj",
-    "DJ": "f_athletic_screen_dj",
-    "PPU": "f_athletic_screen_ppu",
-    "SLV": "f_athletic_screen_slv",
+    "CMJ": "f_athletic_screen_v2_cmj",
+    "DJ": "f_athletic_screen_v2_dj",
+    "PPU": "f_athletic_screen_v2_ppu",
+    "SLV": "f_athletic_screen_v2_slv",
 }
 
 

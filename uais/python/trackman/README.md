@@ -172,3 +172,25 @@ adds PitchNo (the exports have none and Time is often mm:ss with the hour droppe
 Chasse's file; theirs is kept as OperatorTaggedPitchType). Re-uploading the same cleaned file
 updates the same pitches. Side measures in these files are pitcher's view, the same as the
 portal data (checked: LHP RelSide < 0, fastball HB < 0, hit-by-pitch on a RHB at PlateLocSide > 0).
+
+## "not in report" with "0 names seen" (fixed Oct 19, 2026)
+
+When Power BI was slow, the pitcher dropdown sometimes hadn't opened yet; the puller found
+the hidden leftover popup, saw no names and logged the pitcher as "not in report" (a false
+miss, ~330 on the first 2026 pass, ~60 in December 2025). The dropdown check now requires a
+visible list with items (5 tries, longer waits); if a list still shows nothing the report is
+reloaded once, and after that it's an error (the month stays partial and is retried) instead
+of a miss. Same for the date list. Earlier months: run a `-Rescan` pass to retry the misses.
+"ok: 0 pitches (N ... belong to another session)" is normal: a pitcher listed in two sessions
+that day is pulled with the session his pitches belong to.
+
+## The Portable report only keeps ~13 months (found Oct 21, 2026)
+
+Every date list in the 2025 backfill started at 09/22/2025, and the pitcher list (491 names)
+only has people who threw since then: the Legacy "Portable - Pitching Player" report holds a
+rolling window of about 13 months. Sessions before that still show in the session list, but
+their pitches can't be read from this report, so Jan-Aug 2025 came back empty (the old summary
+counted those empty results as "pulled"; it now reports pulled vs. no pitches separately).
+Each run now reads the report's first/last date once and skips older sessions in seconds
+(not marked done). Keep the nightly task on so nothing ages out before it's pulled; anything
+older needs another source (per-session CSV export or TrackMan's data API).

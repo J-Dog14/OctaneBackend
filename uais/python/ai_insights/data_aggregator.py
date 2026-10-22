@@ -78,11 +78,11 @@ class DataAggregator:
             DataFrame with session_date and metric columns
         """
         table_map = {
-            'cmj': 'f_athletic_screen_cmj',
-            'dj': 'f_athletic_screen_dj',
-            'slv': 'f_athletic_screen_slv',
+            'cmj': 'v_athletic_screen_cmj',
+            'dj': 'v_athletic_screen_dj',
+            'slv': 'v_athletic_screen_slv',
             'nmt': 'f_athletic_screen_nmt',
-            'ppu': 'f_athletic_screen_ppu'
+            'ppu': 'v_athletic_screen_ppu'
         }
         
         if movement_type not in table_map:
@@ -260,7 +260,7 @@ class DataAggregator:
                     'cmj' as test_type,
                     jh_in as metric_value,
                     'cmj_jump_height' as metric_name
-                FROM public.f_athletic_screen_cmj
+                FROM public.v_athletic_screen_cmj
                 WHERE athlete_uuid = :athlete_uuid
                 AND session_date >= :cutoff_date
                 AND jh_in IS NOT NULL
@@ -319,7 +319,7 @@ class DataAggregator:
         Get peer group statistics for a metric.
         
         Args:
-            metric_table: Table name (e.g., 'f_athletic_screen_cmj')
+            metric_table: Table name (e.g., 'v_athletic_screen_cmj')
             metric_column: Column name (e.g., 'jh_in')
             age_group: Filter by age group (optional)
             gender: Filter by gender (optional)

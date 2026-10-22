@@ -40,7 +40,7 @@ from .data_loader import (
     sessions_with_data,
 )
 from .summary_page import summary_page
-from athleticScreen.power_curve_store import load_power_curves_for_sessions  # noqa: E402
+from athleticScreen.v2.report_data import load_power_curves_for_sessions  # noqa: E402  (v2 force curves)
 
 # Ideal kurtosis bands, borrowed from the single-session report so the
 # summary page scores curve shape the same way the movement pages do.

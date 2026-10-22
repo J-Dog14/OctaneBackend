@@ -860,6 +860,11 @@ def _tier_for(value: float, pop_series, fallback: str = "Average") -> str:
 
 
 def _kurtosis_label(value: float) -> str:
+    # v2: kurtosis is the concentric power-curve shape; the old Flat/Typical/Sharp cut-offs belonged to the
+    # legacy export-window metric, so no label until the kurtosis study defines one.
+    if value is None or pd.isna(value):
+        return "—"
+    return ""
     if value is None or pd.isna(value):
         return "—"
     if value < -1.3:
@@ -889,7 +894,7 @@ def _ideal_text(var: str, movement_name: str) -> str:
         if ideal:
             low, high = ideal
             return f"{_format_sigfig(low, 3)} to {_format_sigfig(high, 3)}"
-        return "-0.4 to 0.5"
+        return "—"
     return ""
 
 

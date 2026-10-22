@@ -134,7 +134,7 @@ def example_specific_analysis():
     # 3. Peer comparison
     print("\n3. Peer Group Comparison:")
     peer_stats = aggregator.get_peer_group_stats(
-        'f_athletic_screen_cmj',
+        'v_athletic_screen_cmj',
         'jh_in',
         age_group=None,  # Compare to all ages
         gender=None

@@ -57,6 +57,7 @@ def check_orphaned_fact_rows(conn) -> List[Dict]:
     tables = [
         "f_athletic_screen_cmj", "f_athletic_screen_dj", "f_athletic_screen_ppu",
         "f_athletic_screen_slv", "f_athletic_screen_nmt",
+        "f_athletic_screen_v2_cmj", "f_athletic_screen_v2_dj", "f_athletic_screen_v2_ppu", "f_athletic_screen_v2_slv",
         "f_readiness_screen", "f_readiness_screen_i", "f_readiness_screen_y",
         "f_readiness_screen_t", "f_readiness_screen_ir90",
         "f_readiness_screen_cmj", "f_readiness_screen_ppu",
@@ -97,6 +98,7 @@ def check_null_age_with_dob(conn) -> List[Dict]:
     tables_with_age = [
         "f_athletic_screen_cmj", "f_athletic_screen_dj", "f_athletic_screen_ppu",
         "f_athletic_screen_slv", "f_athletic_screen_nmt",
+        "f_athletic_screen_v2_cmj", "f_athletic_screen_v2_dj", "f_athletic_screen_v2_ppu", "f_athletic_screen_v2_slv",
         "f_readiness_screen",
         "f_pro_sup", "f_arm_action", "f_curveball_test", "f_mobility", "f_proteus",
     ]
@@ -136,6 +138,7 @@ def check_unrealistic_age(conn) -> List[Dict]:
     tables_with_age = [
         "f_athletic_screen_cmj", "f_athletic_screen_dj", "f_athletic_screen_ppu",
         "f_athletic_screen_slv", "f_athletic_screen_nmt",
+        "f_athletic_screen_v2_cmj", "f_athletic_screen_v2_dj", "f_athletic_screen_v2_ppu", "f_athletic_screen_v2_slv",
         "f_readiness_screen", "f_pro_sup", "f_arm_action",
         "f_curveball_test", "f_mobility", "f_proteus",
     ]
@@ -181,6 +184,7 @@ def check_stale_session_dates(conn) -> List[Dict]:
     tables = [
         "f_athletic_screen_cmj", "f_athletic_screen_dj", "f_athletic_screen_ppu",
         "f_athletic_screen_slv", "f_athletic_screen_nmt",
+        "f_athletic_screen_v2_cmj", "f_athletic_screen_v2_dj", "f_athletic_screen_v2_ppu", "f_athletic_screen_v2_slv",
         "f_readiness_screen", "f_pro_sup", "f_arm_action",
         "f_curveball_test", "f_mobility", "f_proteus",
     ]
@@ -350,13 +354,13 @@ def check_partial_athletic_screen_sessions(conn) -> List[Dict]:
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
         cur.execute("""
             WITH sessions AS (
-                SELECT athlete_uuid, session_date, 'CMJ' AS movement FROM public.f_athletic_screen_cmj
+                SELECT athlete_uuid, session_date, 'CMJ' AS movement FROM public.f_athletic_screen_v2_cmj
                 UNION ALL
-                SELECT athlete_uuid, session_date, 'DJ'  FROM public.f_athletic_screen_dj
+                SELECT athlete_uuid, session_date, 'DJ'  FROM public.f_athletic_screen_v2_dj
                 UNION ALL
-                SELECT athlete_uuid, session_date, 'PPU' FROM public.f_athletic_screen_ppu
+                SELECT athlete_uuid, session_date, 'PPU' FROM public.f_athletic_screen_v2_ppu
                 UNION ALL
-                SELECT athlete_uuid, session_date, 'SLV' FROM public.f_athletic_screen_slv
+                SELECT athlete_uuid, session_date, 'SLV' FROM public.f_athletic_screen_v2_slv
                 UNION ALL
                 SELECT athlete_uuid, session_date, 'NMT' FROM public.f_athletic_screen_nmt
             ),

@@ -55,30 +55,20 @@ METRIC_LABELS = {
 #   - "Ideal Values" column on the performance table
 #   - per-athlete kurtosis cell coloring (green if inside, red if outside)
 #   - radar chart kurtosis axis (deviation-from-ideal transform)
-KURTOSIS_IDEAL_RANGE = {
-    "DJ":  (-1.45, -1.10),
-    "CMJ": (-1.30, -0.40),
-    "PPU": (-1.55, -1.25),
-    "SLV": (-1.00, -0.20),
-}
+# v2: the old ranges were tuned on the legacy (export-window) kurtosis and no longer apply. Kurtosis is now
+# the shape of the concentric power curve and is reported as a percentile only until the kurtosis study
+# defines an ideal. Empty dict = every "ideal range" code path falls back to plain percentiles.
+KURTOSIS_IDEAL_RANGE = {}
 
 # Elite-floor reference values for Max RPD (W/s) per movement, shown in the
 # "Ideal Values" column. Tier (Low/Below Avg/Avg/High/Elite) is computed
 # dynamically from population percentiles when population data is available.
-ELITE_RPD_REFERENCE = {
-    "DJ":  32700,
-    "CMJ": 25200,
-    "PPU": 8000,
-    "SLV": 18200,
-}
+# v2: filled per report from the comparison population (85th percentile = top 15%) in
+# query_population_data below; these defaults only show if a population is missing.
+ELITE_RPD_REFERENCE = {}
 
 # Elite-floor reference values for Work AUC (J) per movement.
-ELITE_AUC_REFERENCE = {
-    "DJ":  570,
-    "CMJ": 1260,
-    "PPU": 700,
-    "SLV": 1030,
-}
+ELITE_AUC_REFERENCE = {}
 
 # Percentile-based tier mapping for Max RPD and Work AUC (athlete percentile
 # vs. population for the current movement).
@@ -238,6 +228,46 @@ def query_population_data(engine, movement_type, gender=None):
         import traceback
         traceback.print_exc()
         return pd.DataFrame()
+
+
+# ------------------------------------------------
+# v2: the two readers above are replaced by the v2-table readers (same column names the report expects).
+# ------------------------------------------------
+try:
+    from athleticScreen.v2 import report_data as _v2
+except ImportError:  # run from inside athleticScreen/
+    from v2 import report_data as _v2
+
+
+def query_athlete_data(engine, athlete_uuid, session_date, movement_type):  # noqa: F811
+    return _v2.query_athlete_data(engine, athlete_uuid, session_date, movement_type)
+
+
+def query_population_data(engine, movement_type, gender=None):  # noqa: F811
+    df = _v2.query_population_data(engine, movement_type, gender=gender)
+    # "Ideal Values" elite floor = top 15% of the comparison population for this movement
+    if not df.empty:
+        for col, ref in (("rpd_max_w_per_s", ELITE_RPD_REFERENCE), ("auc_j", ELITE_AUC_REFERENCE)):
+            vals = df[col].dropna() if col in df.columns else []
+            if len(vals) >= 10:
+                ref[movement_type] = float(vals.quantile(0.85))
+    return df
+
+
+def _ordinal(n):
+    n = int(round(n))
+    suf = "th" if 10 <= n % 100 <= 20 else {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+    return f"{n}{suf}"
+
+
+def _kurt_pct_label(value, population):
+    """Kurtosis cell text: percentile vs the population (no ideal range yet)."""
+    if value is None or population is None or population.empty or "kurtosis" not in population.columns:
+        return "—"
+    pop = population["kurtosis"].dropna()
+    if len(pop) == 0 or pd.isna(value):
+        return "—"
+    return f"{_ordinal(percentileofscore(pop, value))} pct"
 
 
 # ------------------------------------------------
@@ -636,7 +666,7 @@ def performance_table(ax, row, movement_name=None, population=None):
         auc_tier = get_tier_static(auc_value, auc_thresholds_static)
 
     # Kurtosis: descriptive label for the cell text, per-athlete color decision.
-    kurtosis_tier = get_kurtosis_label(kurtosis_value)
+    kurtosis_tier = _kurt_pct_label(kurtosis_value, population)
     kurtosis_cell_color = get_kurtosis_color(kurtosis_value, movement_name)
     
     # Helper function to format numbers with significant figures
@@ -676,7 +706,7 @@ def performance_table(ax, row, movement_name=None, population=None):
             if ideal is not None:
                 low, high = ideal
                 return f"{format_sigfig(low, 3)} to {format_sigfig(high, 3)}"
-            return "-0.4 to 0.5"
+            return "—"
         elif var_type == 'auc':
             elite_min = ELITE_AUC_REFERENCE.get(movement_name, 1100)
             return f">{format_sigfig(elite_min, 4)}"
@@ -817,7 +847,7 @@ def slv_performance_table(ax, left_df, right_df, movement_name, population=None)
             if ideal is not None:
                 low, high = ideal
                 return f"{format_sigfig(low, 3)} to {format_sigfig(high, 3)}"
-            return "-0.4 to 0.5"
+            return "—"
         elif var_type == 'auc':
             elite_min = ELITE_AUC_REFERENCE.get(movement_name, 1100)
             return f">{format_sigfig(elite_min, 4)}"
@@ -920,8 +950,8 @@ def slv_performance_table(ax, left_df, right_df, movement_name, population=None)
     right_present = right_best is not None
     rpd_tier_left = get_tier_for_metric(rpd_left, 'rpd_max_w_per_s', rpd_thresholds_static, left_present)
     rpd_tier_right = get_tier_for_metric(rpd_right, 'rpd_max_w_per_s', rpd_thresholds_static, right_present)
-    kurtosis_tier_left = get_kurtosis_label(kurtosis_left, left_present)
-    kurtosis_tier_right = get_kurtosis_label(kurtosis_right, right_present)
+    kurtosis_tier_left = _kurt_pct_label(kurtosis_left, population) if left_present else 'N/A'
+    kurtosis_tier_right = _kurt_pct_label(kurtosis_right, population) if right_present else 'N/A'
     auc_tier_left = get_tier_for_metric(auc_left, 'auc_j', auc_thresholds_static, left_present)
     auc_tier_right = get_tier_for_metric(auc_right, 'auc_j', auc_thresholds_static, right_present)
 
@@ -1027,10 +1057,10 @@ def power_curve(ax, df, pop_df=None, power_files_dir=None, athlete_name=None, se
             _local_fallback = ''
 
     # Try to load actual Power.txt files if directory is provided
-    if power_files_dir and 'trial_name' in df.columns:
+    if (power_files_dir or power_data_dict) and 'trial_name' in df.columns:
         from power_analysis import load_power_txt
 
-        processed_dir = os.path.join(power_files_dir, "Processed txt Files")
+        processed_dir = os.path.join(power_files_dir, "Processed txt Files") if power_files_dir else None
 
         for _, r in df.iterrows():
             trial_name = r.get('trial_name')
@@ -1044,6 +1074,9 @@ def power_curve(ax, df, pop_df=None, power_files_dir=None, athlete_name=None, se
                     t_norm = np.linspace(0, 1, len(cached))
                     curves.append((t_norm, cached))
                     print(f"[PowerCurve] Using cached data for {trial_name}")
+                continue
+            if not power_files_dir:   # v2: curves come only from the database
+                print(f"[PowerCurve] no stored curve for {trial_name}")
                 continue
 
             # Look for Power.txt file - try upload dir first, then local fallback.
@@ -1251,6 +1284,8 @@ def slv_power_curve(ax, left_df, right_df, pop_df=None, power_files_dir=None, at
                     print(f"[PowerCurve SLV {side_name}] SYNTHETIC fallback for {trial_name} (load error: {e})")
                     _used_synthetic = True
                     curves.append((t, np.exp(-((t - 0.35) ** 2) / 0.06)))
+            elif not power_files_dir:   # v2: curves come only from the database
+                print(f"[PowerCurve SLV {side_name}] no stored curve for {trial_name}")
             else:
                 print(f"[PowerCurve SLV {side_name}] SYNTHETIC fallback for {trial_name} (no file found)")
                 _used_synthetic = True
@@ -2234,6 +2269,8 @@ def generate_pdf_report(athlete_uuid, athlete_name, session_date, output_dir, lo
     
     # Connect to database
     engine = get_warehouse_engine()
+    if power_data_dict is None:
+        power_data_dict = _v2.load_all_power_curves(engine, athlete_uuid, session_date)
 
     try:
         # Fetch athlete gender to use the correct comparison population (unless full population is requested)

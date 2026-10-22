@@ -23,6 +23,7 @@ DELETE_NAMES = [
 FACT_TABLES = [
     "f_athletic_screen", "f_athletic_screen_cmj", "f_athletic_screen_dj",
     "f_athletic_screen_nmt", "f_athletic_screen_ppu", "f_athletic_screen_slv",
+    "f_athletic_screen_v2_cmj", "f_athletic_screen_v2_dj", "f_athletic_screen_v2_ppu", "f_athletic_screen_v2_slv", "f_athletic_screen_v2_force_curve",
     "f_pro_sup", "f_readiness_screen", "f_readiness_screen_i", "f_readiness_screen_y",
     "f_readiness_screen_t", "f_readiness_screen_ir90", "f_readiness_screen_cmj", "f_readiness_screen_ppu",
     "f_mobility", "f_proteus", "f_kinematics_pitching", "f_kinematics_hitting",

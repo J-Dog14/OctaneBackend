@@ -66,13 +66,13 @@ def get_athletes_with_athletic_screen_data(conn, athlete_name_filter=None, athle
         if session_date_filter:
             cur.execute("""
                 WITH sessions AS (
-                    SELECT DISTINCT athlete_uuid, session_date FROM public.f_athletic_screen_cmj
+                    SELECT DISTINCT athlete_uuid, session_date FROM public.f_athletic_screen_v2_cmj
                     UNION
-                    SELECT DISTINCT athlete_uuid, session_date FROM public.f_athletic_screen_dj
+                    SELECT DISTINCT athlete_uuid, session_date FROM public.f_athletic_screen_v2_dj
                     UNION
-                    SELECT DISTINCT athlete_uuid, session_date FROM public.f_athletic_screen_ppu
+                    SELECT DISTINCT athlete_uuid, session_date FROM public.f_athletic_screen_v2_ppu
                     UNION
-                    SELECT DISTINCT athlete_uuid, session_date FROM public.f_athletic_screen_slv
+                    SELECT DISTINCT athlete_uuid, session_date FROM public.f_athletic_screen_v2_slv
                 )
                 SELECT a.athlete_uuid, a.name, s.session_date::text
                 FROM analytics.d_athletes a
@@ -83,13 +83,13 @@ def get_athletes_with_athletic_screen_data(conn, athlete_name_filter=None, athle
         else:
             cur.execute("""
                 WITH sessions AS (
-                    SELECT athlete_uuid, session_date FROM public.f_athletic_screen_cmj
+                    SELECT athlete_uuid, session_date FROM public.f_athletic_screen_v2_cmj
                     UNION ALL
-                    SELECT athlete_uuid, session_date FROM public.f_athletic_screen_dj
+                    SELECT athlete_uuid, session_date FROM public.f_athletic_screen_v2_dj
                     UNION ALL
-                    SELECT athlete_uuid, session_date FROM public.f_athletic_screen_ppu
+                    SELECT athlete_uuid, session_date FROM public.f_athletic_screen_v2_ppu
                     UNION ALL
-                    SELECT athlete_uuid, session_date FROM public.f_athletic_screen_slv
+                    SELECT athlete_uuid, session_date FROM public.f_athletic_screen_v2_slv
                 ),
                 latest AS (
                     SELECT athlete_uuid, MAX(session_date) AS session_date
@@ -246,7 +246,7 @@ def run_comparison_report(athlete_uuid: str, session_dates: List[str],
             session_dates=dates,
             output_dir=primary_dir,
             logo_path=_logo_path(),
-            power_files_dir=folder_path,
+            power_files_dir=None,              # v2: curves come from f_athletic_screen_v2_force_curve
         )
     except Exception as exc:
         print(f"ERROR: comparison report failed: {exc}")
@@ -291,8 +291,8 @@ def run_report_generation(athletes_to_report, folder_path, power_data_cache=None
                 session_date=date_str,
                 output_dir=primary_dir,
                 logo_path=logo_path,
-                power_files_dir=folder_path,
-                power_data_dict=athlete_power_dict or None,
+                power_files_dir=None,          # v2: curves come from f_athletic_screen_v2_force_curve
+                power_data_dict=None,
             )
             if report_path:
                 _copy_report_locally(report_path, primary_dir)
@@ -309,7 +309,7 @@ def run_report_generation(athletes_to_report, folder_path, power_data_cache=None
                         session_date=date_str,
                         output_dir=primary_dir,
                         logo_path=logo_path,
-                        power_files_dir=folder_path,
+                        power_files_dir=None,
                         filename_suffix="_all_comparison",
                         skip_gender_filter=True,
                     )
@@ -394,6 +394,10 @@ def _process_txt_files_dry_run(folder_path: str, txt_files: list) -> list:
 
 
 def process_txt_files(folder_path: str, dry_run: bool = False, athlete_uuid: str = None, profile: dict = None):
+    raise RuntimeError(
+        "Legacy Athletic Screen ingest (Visual3D Output Files -> f_athletic_screen_*) is retired. "
+        "Use v2/ingest.py (main.py now routes ingest there)."
+    )
     """
     Process all txt files from folder and insert into PostgreSQL.
     Extracts name and date from first line of each txt file.
@@ -1273,36 +1277,12 @@ def main():
         print("Report generation complete.")
         return
 
-    # Processing options
-    BATCH_PROCESS = True  # Process all files in directory
-
-    if BATCH_PROCESS:
-        athlete_uuid_env = os.environ.get("ATHLETE_UUID", "").strip() or None
-        if athlete_uuid_env:
-            _vconn = get_warehouse_connection()
-            try:
-                _rec = verify_athlete_uuid(_vconn, athlete_uuid_env)
-                print(f"Athlete UUID verified: {_rec['name']} ({athlete_uuid_env})")
-            except ValueError as _ve:
-                print(f"Error: {_ve}")
-                sys.exit(1)
-            finally:
-                _vconn.close()
-        processed = process_txt_files(
-            folder_path,
-            dry_run=args.dry_run,
-            athlete_uuid=athlete_uuid_env,
-            profile=None,
-        )
-
-        if not processed:
-            print("No files were processed.")
-            return
-        if not args.dry_run:
-            print("All processing complete.")
-    else:
-        print("Batch processing is disabled. Set BATCH_PROCESS = True to process all files.")
-
+    # Ingest: the legacy Visual3D/Output-Files pipeline is retired. Every ingest goes through the v2
+    # c3d pipeline (writes only f_athletic_screen_v2_* + readiness baseline). See v2/ingest.py.
+    from v2.ingest import main as v2_ingest_main
+    passthrough = [a for a in sys.argv[1:] if a in ("--dry-run",)]
+    sys.argv = [sys.argv[0]] + passthrough
+    sys.exit(v2_ingest_main())
 
 if __name__ == "__main__":
     main()

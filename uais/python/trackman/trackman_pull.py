@@ -635,14 +635,28 @@ def _find_option(popup, want: str, seen: list[str]):
     return None, None, False
 
 
+VISIBLE_ITEMS_JS = """(el) => {
+  // Options / search box the user could actually see. The popup found via aria-controls
+  // can be a hidden leftover whose (unrendered) search input still exists in the DOM.
+  const vis = e => { const r = e.getBoundingClientRect(), s = getComputedStyle(e);
+                     return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none'; };
+  if (!vis(el)) return 0;
+  return [...el.querySelectorAll("[role='option'], input")].filter(vis).length;
+}"""
+
+# Names the last set_slicer call saw in the list; 0 = the dropdown never showed anything.
+LAST_NAMES_SEEN = [0]
+
+
 def _open_slicer(page, combo):
-    """Click the combobox until its dropdown shows (a closing dropdown can swallow the first click)."""
-    for attempt in range(3):
+    """Click the combobox until its dropdown is visible with items in it. A closing dropdown
+    can swallow a click, and while Power BI is slow the first clicks open nothing."""
+    for attempt in range(5):
         combo.click()
-        page.wait_for_timeout(1000 + 700 * attempt)
+        page.wait_for_timeout(1200 + 800 * attempt)
         popup = slicer_popup(page, combo)
         try:
-            n = popup.evaluate("el => el.querySelectorAll(\"[role='option'], input\").length")
+            n = popup.evaluate(VISIBLE_ITEMS_JS)
         except Exception:  # noqa: BLE001
             n = 0
         if n:
@@ -711,6 +725,7 @@ def set_slicer(page, slicer: str, wanted: list[str]) -> str | None:
                 page.wait_for_timeout(800)
             hit = text
             break
+    LAST_NAMES_SEEN[0] = len(seen)
     if not hit:
         log(f"    '{slicer}': no exact '{wanted[0]}' (current: '{(combo.text_content() or '').strip()}'; "
             f"{len(seen)} names seen, e.g. {seen[:4]} ... {seen[-3:]})")
@@ -1244,6 +1259,44 @@ def save_querydata(cap: "ApiCapture", folder: Path, name: str) -> None:
     (folder / "powerbi_requests.txt").write_text("\n".join(cap.pbi_urls))
 
 
+def report_date_window(page) -> tuple[str, str] | None:
+    """(earliest, latest) ISO dates the Portable report holds, read from the US DATE slicer
+    with every pitcher. The report keeps a rolling window (about 13 months on 2026-10-21:
+    nothing before 09/22/2025), so older sessions can't be pulled from it at all.
+    None when the whole list couldn't be read; callers then try every session as before."""
+    wait_report(page)
+    clear_slicer(page, "pitcher_full_name")
+    clear_slicer(page, "US DATE")
+    combo = pbi(page).get_by_role("combobox", name="US DATE").first
+    popup = _open_slicer(page, combo)
+    seen: list[str] = []
+    reached_end = False
+    for _ in range(400):
+        _find_option(popup, "\u0000", seen)  # collects every rendered label
+        try:
+            if not popup.evaluate(SCROLL_LIST_JS):
+                reached_end = True
+                break
+        except Exception:  # noqa: BLE001
+            break
+        page.wait_for_timeout(250)
+    _find_option(popup, "\u0000", seen)
+    page.keyboard.press("Escape")
+    page.wait_for_timeout(1000)
+    dates = []
+    for t in seen:
+        m = re.match(r"^\s*(\d{1,2})/(\d{1,2})/(\d{4})\s*$", t)
+        if m:
+            try:
+                dates.append(date(int(m.group(3)), int(m.group(1)), int(m.group(2))).isoformat())
+            except ValueError:
+                pass
+    if not reached_end or len(dates) < 5:
+        log(f"  couldn't read the report's whole date list ({len(dates)} dates); trying every session")
+        return None
+    return min(dates), max(dates)
+
+
 def pull_player_session(page, player: dict, session: dict, probe_dir: Path | None = None, cap: "ApiCapture | None" = None) -> dict:
     if cap is not None:
         cap.pbi.clear()
@@ -1257,10 +1310,21 @@ def pull_player_session(page, player: dict, session: dict, probe_dir: Path | Non
         clear_slicer(page, "pitcher_full_name")
         clear_slicer(page, "US DATE")
         name_hit = set_slicer(page, "pitcher_full_name", [player["name"]])
+    if not name_hit and LAST_NAMES_SEEN[0] == 0:
+        # The list never showed a single name: the report wasn't ready, not a missing pitcher.
+        log("    pitcher list never opened; reloading the report and trying once more")
+        wait_report(page)
+        page.wait_for_timeout(3000)
+        clear_slicer(page, "US DATE")
+        name_hit = set_slicer(page, "pitcher_full_name", [player["name"]])
+        if not name_hit and LAST_NAMES_SEEN[0] == 0:
+            raise RuntimeError("pitcher list wouldn't open (retried next run)")
     if not name_hit:
         return {"status": "player_not_in_report", "pitches": [],
                 "detail": f"date slicer showed '{slicer_value(page, 'US DATE')}'"}
     date_hit = set_slicer(page, "US DATE", us_date_variants(session["local_date"]))
+    if not date_hit and LAST_NAMES_SEEN[0] == 0:  # a picked pitcher always has dates: the list didn't open
+        raise RuntimeError("date list wouldn't open (retried next run)")
     if not date_hit:
         return {"status": "date_not_in_report", "pitches": []}
     ensure_live_only(page)
@@ -1480,9 +1544,22 @@ def main() -> int:
         done = set(json.loads(done_path.read_text())) if done_path.exists() else set()
         validation = json.loads((run_dir / "validation.json").read_text()) if (run_dir / "validation.json").exists() else {}
         out_path = run_dir / "pitches.jsonl"
-        hits = misses = errors = 0
+        hits = misses = errors = pulled_ok = no_pitches = outside = 0
+        window = report_date_window(page)
+        if window:
+            log(f"  The report holds {window[0]} -> {window[1]}")
         for s in sorted(sessions, key=lambda x: x["local_date"] or ""):
             v = validation.setdefault(s["session_id"], {"date": s["local_date"], "plays": s["plays"], "players": {}})
+            if window and s["local_date"] and s["local_date"] < window[0]:
+                # Older than anything the report still has: every pitcher would come back
+                # "not in report" after ~40 s each. Skipped, not marked done.
+                todo = [pl for pl in s["players"] if f"{s['session_id']}|{pl['player_id']}|{s.get('plays') or ''}" not in done]
+                if todo:
+                    outside += len(todo)
+                    v["outside_report_window"] = True
+                    log(f"{s['local_date']}  session {s['session_id'][:8]}: before the report's first date ({window[0]}); "
+                        f"skipping {len(todo)} pitcher(s)")
+                continue
             for pl in s["players"]:
                 if args.player and norm(args.player) not in norm(pl["name"]):
                     continue
@@ -1514,6 +1591,10 @@ def main() -> int:
                         return 1
                     continue
                 hits += 1
+                if res["status"] == "ok":
+                    pulled_ok += 1
+                else:
+                    no_pitches += 1
                 with open(out_path, "a", encoding="utf-8") as f:
                     for p in res["pitches"]:
                         f.write(json.dumps(p, default=str) + "\n")
@@ -1525,14 +1606,19 @@ def main() -> int:
                 v["pulled"] = pulled
                 v["short_by"] = (s["plays"] - pulled) if s["plays"] else None
                 (run_dir / "validation.json").write_text(json.dumps(validation, indent=1))
-                log(f"  {res['status']}: {len(res['pitches'])} pitches")
+                ws = res.get("wrong_session", 0)
+                log(f"  {res['status']}: {len(res['pitches'])} pitches"
+                    + (f" ({ws} of their pitches that day belong to another session, pulled with that one)" if ws and not res["pitches"] else ""))
                 time.sleep(1)
 
         short = {k: x for k, x in validation.items() if (x.get("short_by") or 0) > 0}
-        (run_dir / "summary.json").write_text(json.dumps({"sessions": len(sessions), "ok": hits, "errors": errors,
-                                                          "not_in_report": misses, "short_sessions": len(short)}))
-        log(f"Done. {hits} pulled, {errors} errors, {misses} not in the report; "
-            f"{len(short)} session(s) short of their Plays count (see validation.json).")
+        (run_dir / "summary.json").write_text(json.dumps({"sessions": len(sessions), "ok": pulled_ok, "no_pitches": no_pitches,
+                                                          "errors": errors, "not_in_report": misses, "outside_window": outside,
+                                                          "window": list(window) if window else None,
+                                                          "short_sessions": len(short)}))
+        log(f"Done. {pulled_ok} pulled, {no_pitches} with no pitches that day, {errors} errors, {misses} not in the report"
+            + (f", {outside} skipped (before the report's first date {window[0]})" if outside else "")
+            + f"; {len(short)} session(s) short of their Plays count (see validation.json).")
         ctx.close()
     return 0
 

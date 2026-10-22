@@ -191,8 +191,8 @@ class InsightGenerator:
         
         # Compare key metrics
         metrics_to_compare = [
-            ('f_athletic_screen_cmj', 'jh_in', 'cmj_jump_height'),
-            ('f_athletic_screen_cmj', 'pp_w_per_kg', 'cmj_power_per_kg'),
+            ('v_athletic_screen_cmj', 'jh_in', 'cmj_jump_height'),
+            ('v_athletic_screen_cmj', 'pp_w_per_kg', 'cmj_power_per_kg'),
             ('f_readiness_screen_i', 'max_force_norm', 'readiness_i_max_force'),
             ('f_pro_sup', 'tot_rom', 'pro_sup_total_rom')
         ]

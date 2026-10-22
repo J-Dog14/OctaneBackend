@@ -68,14 +68,14 @@ PPU_METRICS: List[Tuple[str, str, int]] = [
 ]
 
 _ATHLETIC_COMPANION: Dict[Tuple[str, str], Tuple[str, str]] = {
-    ("f_readiness_screen_cmj", "jump_height"): ("f_athletic_screen_cmj", "jh_in"),
-    ("f_readiness_screen_cmj", "pp_w_per_kg"): ("f_athletic_screen_cmj", "pp_w_per_kg"),
-    ("f_readiness_screen_cmj", "force_at_pp"): ("f_athletic_screen_cmj", "force_at_pp"),
-    ("f_readiness_screen_cmj", "vel_at_pp"):   ("f_athletic_screen_cmj", "vel_at_pp"),
-    ("f_readiness_screen_ppu", "jump_height"): ("f_athletic_screen_ppu", "jh_in"),
-    ("f_readiness_screen_ppu", "pp_w_per_kg"): ("f_athletic_screen_ppu", "pp_w_per_kg"),
-    ("f_readiness_screen_ppu", "force_at_pp"): ("f_athletic_screen_ppu", "force_at_pp"),
-    ("f_readiness_screen_ppu", "vel_at_pp"):   ("f_athletic_screen_ppu", "vel_at_pp"),
+    ("f_readiness_screen_cmj", "jump_height"): ("v_athletic_screen_cmj", "jh_in"),
+    ("f_readiness_screen_cmj", "pp_w_per_kg"): ("v_athletic_screen_cmj", "pp_w_per_kg"),
+    ("f_readiness_screen_cmj", "force_at_pp"): ("v_athletic_screen_cmj", "force_at_pp"),
+    ("f_readiness_screen_cmj", "vel_at_pp"):   ("v_athletic_screen_cmj", "vel_at_pp"),
+    ("f_readiness_screen_ppu", "jump_height"): ("v_athletic_screen_ppu", "jh_in"),
+    ("f_readiness_screen_ppu", "pp_w_per_kg"): ("v_athletic_screen_ppu", "pp_w_per_kg"),
+    ("f_readiness_screen_ppu", "force_at_pp"): ("v_athletic_screen_ppu", "force_at_pp"),
+    ("f_readiness_screen_ppu", "vel_at_pp"):   ("v_athletic_screen_ppu", "vel_at_pp"),
 }
 
 _ATHLETIC_POWER_COLS: frozenset = frozenset({
@@ -139,7 +139,7 @@ def _fetch_today_and_baseline(
 ) -> Tuple[Optional[float], List[float]]:
     """Return (today_value, baseline_values).
 
-    For CMJ/PPU core metrics, UNIONs f_athletic_screen_cmj/ppu as supplemental
+    For CMJ/PPU core metrics, UNIONs v_athletic_screen_cmj/ppu as supplemental
     sources so prior athletic screen sessions contribute to the baseline.
     For power-curve metrics, also UNIONs inline power columns from athletic screen.
     """
@@ -185,10 +185,10 @@ def _fetch_today_and_baseline(
               SELECT {col} AS v FROM public.f_readiness_screen_power_curve
                WHERE athlete_uuid = %s AND session_date = %s
               UNION ALL
-              SELECT {col} AS v FROM public.f_athletic_screen_cmj
+              SELECT {col} AS v FROM public.v_athletic_screen_cmj
                WHERE athlete_uuid = %s AND session_date = %s
               UNION ALL
-              SELECT {col} AS v FROM public.f_athletic_screen_ppu
+              SELECT {col} AS v FROM public.v_athletic_screen_ppu
                WHERE athlete_uuid = %s AND session_date = %s
             ) _u
             """,
@@ -205,10 +205,10 @@ def _fetch_today_and_baseline(
               SELECT session_date, {col} AS v FROM public.f_readiness_screen_power_curve
                WHERE athlete_uuid = %s AND session_date < %s AND session_date >= %s
               UNION ALL
-              SELECT session_date, {col} AS v FROM public.f_athletic_screen_cmj
+              SELECT session_date, {col} AS v FROM public.v_athletic_screen_cmj
                WHERE athlete_uuid = %s AND session_date < %s AND session_date >= %s
               UNION ALL
-              SELECT session_date, {col} AS v FROM public.f_athletic_screen_ppu
+              SELECT session_date, {col} AS v FROM public.v_athletic_screen_ppu
                WHERE athlete_uuid = %s AND session_date < %s AND session_date >= %s
             ) _u
             GROUP BY session_date
@@ -295,10 +295,10 @@ def _count_prior_sessions(
             SELECT session_date FROM public.f_readiness_screen_power_curve
              WHERE athlete_uuid = %s AND session_date < %s AND session_date >= %s
             UNION
-            SELECT session_date FROM public.f_athletic_screen_cmj
+            SELECT session_date FROM public.v_athletic_screen_cmj
              WHERE athlete_uuid = %s AND session_date < %s AND session_date >= %s
             UNION
-            SELECT session_date FROM public.f_athletic_screen_ppu
+            SELECT session_date FROM public.v_athletic_screen_ppu
              WHERE athlete_uuid = %s AND session_date < %s AND session_date >= %s
         ) _all_sessions
         """,
@@ -360,11 +360,11 @@ def _fetch_cohort_stats(
                      WHERE athlete_uuid <> %s AND {col} IS NOT NULL
                     UNION ALL
                     SELECT athlete_uuid, session_date, {col} AS v
-                      FROM public.f_athletic_screen_cmj
+                      FROM public.v_athletic_screen_cmj
                      WHERE athlete_uuid <> %s AND {col} IS NOT NULL
                     UNION ALL
                     SELECT athlete_uuid, session_date, {col} AS v
-                      FROM public.f_athletic_screen_ppu
+                      FROM public.v_athletic_screen_ppu
                      WHERE athlete_uuid <> %s AND {col} IS NOT NULL
                   ) _combined
                  GROUP BY athlete_uuid, session_date
