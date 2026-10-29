@@ -2,9 +2,12 @@
  * Athletic screen report pages, ported from
  * uais/python/athleticScreen/pdf_report.py so the in-app report shows the same
  * numbers as the PDF: histograms with athlete mean/extreme lines, F–V scatter,
- * Force/Velocity @ peak power rings, 6-axis percentile radar (kurtosis scored
- * by distance from the per-movement ideal range), power curve with the 10–90%
- * rise, and the Max RPD / Kurtosis / Work table with population tiers.
+ * Force/Velocity @ peak power rings, 6-axis percentile radar, power curve with
+ * the 10–90% rise, and the Max RPD / Kurtosis / Work table with population tiers.
+ *
+ * Athletic Screen v2: kurtosis is the shape of the concentric power curve and is
+ * shown as a percentile only (no ideal range until one is set from v2 data); the
+ * Max RPD / Work "ideal" floor is the top 15% of the comparison population.
  *
  * Keep the constants in step with pdf_report.py. Pure: no database access.
  */
@@ -36,14 +39,12 @@ export const METRIC_LABELS: Partial<Record<MetricKey, string>> = {
 
 const RADAR_METRICS: MetricKey[] = ["JH_IN", "PP_W_per_kg", "auc_j", "kurtosis", "rpd_max_w_per_s", "time_to_rpd_max_s"];
 
-export const KURTOSIS_IDEAL_RANGE: Record<Movement, [number, number]> = {
-  DJ: [-1.45, -1.1],
-  CMJ: [-1.3, -0.4],
-  PPU: [-1.55, -1.25],
-  SLV: [-1.0, -0.2],
-};
-const ELITE_RPD_REFERENCE: Record<Movement, number> = { DJ: 32700, CMJ: 25200, PPU: 8000, SLV: 18200 };
-const ELITE_AUC_REFERENCE: Record<Movement, number> = { DJ: 570, CMJ: 1260, PPU: 700, SLV: 1030 };
+/** Empty for v2 - the old ranges were set on the legacy (invalid) kurtosis values. Add [lo, hi] per movement to bring the ideal-range scoring back. */
+export const KURTOSIS_IDEAL_RANGE: Partial<Record<Movement, [number, number]>> = {};
+/** Fallback "ideal" floors when the population is too small (< 10) for a top-15% cut. */
+const FALLBACK_ELITE_RPD = 25000;
+const FALLBACK_ELITE_AUC = 1100;
+const ELITE_QUANTILE = 0.85;
 
 export type Tier = "Low" | "Below Average" | "Average" | "High" | "Elite";
 export type KurtosisLabel = "Very Flat" | "Moderately Flat" | "Typical" | "Sharp";
@@ -116,6 +117,25 @@ function staticTier(v: number, t: Array<[Tier, number]>): Tier {
 }
 export function kurtosisLabel(v: number): KurtosisLabel {
   return v < -1.3 ? "Very Flat" : v < -0.4 ? "Moderately Flat" : v < 0.5 ? "Typical" : "Sharp";
+}
+
+/** numpy.quantile (linear). */
+function quantile(values: number[], q: number): number | null {
+  if (!values.length) return null;
+  const v = [...values].sort((a, b) => a - b);
+  const x = q * (v.length - 1);
+  const i = Math.floor(x);
+  return i + 1 < v.length ? v[i]! + (x - i) * (v[i + 1]! - v[i]!) : v[i]!;
+}
+
+function eliteFloor(popVals: number[], fallback: number): number {
+  return popVals.length >= 10 ? quantile(popVals, ELITE_QUANTILE)! : fallback;
+}
+
+function ordinal(n: number): string {
+  const r = Math.round(n);
+  const suf = r % 100 >= 10 && r % 100 <= 20 ? "th" : ({ 1: "st", 2: "nd", 3: "rd" } as Record<number, string>)[r % 10] ?? "th";
+  return `${r}${suf}`;
 }
 
 function kurtosisDeviation(v: number, [lo, hi]: [number, number]): number {
@@ -217,7 +237,7 @@ function radarValues(row: Row, pop: PopulationData, movement: Movement): number[
   return RADAR_METRICS.map((k) => {
     const v = row[k];
     if (v == null) return 0;
-    if (k === "kurtosis") {
+    if (k === "kurtosis" && ideal) {
       const devs = pop.col("kurtosis").map((x) => kurtosisDeviation(x, ideal));
       const p = percentileOfScore(devs, kurtosisDeviation(v, ideal));
       return p == null ? 0 : Math.max(0, Math.min(1, 1 - p / 100));
@@ -264,34 +284,40 @@ function tierFor(value: number | null | undefined, popVals: number[], fallback: 
 }
 
 function tableRows(movement: Movement, pop: PopulationData, rows: Array<{ prefix: string; row: Row }>): TableRow[] {
-  const [klo, khi] = KURTOSIS_IDEAL_RANGE[movement];
+  const ideal = KURTOSIS_IDEAL_RANGE[movement];
   const multi = rows.length > 1;
   const join = (f: (r: Row) => string) => rows.map(({ prefix, row }) => (multi ? `${prefix}: ${f(row)}` : f(row))).join("\n");
   const first = rows[0]?.row ?? {};
   const rpdTier = (r: Row) => tierFor(r.rpd_max_w_per_s, pop.col("rpd_max_w_per_s"), STATIC_RPD) ?? "N/A";
   const aucTier = (r: Row) => tierFor(r.auc_j, pop.col("auc_j"), STATIC_AUC) ?? "N/A";
   const k = first.kurtosis;
+  const kurtTier = (r: Row) => {
+    if (r.kurtosis == null) return "N/A";
+    if (ideal) return kurtosisLabel(r.kurtosis);
+    const p = percentileOfScore(pop.col("kurtosis"), r.kurtosis);
+    return p == null ? "—" : `${ordinal(p)} pct`;
+  };
   return [
     {
       variable: "Max RPD (W/s)",
       value: join((r) => formatSigfig(r.rpd_max_w_per_s, 4)),
       tier: join(rpdTier),
       tierColor: (tierFor(first.rpd_max_w_per_s, pop.col("rpd_max_w_per_s"), STATIC_RPD) ?? "none") as TierColor,
-      ideal: `>${formatSigfig(ELITE_RPD_REFERENCE[movement], 4)}`,
+      ideal: `>${formatSigfig(eliteFloor(pop.col("rpd_max_w_per_s"), FALLBACK_ELITE_RPD), 4)}`,
     },
     {
       variable: "Kurtosis",
       value: join((r) => formatSigfig(r.kurtosis, 3)),
-      tier: join((r) => (r.kurtosis == null ? "N/A" : kurtosisLabel(r.kurtosis))),
-      tierColor: k == null ? "none" : k >= klo && k <= khi ? "kurtIn" : "kurtOut",
-      ideal: `${formatSigfig(klo, 3)} to ${formatSigfig(khi, 3)}`,
+      tier: join(kurtTier),
+      tierColor: k == null || !ideal ? "none" : k >= ideal[0] && k <= ideal[1] ? "kurtIn" : "kurtOut",
+      ideal: ideal ? `${formatSigfig(ideal[0], 3)} to ${formatSigfig(ideal[1], 3)}` : "—",
     },
     {
       variable: "Work (AUC)",
       value: join((r) => formatSigfig(r.auc_j, 4)),
       tier: join(aucTier),
       tierColor: (tierFor(first.auc_j, pop.col("auc_j"), STATIC_AUC) ?? "none") as TierColor,
-      ideal: `>${formatSigfig(ELITE_AUC_REFERENCE[movement], 4)}`,
+      ideal: `>${formatSigfig(eliteFloor(pop.col("auc_j"), FALLBACK_ELITE_AUC), 4)}`,
     },
   ];
 }
@@ -339,7 +365,7 @@ function fvPopulation(pop: PopulationData): Array<[number, number]> {
 
 /**
  * One report page. `curves` maps trial name → raw power (W) series, when the
- * warehouse has them (f_athletic_screen_power_curve).
+ * warehouse has them (rebuilt from f_athletic_screen_v2_force_curve in report.ts).
  */
 export function buildMovementPage(movement: Movement, athlete: Row[], pop: PopulationData, curves: Map<string, number[]>): MovementPage | null {
   if (!athlete.length || !pop.rows.length) return null;

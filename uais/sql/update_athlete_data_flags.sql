@@ -26,6 +26,10 @@ BEGIN
             OR EXISTS (SELECT 1 FROM public.f_athletic_screen_slv s WHERE s.athlete_uuid = a.athlete_uuid)
             OR EXISTS (SELECT 1 FROM public.f_athletic_screen_nmt s WHERE s.athlete_uuid = a.athlete_uuid)
             OR EXISTS (SELECT 1 FROM public.f_athletic_screen_ppu s WHERE s.athlete_uuid = a.athlete_uuid)
+            OR EXISTS (SELECT 1 FROM public.f_athletic_screen_v2_cmj s WHERE s.athlete_uuid = a.athlete_uuid)
+            OR EXISTS (SELECT 1 FROM public.f_athletic_screen_v2_dj s WHERE s.athlete_uuid = a.athlete_uuid)
+            OR EXISTS (SELECT 1 FROM public.f_athletic_screen_v2_ppu s WHERE s.athlete_uuid = a.athlete_uuid)
+            OR EXISTS (SELECT 1 FROM public.f_athletic_screen_v2_slv s WHERE s.athlete_uuid = a.athlete_uuid)
         ),
         athletic_screen_session_count = (
             SELECT COUNT(DISTINCT session_date)
@@ -41,6 +45,14 @@ BEGIN
                 SELECT session_date FROM public.f_athletic_screen_nmt WHERE athlete_uuid = a.athlete_uuid
                 UNION
                 SELECT session_date FROM public.f_athletic_screen_ppu WHERE athlete_uuid = a.athlete_uuid
+                UNION
+                SELECT session_date FROM public.f_athletic_screen_v2_cmj WHERE athlete_uuid = a.athlete_uuid
+                UNION
+                SELECT session_date FROM public.f_athletic_screen_v2_dj WHERE athlete_uuid = a.athlete_uuid
+                UNION
+                SELECT session_date FROM public.f_athletic_screen_v2_ppu WHERE athlete_uuid = a.athlete_uuid
+                UNION
+                SELECT session_date FROM public.f_athletic_screen_v2_slv WHERE athlete_uuid = a.athlete_uuid
             ) all_sessions
         ),
         
@@ -57,12 +69,12 @@ BEGIN
         
         -- Readiness Screen data
         has_readiness_screen_data = EXISTS (
-            SELECT 1 FROM public.f_readiness_screen rs 
+            SELECT 1 FROM public.v_readiness_screen_sessions rs 
             WHERE rs.athlete_uuid = a.athlete_uuid
         ),
         readiness_screen_session_count = (
             SELECT COUNT(DISTINCT session_date) 
-            FROM public.f_readiness_screen rs 
+            FROM public.v_readiness_screen_sessions rs 
             WHERE rs.athlete_uuid = a.athlete_uuid
         ),
         
@@ -181,6 +193,10 @@ BEGIN
             OR EXISTS (SELECT 1 FROM public.f_athletic_screen_slv s WHERE s.athlete_uuid = a.athlete_uuid)
             OR EXISTS (SELECT 1 FROM public.f_athletic_screen_nmt s WHERE s.athlete_uuid = a.athlete_uuid)
             OR EXISTS (SELECT 1 FROM public.f_athletic_screen_ppu s WHERE s.athlete_uuid = a.athlete_uuid)
+            OR EXISTS (SELECT 1 FROM public.f_athletic_screen_v2_cmj s WHERE s.athlete_uuid = a.athlete_uuid)
+            OR EXISTS (SELECT 1 FROM public.f_athletic_screen_v2_dj s WHERE s.athlete_uuid = a.athlete_uuid)
+            OR EXISTS (SELECT 1 FROM public.f_athletic_screen_v2_ppu s WHERE s.athlete_uuid = a.athlete_uuid)
+            OR EXISTS (SELECT 1 FROM public.f_athletic_screen_v2_slv s WHERE s.athlete_uuid = a.athlete_uuid)
         ),
         athletic_screen_session_count = (
             SELECT COUNT(DISTINCT session_date)
@@ -196,6 +212,14 @@ BEGIN
                 SELECT session_date FROM public.f_athletic_screen_nmt WHERE athlete_uuid = a.athlete_uuid
                 UNION
                 SELECT session_date FROM public.f_athletic_screen_ppu WHERE athlete_uuid = a.athlete_uuid
+                UNION
+                SELECT session_date FROM public.f_athletic_screen_v2_cmj WHERE athlete_uuid = a.athlete_uuid
+                UNION
+                SELECT session_date FROM public.f_athletic_screen_v2_dj WHERE athlete_uuid = a.athlete_uuid
+                UNION
+                SELECT session_date FROM public.f_athletic_screen_v2_ppu WHERE athlete_uuid = a.athlete_uuid
+                UNION
+                SELECT session_date FROM public.f_athletic_screen_v2_slv WHERE athlete_uuid = a.athlete_uuid
             ) all_sessions
         ),
         
@@ -212,12 +236,12 @@ BEGIN
         
         -- Readiness Screen data
         has_readiness_screen_data = EXISTS (
-            SELECT 1 FROM public.f_readiness_screen rs 
+            SELECT 1 FROM public.v_readiness_screen_sessions rs 
             WHERE rs.athlete_uuid = a.athlete_uuid
         ),
         readiness_screen_session_count = (
             SELECT COUNT(DISTINCT session_date) 
-            FROM public.f_readiness_screen rs 
+            FROM public.v_readiness_screen_sessions rs 
             WHERE rs.athlete_uuid = a.athlete_uuid
         ),
         
@@ -366,6 +390,10 @@ CREATE TRIGGER trg_update_flags_athletic_screen_nmt
 
 -- Athletic Screen PPU
 DROP TRIGGER IF EXISTS trg_update_flags_athletic_screen_ppu ON public.f_athletic_screen_ppu;
+OR DROP TRIGGER IF EXISTS trg_update_flags_athletic_screen_ppu ON public.f_athletic_screen_v2_cmj;
+OR DROP TRIGGER IF EXISTS trg_update_flags_athletic_screen_ppu ON public.f_athletic_screen_v2_dj;
+OR DROP TRIGGER IF EXISTS trg_update_flags_athletic_screen_ppu ON public.f_athletic_screen_v2_ppu;
+OR DROP TRIGGER IF EXISTS trg_update_flags_athletic_screen_ppu ON public.f_athletic_screen_v2_slv;
 CREATE TRIGGER trg_update_flags_athletic_screen_ppu
     AFTER INSERT OR UPDATE OR DELETE ON public.f_athletic_screen_ppu
     FOR EACH ROW
@@ -423,3 +451,21 @@ CREATE TRIGGER trg_update_flags_curveball_test
 -- Manual update function (call this to refresh all flags)
 -- Usage: SELECT update_athlete_data_flags();
 
+
+-- Athletic Screen v2 tables
+DROP TRIGGER IF EXISTS trg_update_flags_f_athletic_screen_v2_cmj ON public.f_athletic_screen_v2_cmj;
+CREATE TRIGGER trg_update_flags_f_athletic_screen_v2_cmj AFTER INSERT OR UPDATE OR DELETE ON public.f_athletic_screen_v2_cmj FOR EACH ROW EXECUTE FUNCTION trigger_update_athlete_flags();
+DROP TRIGGER IF EXISTS trg_update_flags_f_athletic_screen_v2_dj ON public.f_athletic_screen_v2_dj;
+CREATE TRIGGER trg_update_flags_f_athletic_screen_v2_dj AFTER INSERT OR UPDATE OR DELETE ON public.f_athletic_screen_v2_dj FOR EACH ROW EXECUTE FUNCTION trigger_update_athlete_flags();
+DROP TRIGGER IF EXISTS trg_update_flags_f_athletic_screen_v2_ppu ON public.f_athletic_screen_v2_ppu;
+CREATE TRIGGER trg_update_flags_f_athletic_screen_v2_ppu AFTER INSERT OR UPDATE OR DELETE ON public.f_athletic_screen_v2_ppu FOR EACH ROW EXECUTE FUNCTION trigger_update_athlete_flags();
+DROP TRIGGER IF EXISTS trg_update_flags_f_athletic_screen_v2_slv ON public.f_athletic_screen_v2_slv;
+CREATE TRIGGER trg_update_flags_f_athletic_screen_v2_slv AFTER INSERT OR UPDATE OR DELETE ON public.f_athletic_screen_v2_slv FOR EACH ROW EXECUTE FUNCTION trigger_update_athlete_flags();
+
+-- Readiness Screen v2 tables
+DROP TRIGGER IF EXISTS trg_update_flags_f_readiness_screen_v2_cmj ON public.f_readiness_screen_v2_cmj;
+CREATE TRIGGER trg_update_flags_f_readiness_screen_v2_cmj AFTER INSERT OR UPDATE OR DELETE ON public.f_readiness_screen_v2_cmj FOR EACH ROW EXECUTE FUNCTION trigger_update_athlete_flags();
+DROP TRIGGER IF EXISTS trg_update_flags_f_readiness_screen_v2_ppu ON public.f_readiness_screen_v2_ppu;
+CREATE TRIGGER trg_update_flags_f_readiness_screen_v2_ppu AFTER INSERT OR UPDATE OR DELETE ON public.f_readiness_screen_v2_ppu FOR EACH ROW EXECUTE FUNCTION trigger_update_athlete_flags();
+DROP TRIGGER IF EXISTS trg_update_flags_f_readiness_screen_v2_iso ON public.f_readiness_screen_v2_iso;
+CREATE TRIGGER trg_update_flags_f_readiness_screen_v2_iso AFTER INSERT OR UPDATE OR DELETE ON public.f_readiness_screen_v2_iso FOR EACH ROW EXECUTE FUNCTION trigger_update_athlete_flags();

@@ -37,6 +37,7 @@
   ],
   "exclude": [
     "node_modules",
-    "uais"
+    "uais",
+    "client-hub"
   ]
 }

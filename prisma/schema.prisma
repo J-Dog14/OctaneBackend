@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["views"]
 }
 
 datasource db {
@@ -1601,6 +1602,319 @@ model coach_population_snapshots {
   lease_until       DateTime? @db.Timestamptz(6)
   last_error        String?   @db.Text
   failure_count     Int       @default(0)
+
+  @@schema("public")
+}
+
+// ---------------------------------------------------------------------------
+// Athletic Screen v2 compatibility views - the app reads these, never the old f_athletic_screen_* tables.
+// ---------------------------------------------------------------------------
+
+/// Athletic Screen v2 under the old column names (uais/sql/create_athletic_screen_v2_compat_views.sql). Read-only.
+view v_athletic_screen_cmj {
+  id                   Int       @unique
+  athlete_uuid         String    @db.VarChar(36)
+  session_date         DateTime  @db.Date
+  source_system        String?   @db.VarChar(50)
+  source_athlete_id    String?   @db.VarChar(100)
+  trial_name           String?
+  age_at_collection    Decimal?  @db.Decimal
+  age_group            String?
+  created_at           DateTime? @db.Timestamp(6)
+  jh_in                Decimal?  @db.Decimal
+  peak_power           Decimal?  @db.Decimal
+  pp_forceplate        Decimal?  @db.Decimal
+  force_at_pp          Decimal?  @db.Decimal
+  vel_at_pp            Decimal?  @db.Decimal
+  vel_at_pp_m_s        Decimal?  @db.Decimal
+  pp_w_per_kg          Decimal?  @db.Decimal
+  peak_power_w         Decimal?  @db.Decimal
+  time_to_peak_s       Decimal?  @db.Decimal
+  rpd_max_w_per_s      Decimal?  @db.Decimal
+  time_to_rpd_max_s    Decimal?  @db.Decimal
+  rise_time_10_90_s    Decimal?  @db.Decimal
+  fwhm_s               Decimal?  @db.Decimal
+  auc_j                Decimal?  @db.Decimal
+  work_early_pct       Decimal?  @db.Decimal
+  decay_90_10_s        Decimal?  @db.Decimal
+  t_com_norm_0to1      Decimal?  @db.Decimal
+  skewness             Decimal?  @db.Decimal
+  kurtosis             Decimal?  @db.Decimal
+  spectral_centroid_hz Decimal?  @db.Decimal
+  demographic          String?
+  session_folder       String?
+  qc_flags             String[]
+  processor_version    String?   @db.VarChar(20)
+
+  @@schema("public")
+}
+
+/// Athletic Screen v2 under the old column names (uais/sql/create_athletic_screen_v2_compat_views.sql). Read-only.
+view v_athletic_screen_dj {
+  id                   Int       @unique
+  athlete_uuid         String    @db.VarChar(36)
+  session_date         DateTime  @db.Date
+  source_system        String?   @db.VarChar(50)
+  source_athlete_id    String?   @db.VarChar(100)
+  trial_name           String?
+  age_at_collection    Decimal?  @db.Decimal
+  age_group            String?
+  created_at           DateTime? @db.Timestamp(6)
+  jh_in                Decimal?  @db.Decimal
+  peak_power           Decimal?  @db.Decimal
+  pp_forceplate        Decimal?  @db.Decimal
+  force_at_pp          Decimal?  @db.Decimal
+  vel_at_pp            Decimal?  @db.Decimal
+  vel_at_pp_m_s        Decimal?  @db.Decimal
+  pp_w_per_kg          Decimal?  @db.Decimal
+  ct                   Decimal?  @db.Decimal
+  rsi                  Decimal?  @db.Decimal
+  peak_power_w         Decimal?  @db.Decimal
+  time_to_peak_s       Decimal?  @db.Decimal
+  rpd_max_w_per_s      Decimal?  @db.Decimal
+  time_to_rpd_max_s    Decimal?  @db.Decimal
+  rise_time_10_90_s    Decimal?  @db.Decimal
+  fwhm_s               Decimal?  @db.Decimal
+  auc_j                Decimal?  @db.Decimal
+  work_early_pct       Decimal?  @db.Decimal
+  decay_90_10_s        Decimal?  @db.Decimal
+  t_com_norm_0to1      Decimal?  @db.Decimal
+  skewness             Decimal?  @db.Decimal
+  kurtosis             Decimal?  @db.Decimal
+  spectral_centroid_hz Decimal?  @db.Decimal
+  demographic          String?
+  session_folder       String?
+  qc_flags             String[]
+  processor_version    String?   @db.VarChar(20)
+
+  @@schema("public")
+}
+
+/// Athletic Screen v2 under the old column names (uais/sql/create_athletic_screen_v2_compat_views.sql). Read-only.
+view v_athletic_screen_ppu {
+  id                   Int       @unique
+  athlete_uuid         String    @db.VarChar(36)
+  session_date         DateTime  @db.Date
+  source_system        String?   @db.VarChar(50)
+  source_athlete_id    String?   @db.VarChar(100)
+  trial_name           String?
+  age_at_collection    Decimal?  @db.Decimal
+  age_group            String?
+  created_at           DateTime? @db.Timestamp(6)
+  jh_in                Decimal?  @db.Decimal
+  peak_power           Decimal?  @db.Decimal
+  pp_forceplate        Decimal?  @db.Decimal
+  force_at_pp          Decimal?  @db.Decimal
+  vel_at_pp            Decimal?  @db.Decimal
+  vel_at_pp_m_s        Decimal?  @db.Decimal
+  pp_w_per_kg          Decimal?  @db.Decimal
+  peak_power_w         Decimal?  @db.Decimal
+  time_to_peak_s       Decimal?  @db.Decimal
+  rpd_max_w_per_s      Decimal?  @db.Decimal
+  time_to_rpd_max_s    Decimal?  @db.Decimal
+  rise_time_10_90_s    Decimal?  @db.Decimal
+  fwhm_s               Decimal?  @db.Decimal
+  auc_j                Decimal?  @db.Decimal
+  work_early_pct       Decimal?  @db.Decimal
+  decay_90_10_s        Decimal?  @db.Decimal
+  t_com_norm_0to1      Decimal?  @db.Decimal
+  skewness             Decimal?  @db.Decimal
+  kurtosis             Decimal?  @db.Decimal
+  spectral_centroid_hz Decimal?  @db.Decimal
+  demographic          String?
+  session_folder       String?
+  qc_flags             String[]
+  processor_version    String?   @db.VarChar(20)
+
+  @@schema("public")
+}
+
+/// Athletic Screen v2 under the old column names (uais/sql/create_athletic_screen_v2_compat_views.sql). Read-only.
+view v_athletic_screen_slv {
+  id                   Int       @unique
+  athlete_uuid         String    @db.VarChar(36)
+  session_date         DateTime  @db.Date
+  source_system        String?   @db.VarChar(50)
+  source_athlete_id    String?   @db.VarChar(100)
+  trial_name           String?
+  side                 String?
+  age_at_collection    Decimal?  @db.Decimal
+  age_group            String?
+  created_at           DateTime? @db.Timestamp(6)
+  jh_in                Decimal?  @db.Decimal
+  pp_forceplate        Decimal?  @db.Decimal
+  force_at_pp          Decimal?  @db.Decimal
+  vel_at_pp            Decimal?  @db.Decimal
+  vel_at_pp_m_s        Decimal?  @db.Decimal
+  pp_w_per_kg          Decimal?  @db.Decimal
+  peak_power_w         Decimal?  @db.Decimal
+  time_to_peak_s       Decimal?  @db.Decimal
+  rpd_max_w_per_s      Decimal?  @db.Decimal
+  time_to_rpd_max_s    Decimal?  @db.Decimal
+  rise_time_10_90_s    Decimal?  @db.Decimal
+  fwhm_s               Decimal?  @db.Decimal
+  auc_j                Decimal?  @db.Decimal
+  work_early_pct       Decimal?  @db.Decimal
+  decay_90_10_s        Decimal?  @db.Decimal
+  t_com_norm_0to1      Decimal?  @db.Decimal
+  skewness             Decimal?  @db.Decimal
+  kurtosis             Decimal?  @db.Decimal
+  spectral_centroid_hz Decimal?  @db.Decimal
+  demographic          String?
+  session_folder       String?
+  qc_flags             String[]
+  processor_version    String?   @db.VarChar(20)
+
+  @@schema("public")
+}
+
+/// One row per athlete / screen session from the v2 tables (replaces public.f_athletic_screen). Read-only.
+view v_athletic_screen_sessions {
+  athlete_uuid      String    @db.VarChar(36)
+  session_date      DateTime  @db.Date
+  session_folder    String?
+  source_athlete_id String?   @db.VarChar(100)
+  age_at_collection Decimal?  @db.Decimal
+  age_group         String?
+  created_at        DateTime? @db.Timestamp(6)
+  movements         String[]
+  trials            Int?
+
+  @@unique([athlete_uuid, session_date])
+  @@schema("public")
+}
+
+/// Readiness Screen v2 (rebuilt from c3d) - one row per athlete / readiness session.
+/// Replaces f_readiness_screen. SQL: uais/sql/create_readiness_screen_v2_compat_views.sql
+view v_readiness_screen_sessions {
+  athlete_uuid      String    @db.VarChar(36)
+  session_date      DateTime  @db.Date
+  source_system     String?   @db.VarChar(50)
+  source_athlete_id String?   @db.VarChar(100)
+  session_folder    String?
+  source_root       String?
+  age_at_collection Decimal?  @db.Decimal
+  age_group         String?
+  created_at        DateTime? @db.Timestamp(6)
+  movements         String[]
+  trials            Int?
+
+  @@unique([athlete_uuid, session_date])
+  @@schema("public")
+}
+
+view v_readiness_screen_i {
+  id                Int       @unique
+  athlete_uuid      String    @db.VarChar(36)
+  session_date      DateTime  @db.Date
+  source_system     String?   @db.VarChar(50)
+  source_athlete_id String?   @db.VarChar(100)
+  trial_id          Int?
+  age_at_collection Decimal?  @db.Decimal
+  age_group         String?
+  created_at        DateTime? @db.Timestamp(6)
+  avg_force         Decimal?  @db.Decimal
+  avg_force_norm    Decimal?  @db.Decimal
+  max_force         Decimal?  @db.Decimal
+  max_force_norm    Decimal?  @db.Decimal
+  time_to_max       Decimal?  @db.Decimal
+  avg_force_3s      Decimal?  @db.Decimal
+  pct_max_s3        Decimal?  @db.Decimal
+  rfd_0_200ms       Decimal?  @db.Decimal
+  mass_kg           Decimal?  @db.Decimal
+  mass_source       String?
+  trial_name        String?
+  session_folder    String?
+  source_root       String?
+  qc_flags          String[]
+  processor_version String?   @db.VarChar(20)
+
+  @@schema("public")
+}
+
+view v_readiness_screen_y {
+  id                Int       @unique
+  athlete_uuid      String    @db.VarChar(36)
+  session_date      DateTime  @db.Date
+  source_system     String?   @db.VarChar(50)
+  source_athlete_id String?   @db.VarChar(100)
+  trial_id          Int?
+  age_at_collection Decimal?  @db.Decimal
+  age_group         String?
+  created_at        DateTime? @db.Timestamp(6)
+  avg_force         Decimal?  @db.Decimal
+  avg_force_norm    Decimal?  @db.Decimal
+  max_force         Decimal?  @db.Decimal
+  max_force_norm    Decimal?  @db.Decimal
+  time_to_max       Decimal?  @db.Decimal
+  avg_force_3s      Decimal?  @db.Decimal
+  pct_max_s3        Decimal?  @db.Decimal
+  rfd_0_200ms       Decimal?  @db.Decimal
+  mass_kg           Decimal?  @db.Decimal
+  mass_source       String?
+  trial_name        String?
+  session_folder    String?
+  source_root       String?
+  qc_flags          String[]
+  processor_version String?   @db.VarChar(20)
+
+  @@schema("public")
+}
+
+view v_readiness_screen_t {
+  id                Int       @unique
+  athlete_uuid      String    @db.VarChar(36)
+  session_date      DateTime  @db.Date
+  source_system     String?   @db.VarChar(50)
+  source_athlete_id String?   @db.VarChar(100)
+  trial_id          Int?
+  age_at_collection Decimal?  @db.Decimal
+  age_group         String?
+  created_at        DateTime? @db.Timestamp(6)
+  avg_force         Decimal?  @db.Decimal
+  avg_force_norm    Decimal?  @db.Decimal
+  max_force         Decimal?  @db.Decimal
+  max_force_norm    Decimal?  @db.Decimal
+  time_to_max       Decimal?  @db.Decimal
+  avg_force_3s      Decimal?  @db.Decimal
+  pct_max_s3        Decimal?  @db.Decimal
+  rfd_0_200ms       Decimal?  @db.Decimal
+  mass_kg           Decimal?  @db.Decimal
+  mass_source       String?
+  trial_name        String?
+  session_folder    String?
+  source_root       String?
+  qc_flags          String[]
+  processor_version String?   @db.VarChar(20)
+
+  @@schema("public")
+}
+
+view v_readiness_screen_ir90 {
+  id                Int       @unique
+  athlete_uuid      String    @db.VarChar(36)
+  session_date      DateTime  @db.Date
+  source_system     String?   @db.VarChar(50)
+  source_athlete_id String?   @db.VarChar(100)
+  trial_id          Int?
+  age_at_collection Decimal?  @db.Decimal
+  age_group         String?
+  created_at        DateTime? @db.Timestamp(6)
+  avg_force         Decimal?  @db.Decimal
+  avg_force_norm    Decimal?  @db.Decimal
+  max_force         Decimal?  @db.Decimal
+  max_force_norm    Decimal?  @db.Decimal
+  time_to_max       Decimal?  @db.Decimal
+  avg_force_3s      Decimal?  @db.Decimal
+  pct_max_s3        Decimal?  @db.Decimal
+  rfd_0_200ms       Decimal?  @db.Decimal
+  mass_kg           Decimal?  @db.Decimal
+  mass_source       String?
+  trial_name        String?
+  session_folder    String?
+  source_root       String?
+  qc_flags          String[]
+  processor_version String?   @db.VarChar(20)
 
   @@schema("public")
 }

@@ -380,8 +380,20 @@ def search_sessions(page, cap: ApiCapture, from_iso: str, to_iso: str) -> list[d
 def get_sessions(page, cap: ApiCapture, from_iso: str, to_iso: str) -> list[dict]:
     """Sessions in [from, to]. The API returns at most 100 per call, so the range is
     searched in 7-day windows, and a window that comes back full is split in half."""
-    page.goto(SESSIONS_URL)
-    page.wait_for_load_state("networkidle")
+    for attempt in range(3):  # the portal is sometimes slow; one timeout used to end the whole month
+        try:
+            page.goto(SESSIONS_URL)
+            try:
+                page.wait_for_load_state("networkidle", timeout=45_000)
+            except Exception:  # noqa: BLE001 - the page can keep polling; the date inputs are what matter
+                pass
+            page.get_by_placeholder(re.compile("mmm dd", re.I)).first.wait_for(timeout=30_000)
+            break
+        except Exception as e:  # noqa: BLE001
+            if attempt == 2:
+                raise
+            log(f"  sessions page slow to load ({type(e).__name__}); retrying")
+            page.wait_for_timeout(10_000)
     if page.get_by_placeholder(re.compile("mmm dd", re.I)).count() < 2:
         raise RuntimeError("Date inputs not found on /sessions (page layout changed?)")
 

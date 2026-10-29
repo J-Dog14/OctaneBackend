@@ -11,13 +11,13 @@ import sys
 import logging
 from pathlib import Path
 from typing import List, Dict, Any, Tuple, Optional
-from difflib import SequenceMatcher
 
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from python.common.athlete_manager import get_warehouse_connection, NAME_SIMILARITY_THRESHOLD
+from python.common.identity_matching import review_similarity
 from python.common.source_athlete_map import merge_source_mappings, get_all_source_mappings
 from python.common.athlete_cleanup import update_fact_tables_only, clean_athlete_name_for_processing
 from psycopg2.extras import RealDictCursor
@@ -37,8 +37,9 @@ def similarity_score(name1: str, name2: str) -> float:
     """
     Calculate similarity score between two names (0.0 to 1.0).
 
-    Normalizes underscores to spaces and strips trailing initials (e.g. "_CH")
-    before comparing so "Clay Haigh" and "Clay Haigh_CH" score 1.0.
+    Normalizes underscores and trailing initials, and considers reordered name
+    tokens so "Madenspacher Calvin" reaches review for "Calvin Madenspacher".
+    This is a review score, not an automatic match or merge decision.
 
     Args:
         name1: First name
@@ -47,7 +48,7 @@ def similarity_score(name1: str, name2: str) -> float:
     Returns:
         Similarity score (0.0 = completely different, 1.0 = identical)
     """
-    return SequenceMatcher(None, _normalize_for_sim(name1), _normalize_for_sim(name2)).ratio()
+    return review_similarity(_normalize_for_sim(name1), _normalize_for_sim(name2))
 
 
 def get_athlete_summary(athlete: Dict[str, Any], conn) -> str:
@@ -464,10 +465,6 @@ def find_similar_athletes_for_uuids(
         for other_athlete in all_athletes:
             # Skip if same athlete
             if target_athlete['athlete_uuid'] == other_athlete['athlete_uuid']:
-                continue
-            
-            # Skip if already have same normalized_name (would be caught by deduplication)
-            if target_athlete['normalized_name'] == other_athlete['normalized_name']:
                 continue
             
             # Calculate similarity

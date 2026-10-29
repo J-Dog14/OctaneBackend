@@ -5,7 +5,7 @@ Athletic Screen ingest (v2) - what runs when you hit Ingest for the athletic-scr
 Replaces the legacy flow (Visual3D -> Output Files txt -> main.py -> f_athletic_screen_*).
 Reads c3d + session.xml directly and writes ONLY the v2 tables:
     public.f_athletic_screen_v2_{cmj,dj,ppu,slv}, public.f_athletic_screen_v2_force_curve
-plus the readiness baseline cross-insert (CMJ/PPU -> f_readiness_screen_cmj/ppu, v2 values).
+(The readiness baseline cross-insert into f_readiness_screen_cmj/ppu was removed 2026-10-28.)
 
 Where the data comes from (ATHLETIC_SCREEN_DATA_DIR, i.e. Settings -> uais_data_dir_athletic_screen):
   * the Data root (D:\\Athletic Screen 2.0\\Data): every Athletic Screen session folder that is not in
@@ -24,7 +24,7 @@ Steps per session, in one transaction:
   3. fill missing DOB / email / gender from session.xml
   4. age_at_collection + age_group (d_athletes DOB), update d_athletes.age_group
   5. replace this session's v2 rows (delete + insert) and curves
-  6. readiness baseline cross-insert (never overwrites rows that came from a readiness session)
+  6. (removed 2026-10-28) readiness baseline cross-insert
   7. has_athletic_screen_data flag
 After all sessions: duplicate-athlete check.
 
@@ -39,6 +39,7 @@ import os
 import re
 import sys
 import tempfile
+import xml.etree.ElementTree as ET
 from datetime import datetime
 from difflib import SequenceMatcher
 from pathlib import Path
@@ -66,6 +67,8 @@ if any(a in sys.argv for a in ("--report-only", "--comparison")):
 from v2 import schema, PROCESSOR_VERSION                                 # noqa: E402
 from v2.scan_sessions import process_session, athlete_from_folder        # noqa: E402
 from v2.load_v2 import upsert, merge_same_day                            # noqa: E402
+from v2.profile_emails import fill_missing_emails                        # noqa: E402
+from v2.session_meta import parse_session_xml                            # noqa: E402
 
 DEFAULT_DATA_ROOT = r"D:\Athletic Screen 2.0\Data"
 TEST_RE = re.compile(r"^\s*(?:test|sample report)", re.I)
@@ -231,16 +234,13 @@ def resolve_athlete(conn, srow, selected_uuid, history, dry_run):
 
 
 def fill_profile(conn, uuid, srow):
-    """Fill DOB / email / gender from session.xml only where d_athletes has nothing."""
-    from common.athlete_manager import update_athlete_in_warehouse, normalize_email
+    """Fill DOB / gender from session.xml only where d_athletes has nothing."""
+    from common.athlete_manager import update_athlete_in_warehouse
     from common.session_xml import normalize_gender
     a = athlete_row(conn, uuid) or {}
     upd = {}
     if srow.get("dob") and not a.get("date_of_birth"):
         upd["date_of_birth"] = srow["dob"]
-    em = normalize_email(srow["email"]) if isinstance(srow.get("email"), str) and srow["email"] else None
-    if em and not a.get("email"):
-        upd["email"] = em
     g = normalize_gender(srow.get("gender"))
     if g and not a.get("gender"):
         upd["gender"] = g
@@ -353,8 +353,32 @@ def main():
                 if srow.get("status", "").startswith("ok"):
                     sessions.append((srow, rows, errs, f"{srow['athlete_folder']}__{latest.name}__"))
 
+    # Metadata may be added to session.xml after its force data was ingested.
+    # Refresh email through the existing folder -> UUID link without reprocessing c3d.
+    if conn is not None and skipped_done:
+        records = []
+        missing = set(q(conn, "SELECT athlete_uuid FROM analytics.d_athletes "
+                             "WHERE NULLIF(TRIM(email), '') IS NULL").athlete_uuid)
+        for folder in skipped_done:
+            uuids = history.loc[history.source_athlete_id == folder.parent.name, "athlete_uuid"].unique()
+            if len(uuids) == 1 and uuids[0] in missing and (not selected or uuids[0] == selected):
+                try:
+                    meta = parse_session_xml(folder / "session.xml")
+                except (ValueError, OSError, ET.ParseError) as exc:
+                    log(f"  skip profile email {folder}: {type(exc).__name__}")
+                    continue
+                records.append(dict(athlete_uuid=uuids[0], email=meta["email"]))
+        filled, review = fill_missing_emails(conn, records, dry_run=args.dry_run)
+        if filled or review:
+            log(f"Existing sessions: {len(filled)} missing email(s) {'would be ' if args.dry_run else ''}filled; "
+                f"{len(review)} need review")
+        if not args.dry_run:
+            conn.commit()
+
     if not sessions:
         log("Nothing new to ingest.")
+        if conn is not None:
+            conn.close()
         return 0
 
     from common.athlete_matcher import update_athlete_data_flag
@@ -393,7 +417,13 @@ def main():
 
         try:
             if conn is not None and uuid and not args.dry_run:
-                fill_profile(conn, uuid, srow0)
+                for srow, _ in items:
+                    fill_profile(conn, uuid, srow)
+                filled, review = fill_missing_emails(conn, [dict(athlete_uuid=uuid, email=s.get("email")) for s, _ in items])
+                if filled:
+                    log("  profile email filled from session.xml")
+                if review:
+                    log(f"  EMAIL_REVIEW: conflicting session email for {uuid}")
             for mv in schema.MOVEMENTS:
                 if not frames[mv]:
                     continue
@@ -432,10 +462,9 @@ def main():
                                        concentric_start_idx=int(z["concentric_start_idx"]),
                                        movement_onset_idx=int(z["movement_onset_idx"]), processor_version=PROCESSOR_VERSION))
                 upsert(conn, schema.CURVE_TABLE, pd.DataFrame(curves), schema.CURVE_COLS, schema.UNIQUE_KEY)
-                if mv in ("cmj", "ppu"):
-                    i, u, s = cross_insert_readiness(conn, df.to_dict("records"), mv)
-                    log(f"    readiness baseline {mv.upper()}: {i} inserted, {u} updated"
-                        + (f", {s} left alone (real readiness trials)" if s else ""))
+                # No readiness cross-insert any more (2026-10-28): readiness reads Readiness Screen v2 and
+                # unions v_athletic_screen_* explicitly, so copying screens into f_readiness_screen_* counted
+                # them twice. cross_insert_readiness() is kept only for reference.
                 ag = df.age_group.dropna()
                 if len(ag):
                     update_athlete_age_group_from_insert(uuid, ag.iloc[-1], conn=conn)

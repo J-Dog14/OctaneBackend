@@ -212,3 +212,7 @@ opt-in via a switch.
   Table/column names only come from the registry; the request only carries
   category ids and YYYY-MM-DD dates, both validated.
 - ZIP writer and CSV builder are dependency-free (`lib/coach/export/zip.ts`, `csv.ts`).
+
+## Client Hub
+
+The second section of the coach view (header toggle: Athlete Data / Client Hub) and the athlete-page **Program Management** tab. See `docs/CLIENT_HUB.md`.

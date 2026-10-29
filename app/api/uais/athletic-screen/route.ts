@@ -7,13 +7,11 @@ import { uaisAthleticScreenQuerySchema } from "@/lib/validation/uais";
 /**
  * GET /api/uais/athletic-screen?athleteUuid=<uuid>
  * 
- * Returns athletic screen data from:
- * - f_athletic_screen_cmj
- * - f_athletic_screen_dj (includes ct and rsi)
- * - f_athletic_screen_ppu
- * - f_athletic_screen_slv
- * 
- * Excludes: f_athletic_screen_nmt
+ * Returns athletic screen data from the v2 tables (through the v_athletic_screen_* compat views):
+ * - v_athletic_screen_cmj
+ * - v_athletic_screen_dj (includes ct and rsi)
+ * - v_athletic_screen_ppu
+ * - v_athletic_screen_slv
  * 
  * For each table, returns the most recent session (by session_date, then created_at).
  * 
@@ -59,7 +57,7 @@ export async function GET(request: NextRequest) {
     // Query each table for the most recent session
     const [cmj, dj, ppu, slv] = await Promise.all([
       // CMJ
-      prisma.f_athletic_screen_cmj.findFirst({
+      prisma.v_athletic_screen_cmj.findFirst({
         where: { athlete_uuid: athleteUuid },
         orderBy: [{ session_date: "desc" }, { created_at: "desc" }],
         select: {
@@ -73,7 +71,7 @@ export async function GET(request: NextRequest) {
         },
       }),
       // DJ (includes ct and rsi)
-      prisma.f_athletic_screen_dj.findFirst({
+      prisma.v_athletic_screen_dj.findFirst({
         where: { athlete_uuid: athleteUuid },
         orderBy: [{ session_date: "desc" }, { created_at: "desc" }],
         select: {
@@ -89,7 +87,7 @@ export async function GET(request: NextRequest) {
         },
       }),
       // PPU
-      prisma.f_athletic_screen_ppu.findFirst({
+      prisma.v_athletic_screen_ppu.findFirst({
         where: { athlete_uuid: athleteUuid },
         orderBy: [{ session_date: "desc" }, { created_at: "desc" }],
         select: {
@@ -103,7 +101,7 @@ export async function GET(request: NextRequest) {
         },
       }),
       // SLV
-      prisma.f_athletic_screen_slv.findFirst({
+      prisma.v_athletic_screen_slv.findFirst({
         where: { athlete_uuid: athleteUuid },
         orderBy: [{ session_date: "desc" }, { created_at: "desc" }],
         select: {

@@ -3,6 +3,7 @@ import { requireAuth } from "@/lib/auth/requireAuth";
 import { success, badRequest, internalError } from "@/lib/responses";
 import { prisma } from "@/lib/db/prisma";
 import { computeStatistics } from "@/lib/research/statistics";
+import { ATHLETIC_SCREEN_V2_SQL_TABLE, ATHLETIC_SCREEN_V2_VARIABLES } from "@/lib/research/athleticScreenV2";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -27,43 +28,27 @@ export type ResearchDataResponse = {
 const SQL_TABLE: Record<string, string> = {
   pitching:                "f_pitching_trials",
   hitting:                 "f_hitting_trials",
-  athletic_screen_cmj:     "f_athletic_screen_cmj",
-  athletic_screen_dj:      "f_athletic_screen_dj",
-  athletic_screen_slv:     "f_athletic_screen_slv",
+  ...ATHLETIC_SCREEN_V2_SQL_TABLE,            // Athletic Screen v2 (CMJ / DJ / PPU / SLV)
   athletic_screen_nmt:     "f_athletic_screen_nmt",
-  athletic_screen_ppu:     "f_athletic_screen_ppu",
   mobility:                "f_mobility",
   pro_sup:                 "f_pro_sup",
   proteus:                 "f_proteus",
-  readiness_screen_cmj:    "f_readiness_screen_cmj",
-  readiness_screen_i:      "f_readiness_screen_i",
-  readiness_screen_ir90:   "f_readiness_screen_ir90",
-  readiness_screen_ppu:    "f_readiness_screen_ppu",
-  readiness_screen_t:      "f_readiness_screen_t",
-  readiness_screen_y:      "f_readiness_screen_y",
+  readiness_screen_cmj:    "v_readiness_screen_cmj",
+  readiness_screen_i:      "v_readiness_screen_i",
+  readiness_screen_ir90:   "v_readiness_screen_ir90",
+  readiness_screen_ppu:    "v_readiness_screen_ppu",
+  readiness_screen_t:      "v_readiness_screen_t",
+  readiness_screen_y:      "v_readiness_screen_y",
 };
 
 /** Direct numeric columns per table (whitelisted — prevent column injection) */
 const VALID_DIRECT_COLUMNS: Record<string, Set<string>> = {
   pitching: new Set(["velocity_mph", "score", "age_at_collection", "height", "weight"]),
   hitting:  new Set(["age_at_collection", "height", "weight"]),
-  athletic_screen_cmj: new Set([
-    "jh_in","peak_power","pp_forceplate","force_at_pp","vel_at_pp","pp_w_per_kg",
-    "peak_power_w","time_to_peak_s","rpd_max_w_per_s","time_to_rpd_max_s",
-    "rise_time_10_90_s","fwhm_s","auc_j","work_early_pct","decay_90_10_s",
-    "t_com_norm_0to1","skewness","kurtosis","spectral_centroid_hz",
-  ]),
-  athletic_screen_dj: new Set([
-    "jh_in","ct","rsi","pp_w_per_kg","peak_power_w","time_to_peak_s",
-    "rpd_max_w_per_s","rise_time_10_90_s","fwhm_s","auc_j",
-  ]),
-  athletic_screen_slv: new Set([
-    "jh_in","pp_w_per_kg","peak_power_w","time_to_peak_s","rpd_max_w_per_s","fwhm_s","auc_j",
-  ]),
+  ...Object.fromEntries(
+    Object.entries(ATHLETIC_SCREEN_V2_VARIABLES).map(([table, vars]) => [table, new Set(vars.map((v) => v.key))]),
+  ),
   athletic_screen_nmt: new Set(["num_taps_10s","num_taps_20s","num_taps_30s","num_taps"]),
-  athletic_screen_ppu: new Set([
-    "jh_in","peak_power","pp_w_per_kg","peak_power_w","time_to_peak_s","rpd_max_w_per_s","fwhm_s","auc_j",
-  ]),
   mobility: new Set([
     "cervical_rotation","cervical_flexion","cervical_extension","cervical_lateral_flexion",
     "shoulder_total_arc","horizontal_abduction","back_to_wall_shoulder_flexion",

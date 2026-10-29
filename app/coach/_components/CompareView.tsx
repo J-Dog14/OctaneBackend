@@ -113,7 +113,7 @@ function ArsenalCompare({ bundles }: { bundles: AthleteBundle[] }) {
                     <Table.Td key={b.uuid} ta="right">
                       {r ? (
                         <>
-                          <div style={{ fontWeight: 600 }}>{fmt(r.velo)} mph{r.grade ? ` · ${r.grade.grade}` : ""}</div>
+                          <div style={{ fontWeight: 600 }}>{fmt(r.velo)} mph{r.grade ? ` · ${r.grade.score}` : ""}{r.grade?.stuffPlus != null ? ` · S+ ${Math.round(r.grade.stuffPlus)}` : ""}</div>
                           <div style={{ color: "var(--text-secondary)", fontSize: 12 }}>
                             {fmt(r.ivb)} IVB · {fmt(r.hbArm)} HB · {r.usagePct == null ? "—" : `${fmt(r.usagePct)}%`}
                           </div>

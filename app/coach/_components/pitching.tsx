@@ -38,19 +38,93 @@ const TOOLTIP_STYLE = {
 /** Whiff% per pitch type needs ~30 swings to mean much. */
 export const WHIFF_MIN_SWINGS = 30;
 
-export function gradeColor(grade: string | null | undefined): string {
-  const g = (grade ?? "").trim().charAt(0).toUpperCase();
-  return g === "A" ? "green" : g === "B" ? "teal" : g === "C" ? "yellow" : g === "D" || g === "F" ? "red" : "gray";
+/** xArsenal v3 (20-80, 50 = MLB average): Plus and up green, Average neutral, Fringe amber, Below red. */
+export function gradeColor(score: number | null | undefined): string {
+  if (score == null) return "gray";
+  if (score >= 60) return "green";
+  if (score >= 55) return "teal";
+  if (score >= 45) return "gray";
+  if (score >= 40) return "yellow";
+  return "red";
+}
+
+/** 8-Stuff+ colors from the rules doc: green 110+, neutral 95–109, amber 85–94, red below 85. */
+export function stuffColor(v: number | null | undefined): string {
+  if (v == null) return "gray";
+  if (v >= 110) return "green";
+  if (v >= 95) return "gray";
+  if (v >= 85) return "yellow";
+  return "red";
 }
 
 export function ArsenalBadge({ arsenal, size = "lg" }: { arsenal: SessionSummary["arsenal"]; size?: "sm" | "md" | "lg" }) {
   if (!arsenal) return null;
+  const tip = [
+    `xArsenal ${arsenal.score} (${arsenal.label}) · graded as ${arsenal.compLevel}`,
+    arsenal.fit != null ? `Arsenal Fit ${Math.round(arsenal.fit)}` : null,
+    arsenal.slot?.angle != null ? `Arm slot ${Math.round(arsenal.slot.angle)}°${arsenal.slot.label ? ` (${arsenal.slot.label})` : ""}${arsenal.slot.source ? `, ${arsenal.slot.source}` : ""}` : null,
+  ].filter(Boolean).join(" · ");
   return (
-    <Tooltip label={`xArsenal ${arsenal.score} · graded against ${arsenal.compLevel}`}>
-      <Badge color={gradeColor(arsenal.grade)} variant="light" size={size}>
-        Arsenal {arsenal.grade} · {arsenal.label}
-      </Badge>
+    <Group gap={4} wrap="nowrap">
+      <Tooltip label={tip} multiline maw={360}>
+        <Badge color={gradeColor(arsenal.score)} variant="light" size={size}>
+          Arsenal {arsenal.score} · {arsenal.label}
+        </Badge>
+      </Tooltip>
+      {arsenal.stuffPlus != null && (
+        <Tooltip label="Arsenal 8-Stuff+ (100 = average MLB arsenal)">
+          <Badge color={stuffColor(arsenal.stuffPlus)} variant="outline" size={size}>
+            8-Stuff+ {Math.round(arsenal.stuffPlus)}
+          </Badge>
+        </Tooltip>
+      )}
+    </Group>
+  );
+}
+
+/** One pitch's xArsenal grade, with subtype, blend and top levers in the tooltip. */
+export function PitchGradeBadge({ grade }: { grade: PitchTypeSummary["grade"] }) {
+  if (!grade) return <>—</>;
+  const mix = grade.subtypeMix
+    ? Object.entries(grade.subtypeMix).sort((a, b) => b[1] - a[1]).map(([k, w]) => `${k} ${Math.round(w <= 1 ? w * 100 : w)}%`).join(", ")
+    : null;
+  const levers = grade.levers.slice(0, 3).map((l) => `${l.text ?? l.metric}${l.points != null ? ` (+${Math.round(l.points)})` : ""}`);
+  return (
+    <Tooltip multiline maw={340} label={
+      <div>
+        <div>{grade.subtype}{grade.label ? ` · ${grade.label}` : ""}</div>
+        {mix && <div style={{ opacity: 0.8 }}>Blend: {mix}</div>}
+        {levers.length > 0 && <div style={{ marginTop: 4 }}>Levers: {levers.join(" · ")}</div>}
+      </div>
+    }>
+      <Badge size="sm" variant="light" color={gradeColor(grade.score)}>{grade.score}</Badge>
     </Tooltip>
+  );
+}
+
+export function StuffPlusBadge({ grade }: { grade: PitchTypeSummary["grade"] }) {
+  if (grade?.stuffPlus == null) return <>—</>;
+  return (
+    <Tooltip label={`8-Stuff+ ${Math.round(grade.stuffPlus)} vs. all MLB pitches${grade.stuffPlusType != null ? ` · ${Math.round(grade.stuffPlusType)} vs. its own type` : ""}`}>
+      <Badge size="sm" variant="outline" color={stuffColor(grade.stuffPlus)}>{Math.round(grade.stuffPlus)}</Badge>
+    </Tooltip>
+  );
+}
+
+/** Add / drop / rework suggestions from the arsenal grade. */
+export function ArsenalMoves({ arsenal }: { arsenal: SessionSummary["arsenal"] }) {
+  if (!arsenal?.moves.length) return null;
+  const color: Record<string, string> = { add: "green", drop: "red", rework: "yellow" };
+  return (
+    <div style={{ marginTop: 8 }}>
+      <Text size="xs" c="dimmed" mb={4}>Arsenal moves</Text>
+      {arsenal.moves.map((m, i) => (
+        <Group key={i} gap={6} wrap="nowrap" align="flex-start" mb={2}>
+          <Badge size="xs" variant="light" color={color[m.kind] ?? "gray"} style={{ flexShrink: 0 }}>{m.kind}</Badge>
+          <Text size="xs"><b>{m.title}</b>{m.detail ? ` · ${m.detail}` : ""}</Text>
+        </Group>
+      ))}
+    </div>
   );
 }
 
@@ -58,7 +132,7 @@ export function PitchDot({ code }: { code: PitchCode }) {
   return <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 999, background: PITCH_COLORS[code], marginRight: 6, verticalAlign: "middle" }} />;
 }
 
-/** Per-pitch-type table: usage, velo, shape, release, whiff%, xArsenal grade. */
+/** Per-pitch-type table: usage, velo, shape, release, whiff%, xArsenal grade, 8-Stuff+. */
 export function PitchTypeTable({ rows, compact = false }: { rows: PitchTypeSummary[]; compact?: boolean }) {
   const show = {
     count: rows.some((r) => r.count != null),
@@ -68,6 +142,7 @@ export function PitchTypeTable({ rows, compact = false }: { rows: PitchTypeSumma
     vaa: !compact && rows.some((r) => r.vaa != null),
     whiff: rows.some((r) => r.whiffPct != null),
     grade: rows.some((r) => r.grade != null),
+    stuff: rows.some((r) => r.grade?.stuffPlus != null),
   };
   return (
     <ScrollArea>
@@ -86,7 +161,8 @@ export function PitchTypeTable({ rows, compact = false }: { rows: PitchTypeSumma
             {show.ext && <Table.Th ta="right">Ext</Table.Th>}
             {show.rel && <Table.Th ta="right">Rel ht / side</Table.Th>}
             {show.whiff && <Table.Th ta="right">Whiff%</Table.Th>}
-            {show.grade && <Table.Th ta="right">Grade</Table.Th>}
+            {show.grade && <Table.Th ta="right">xArsenal</Table.Th>}
+            {show.stuff && <Table.Th ta="right">8-Stuff+</Table.Th>}
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
@@ -112,19 +188,8 @@ export function PitchTypeTable({ rows, compact = false }: { rows: PitchTypeSumma
                   {r.whiffPct != null && r.swings != null && r.swings < WHIFF_MIN_SWINGS ? <span title={`${r.swings} swings`}>*</span> : null}
                 </Table.Td>
               )}
-              {show.grade && (
-                <Table.Td ta="right">
-                  {r.grade ? (
-                    <Tooltip label={`${r.grade.subtype} · ${r.grade.score}`}>
-                      <Badge size="sm" variant="light" color={gradeColor(r.grade.grade)}>
-                        {r.grade.grade}
-                      </Badge>
-                    </Tooltip>
-                  ) : (
-                    "—"
-                  )}
-                </Table.Td>
-              )}
+              {show.grade && <Table.Td ta="right"><PitchGradeBadge grade={r.grade} /></Table.Td>}
+              {show.stuff && <Table.Td ta="right"><StuffPlusBadge grade={r.grade} /></Table.Td>}
             </Table.Tr>
           ))}
         </Table.Tbody>

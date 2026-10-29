@@ -9,17 +9,20 @@ import { definePopulation } from "@/lib/percentiles/populations";
 import { prisma } from "@/lib/db/prisma";
 import { buildMovementPage, MOVEMENTS, population, type MovementPage, type Movement, type Row } from "./compute";
 
+/** Athletic Screen v2 through the compat views (old column names). Never the old f_athletic_screen_* tables. */
 const TABLE: Record<Movement, string> = {
-  CMJ: "public.f_athletic_screen_cmj",
-  DJ: "public.f_athletic_screen_dj",
-  PPU: "public.f_athletic_screen_ppu",
-  SLV: "public.f_athletic_screen_slv",
+  CMJ: "public.v_athletic_screen_cmj",
+  DJ: "public.v_athletic_screen_dj",
+  PPU: "public.v_athletic_screen_ppu",
+  SLV: "public.v_athletic_screen_slv",
 };
+const CURVE_TABLE = "public.f_athletic_screen_v2_force_curve";
+const G = 9.81;
 
 /** [column, alias] pairs read for every movement; DJ adds CT/RSI and SLV adds side. */
 const NUMERIC_COLS: Array<[string, string]> = [
   ["jh_in", "JH_IN"], ["pp_w_per_kg", "PP_W_per_kg"], ["pp_forceplate", "PP_FORCEPLATE"], ["force_at_pp", "Force_at_PP"],
-  ["vel_at_pp", "Vel_at_PP"], ["auc_j", "auc_j"], ["kurtosis", "kurtosis"], ["rpd_max_w_per_s", "rpd_max_w_per_s"],
+  ["vel_at_pp_m_s", "Vel_at_PP"], ["auc_j", "auc_j"], ["kurtosis", "kurtosis"], ["rpd_max_w_per_s", "rpd_max_w_per_s"],
   ["time_to_rpd_max_s", "time_to_rpd_max_s"],
 ];
 
@@ -63,18 +66,59 @@ for (const movement of MOVEMENTS) {
 }
 const getPopulation = (movement: Movement, femaleOnly: boolean) => populations.get(`${movement}:${femaleOnly}`)!();
 
-async function powerCurves(athleteUuid: string, date: string): Promise<Map<string, number[]>> {
-  try {
-    const rows = await prisma.$queryRawUnsafe<Array<{ movement: string; trial_name: string; power_w: number[] }>>(
-      `SELECT movement, trial_name, power_w::float8[] AS power_w FROM public.f_athletic_screen_power_curve WHERE athlete_uuid = $1 AND session_date = $2::date`,
-      athleteUuid,
-      date,
-    );
-    return new Map(rows.map((r) => [`${r.movement}|${r.trial_name}`, r.power_w]));
-  } catch (err) {
-    if (/does not exist/.test(String(err))) return new Map();
-    throw err;
+interface CurveRow {
+  movement: string;
+  trial_name: string;
+  fs_hz: number;
+  fz_n: number[];
+  bw_n: number | null;
+  takeoff_idx: number | null;
+  landing_idx: number | null;
+  contact_start_idx: number | null;
+  movement_onset_idx: number | null;
+}
+
+/**
+ * Power (W) from one stored v2 force curve, same as athleticScreen/v2/report_data.py: velocity is rebuilt by
+ * integrating backward from takeoff (v_takeoff = g * flight / 2), and power = Fz * v from movement onset (or
+ * contact start) to takeoff.
+ */
+export function powerFromCurve(r: CurveRow): number[] {
+  const fz = r.fz_n;
+  const fs = Number(r.fs_hz);
+  const bw = Number(r.bw_n);
+  const to = Number(r.takeoff_idx);
+  const ld = Number(r.landing_idx);
+  if (!(bw > 0) || !(to > 0) || !(ld > to) || !(fs > 0) || to > fz.length) return [];
+  const m = bw / G;
+  const v = new Array<number>(to);
+  let acc = G * (ld - to) / fs / 2; // takeoff velocity
+  for (let i = to - 1; i >= 0; i--) {
+    acc -= (fz[i]! - bw) / m / fs;
+    v[i] = acc;
   }
+  const onset = r.movement_onset_idx;
+  let start = onset != null && onset >= 0 ? onset : Number(r.contact_start_idx ?? 0);
+  start = Math.max(0, Math.min(start, to - 1));
+  const out: number[] = [];
+  for (let i = start; i < to; i++) out.push(fz[i]! * v[i]!);
+  return out;
+}
+
+async function powerCurves(athleteUuid: string, date: string): Promise<Map<string, number[]>> {
+  const rows = await prisma.$queryRawUnsafe<CurveRow[]>(
+    `SELECT movement, trial_name, fs_hz::float8 AS fs_hz, fz_n::float8[] AS fz_n, bw_n::float8 AS bw_n,
+            takeoff_idx, landing_idx, contact_start_idx, movement_onset_idx
+       FROM ${CURVE_TABLE} WHERE athlete_uuid = $1 AND session_date = $2::date`,
+    athleteUuid,
+    date,
+  );
+  const out = new Map<string, number[]>();
+  for (const r of rows) {
+    const p = powerFromCurve(r);
+    if (p.length) out.set(`${r.movement.toUpperCase()}|${r.trial_name}`, p);
+  }
+  return out;
 }
 
 /** Null when the athlete has no screens. */

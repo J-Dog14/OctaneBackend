@@ -21,22 +21,22 @@ const FLAG_HEATMAP_DAYS = 14;
 
 async function fetchIso(athleteUuid: string): Promise<IsoPayload> {
   const [iRows, yRows, tRows, ir90Rows] = await Promise.all([
-    prisma.f_readiness_screen_i.findMany({
+    prisma.v_readiness_screen_i.findMany({
       where: { athlete_uuid: athleteUuid },
       select: { session_date: true, avg_force: true, max_force: true, time_to_max: true },
       orderBy: { session_date: "asc" },
     }),
-    prisma.f_readiness_screen_y.findMany({
+    prisma.v_readiness_screen_y.findMany({
       where: { athlete_uuid: athleteUuid },
       select: { session_date: true, avg_force: true, max_force: true, time_to_max: true },
       orderBy: { session_date: "asc" },
     }),
-    prisma.f_readiness_screen_t.findMany({
+    prisma.v_readiness_screen_t.findMany({
       where: { athlete_uuid: athleteUuid },
       select: { session_date: true, avg_force: true, max_force: true, time_to_max: true },
       orderBy: { session_date: "asc" },
     }),
-    prisma.f_readiness_screen_ir90.findMany({
+    prisma.v_readiness_screen_ir90.findMany({
       where: { athlete_uuid: athleteUuid },
       select: { session_date: true, avg_force: true, max_force: true, time_to_max: true },
       orderBy: { session_date: "asc" },
@@ -91,8 +91,8 @@ type RawPeerRow = {
 };
 
 async function fetchJump(athleteUuid: string, kind: "cmj" | "ppu"): Promise<JumpPayload> {
-  const rsTable = `f_readiness_screen_${kind}`;
-  const athTable = `f_athletic_screen_${kind}`;
+  const rsTable = `v_readiness_screen_${kind}`;  // Readiness Screen v2 (rebuilt from c3d, old column names)
+  const athTable = `v_athletic_screen_${kind}`;  // Athletic Screen v2 (old column names, vel_at_pp in mm/s)
 
   // Union readiness screen + athletic screen for this athlete
   const tsRows = await prisma.$queryRawUnsafe<RawJumpRow[]>(
@@ -106,7 +106,7 @@ async function fetchJump(athleteUuid: string, kind: "cmj" | "ppu"): Promise<Jump
            source_system
       FROM (
         SELECT session_date, jump_height, pp_w_per_kg,
-               pp_forceplate, force_at_pp, vel_at_pp, source_system
+               pp_forceplate, force_at_pp, vel_at_pp, 'readiness_screen'::text AS source_system
           FROM public.${rsTable}
          WHERE athlete_uuid = $1
         UNION ALL
@@ -214,12 +214,12 @@ async function fetchPowerCurves(athleteUuid: string): Promise<{ CMJ: PowerCurveP
         FROM (
           SELECT session_date, peak_power_w, rpd_max_w_per_s,
                  rise_slope_w_per_s, fwhm_s, auc_j, decay_90_10_s
-            FROM public.f_readiness_screen_power_curve
+            FROM public.v_readiness_screen_power_curve
            WHERE athlete_uuid = $1 AND movement_type = 'CMJ'
           UNION ALL
           SELECT session_date, peak_power_w, rpd_max_w_per_s,
                  NULL::numeric AS rise_slope_w_per_s, fwhm_s, auc_j, decay_90_10_s
-            FROM public.f_athletic_screen_cmj
+            FROM public.v_athletic_screen_cmj
            WHERE athlete_uuid = $1 AND peak_power_w IS NOT NULL
         ) _u
        GROUP BY session_date
@@ -239,12 +239,12 @@ async function fetchPowerCurves(athleteUuid: string): Promise<{ CMJ: PowerCurveP
         FROM (
           SELECT session_date, peak_power_w, rpd_max_w_per_s,
                  rise_slope_w_per_s, fwhm_s, auc_j, decay_90_10_s
-            FROM public.f_readiness_screen_power_curve
+            FROM public.v_readiness_screen_power_curve
            WHERE athlete_uuid = $1 AND movement_type = 'PPU'
           UNION ALL
           SELECT session_date, peak_power_w, rpd_max_w_per_s,
                  NULL::numeric AS rise_slope_w_per_s, fwhm_s, auc_j, decay_90_10_s
-            FROM public.f_athletic_screen_ppu
+            FROM public.v_athletic_screen_ppu
            WHERE athlete_uuid = $1 AND peak_power_w IS NOT NULL
         ) _u
        GROUP BY session_date
@@ -322,7 +322,7 @@ async function fetchMovementStrategy(athleteUuid: string): Promise<{ cmj: Moveme
              AVG(peak_grf_bw_ratio)::float        AS peak_grf_bw_ratio,
              AVG(rfd_0_100ms)::float              AS rfd_0_100ms,
              AVG(concentric_impulse_ns)::float    AS concentric_impulse_ns
-        FROM public.f_readiness_screen_cmj
+        FROM public.v_readiness_screen_cmj
        WHERE athlete_uuid = $1 AND mrsi IS NOT NULL
        GROUP BY session_date
        ORDER BY session_date
@@ -340,7 +340,7 @@ async function fetchMovementStrategy(athleteUuid: string): Promise<{ cmj: Moveme
              AVG(peak_grf_bw_ratio)::float        AS peak_grf_bw_ratio,
              AVG(rfd_0_100ms)::float              AS rfd_0_100ms,
              AVG(concentric_impulse_ns)::float    AS concentric_impulse_ns
-        FROM public.f_readiness_screen_ppu
+        FROM public.v_readiness_screen_ppu
        WHERE athlete_uuid = $1 AND mrsi IS NOT NULL
        GROUP BY session_date
        ORDER BY session_date
@@ -384,7 +384,7 @@ async function fetchIntraSession(athleteUuid: string): Promise<{ cmj: IntraSessi
              jump_height::float AS jump_height,
              peak_power_w::float AS peak_power_w,
              mrsi::float AS mrsi
-        FROM public.f_readiness_screen_cmj
+        FROM public.v_readiness_screen_cmj
        WHERE athlete_uuid = $1
        ORDER BY session_date DESC, trial_name
        LIMIT 120
@@ -397,7 +397,7 @@ async function fetchIntraSession(athleteUuid: string): Promise<{ cmj: IntraSessi
              jump_height::float AS jump_height,
              peak_power_w::float AS peak_power_w,
              mrsi::float AS mrsi
-        FROM public.f_readiness_screen_ppu
+        FROM public.v_readiness_screen_ppu
        WHERE athlete_uuid = $1
        ORDER BY session_date DESC, trial_name
        LIMIT 120

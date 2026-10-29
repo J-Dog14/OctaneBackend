@@ -71,8 +71,10 @@ export function OverviewTab({
         />
         <StatTile
           label="Arsenal grade"
-          value={latest?.arsenal ? latest.arsenal.grade : "—"}
-          sub={latest?.arsenal ? `${latest.arsenal.label} · ${latest.label}` : "Needs 5+ pitches per type"}
+          value={latest?.arsenal ? latest.arsenal.score : "—"}
+          sub={latest?.arsenal
+            ? `${latest.arsenal.label}${latest.arsenal.stuffPlus != null ? ` · 8-Stuff+ ${Math.round(latest.arsenal.stuffPlus)}` : ""} · ${latest.label}`
+            : pitching.data?.xaError ? "xArsenal unavailable" : "Needs 5+ pitches per type"}
         />
         <StatTile
           label="Last 3D capture"

@@ -1,0 +1,120 @@
+// Client Hub models — paste into prisma/schema.prisma (App DB only; nothing here touches the warehouse).
+// Then: npx prisma migrate dev --name client_hub
+// All tables are new, so the migration is additive and safe to run before the deploy.
+
+enum HubClientStatus {
+  ACTIVE
+  PAUSED
+  ENDED
+}
+
+enum HubProgramType {
+  REMOTE
+  HYBRID
+  IN_HOUSE
+}
+
+enum HubContractStatus {
+  SIGNED
+  SENT
+  NOT_SENT
+}
+
+// How the client got linked to an 8ctane athlete. DISMISSED = a coach unlinked it, so auto-link must leave it alone.
+enum HubLinkSource {
+  AUTO
+  MANUAL
+  DISMISSED
+}
+
+// Where an "updated" date came from: picked up from new sessions in 8ctane, or typed by a coach.
+enum HubDateSource {
+  OCTANE
+  MANUAL
+}
+
+model HubClient {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  name             String
+  status           HubClientStatus @default(ACTIVE)
+  phase            String? // one of PHASES in lib/client-hub/constants.ts; free text so old values survive list changes
+  scheduleNote     String?
+  programType      HubProgramType?
+  coachName        String? // display only
+  ownerClerkUserId String? // replaces the artifact's `mine` flag: "My clients" = owner is me
+
+  age      Int?
+  throws   String? // "R" | "L"
+  position String?
+  team     String?
+
+  octaneAthleteUuid String?        @db.Uuid
+  octaneName        String?
+  linkSource        HubLinkSource?
+
+  contractDuration String?
+  contractStart    DateTime?         @db.Date
+  contractEnd      DateTime?         @db.Date
+  contractStatus   HubContractStatus @default(NOT_SENT)
+
+  onbAssessment Boolean @default(false)
+  onb3d         Boolean @default(false)
+  onbReview     Boolean @default(false)
+
+  lastAssessment DateTime? @db.Date
+  lastContacted  DateTime? @db.Date
+  builtUntil     DateTime? @db.Date // manual programming date, only used while unlinked
+
+  updPlyos          DateTime?      @db.Date
+  updPlyosSource    HubDateSource?
+  updLifts          DateTime?      @db.Date
+  updLiftsSource    HubDateSource?
+  updDelivery       DateTime?      @db.Date
+  updDeliverySource HubDateSource?
+
+  needsReview Boolean @default(false)
+
+  // Cache written by the 8ctane sync (lib/client-hub/sync.ts)
+  weekDone      Int?
+  weekTrackable Int?
+  lastTick      DateTime? @db.Date
+  syncedAt      DateTime?
+
+  notes HubClientNote[]
+
+  @@index([status])
+  @@index([ownerClerkUserId])
+  @@index([octaneAthleteUuid])
+}
+
+model HubClientNote {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  clientId String    @db.Uuid
+  client   HubClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  date              DateTime @db.Date
+  body              String
+  goals             String?
+  link              String?
+  authorClerkUserId String?
+  authorName        String?
+
+  @@index([clientId, date])
+}
+
+// Maps a Clerk staff user to their coach identity in 8ctane, so "mine" works across both systems.
+model HubCoach {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  clerkUserId    String @unique
+  octaneUserUuid String @db.Uuid
+  name           String
+}

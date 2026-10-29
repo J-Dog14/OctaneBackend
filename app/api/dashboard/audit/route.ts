@@ -71,7 +71,7 @@ const CHECKS: Array<{
           AS has_pitching_rows,
         EXISTS (SELECT 1 FROM public.f_kinematics_hitting h WHERE h.athlete_uuid = a.athlete_uuid)
           AS has_hitting_rows,
-        EXISTS (SELECT 1 FROM public.f_readiness_screen rs WHERE rs.athlete_uuid = a.athlete_uuid)
+        EXISTS (SELECT 1 FROM public.v_readiness_screen_sessions rs WHERE rs.athlete_uuid = a.athlete_uuid)
           AS has_readiness_rows,
         (
           EXISTS (SELECT 1 FROM public.f_athletic_screen s WHERE s.athlete_uuid = a.athlete_uuid)
@@ -80,6 +80,10 @@ const CHECKS: Array<{
           OR EXISTS (SELECT 1 FROM public.f_athletic_screen_slv s WHERE s.athlete_uuid = a.athlete_uuid)
           OR EXISTS (SELECT 1 FROM public.f_athletic_screen_nmt s WHERE s.athlete_uuid = a.athlete_uuid)
           OR EXISTS (SELECT 1 FROM public.f_athletic_screen_ppu s WHERE s.athlete_uuid = a.athlete_uuid)
+          OR EXISTS (SELECT 1 FROM public.f_athletic_screen_v2_cmj s WHERE s.athlete_uuid = a.athlete_uuid)
+          OR EXISTS (SELECT 1 FROM public.f_athletic_screen_v2_dj s WHERE s.athlete_uuid = a.athlete_uuid)
+          OR EXISTS (SELECT 1 FROM public.f_athletic_screen_v2_ppu s WHERE s.athlete_uuid = a.athlete_uuid)
+          OR EXISTS (SELECT 1 FROM public.f_athletic_screen_v2_slv s WHERE s.athlete_uuid = a.athlete_uuid)
         ) AS has_athletic_rows,
         EXISTS (SELECT 1 FROM public.f_mobility m WHERE m.athlete_uuid = a.athlete_uuid)
           AS has_mobility_rows
@@ -92,7 +96,7 @@ const CHECKS: Array<{
           EXISTS (SELECT 1 FROM public.f_kinematics_hitting h WHERE h.athlete_uuid = a.athlete_uuid)
         )
         OR a.has_readiness_screen_data != (
-          EXISTS (SELECT 1 FROM public.f_readiness_screen rs WHERE rs.athlete_uuid = a.athlete_uuid)
+          EXISTS (SELECT 1 FROM public.v_readiness_screen_sessions rs WHERE rs.athlete_uuid = a.athlete_uuid)
         )
         OR a.has_athletic_screen_data != (
           EXISTS (SELECT 1 FROM public.f_athletic_screen s WHERE s.athlete_uuid = a.athlete_uuid)
@@ -101,6 +105,10 @@ const CHECKS: Array<{
           OR EXISTS (SELECT 1 FROM public.f_athletic_screen_slv s WHERE s.athlete_uuid = a.athlete_uuid)
           OR EXISTS (SELECT 1 FROM public.f_athletic_screen_nmt s WHERE s.athlete_uuid = a.athlete_uuid)
           OR EXISTS (SELECT 1 FROM public.f_athletic_screen_ppu s WHERE s.athlete_uuid = a.athlete_uuid)
+          OR EXISTS (SELECT 1 FROM public.f_athletic_screen_v2_cmj s WHERE s.athlete_uuid = a.athlete_uuid)
+          OR EXISTS (SELECT 1 FROM public.f_athletic_screen_v2_dj s WHERE s.athlete_uuid = a.athlete_uuid)
+          OR EXISTS (SELECT 1 FROM public.f_athletic_screen_v2_ppu s WHERE s.athlete_uuid = a.athlete_uuid)
+          OR EXISTS (SELECT 1 FROM public.f_athletic_screen_v2_slv s WHERE s.athlete_uuid = a.athlete_uuid)
         )
         OR a.has_mobility_data != (
           EXISTS (SELECT 1 FROM public.f_mobility mo WHERE mo.athlete_uuid = a.athlete_uuid)
@@ -125,7 +133,7 @@ const CHECKS: Array<{
       FROM analytics.d_athletes a
       LEFT JOIN public.f_kinematics_pitching pt ON pt.athlete_uuid = a.athlete_uuid
       LEFT JOIN public.f_kinematics_hitting ht ON ht.athlete_uuid = a.athlete_uuid
-      LEFT JOIN public.f_readiness_screen rs ON rs.athlete_uuid = a.athlete_uuid
+      LEFT JOIN public.v_readiness_screen_sessions rs ON rs.athlete_uuid = a.athlete_uuid
       GROUP BY a.athlete_uuid, a.name,
         a.pitching_session_count, a.hitting_session_count, a.readiness_screen_session_count
       HAVING
@@ -265,7 +273,7 @@ const CHECKS: Array<{
         latest.session_date AS latest_score_date,
         latest.scoring_tier
       FROM analytics.d_athletes a
-      JOIN public.f_readiness_screen rs ON rs.athlete_uuid = a.athlete_uuid
+      JOIN public.v_readiness_screen_sessions rs ON rs.athlete_uuid = a.athlete_uuid
         AND rs.session_date >= CURRENT_DATE - INTERVAL '180 days'
       LEFT JOIN public.f_readiness_screen_score latest ON latest.athlete_uuid = a.athlete_uuid
         AND latest.session_date = (

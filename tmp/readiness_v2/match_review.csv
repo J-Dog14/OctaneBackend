@@ -1,0 +1,5 @@
+source_root,athlete_folder,session_folder,session_date,athlete_name,xml_name,email,athlete_uuid,match_method,best_fuzzy_name,best_fuzzy_uuid
+AS2,Nate Sapps_NS,2025-12-10__2,2025-12-10,Nate Sapps,Nate Sapps,,,no confident match,Nathan Snapp (0.73),74e61efc-5160-4cfe-8575-9a13586460dd
+AS2,Ried Dittner_RD,2025-08-20__2,2025-08-20,Ried Dittner,Ried Dittner,,,"conflict: {""screen_v2"": ""835c19eb-d907-4548-86c6-4d0648b95289"", ""name_exact"": ""a63e0005-4a72-4956-98c2-42f7565c15a9""}",Ried Dittner (1.00),a63e0005-4a72-4956-98c2-42f7565c15a9
+RS3,Cam Brown_CB,2025-03-21_,2025-03-21,Cam Brown,Cam Brown,,,no confident match,Ja Brown (0.82),e96da1e9-c1d4-47b3-939c-24b413ed47e3
+RS3,Cam Brown_CB,2025-05-09_,2025-05-09,Cam Brown,Cam Brown,,,no confident match,Ja Brown (0.82),e96da1e9-c1d4-47b3-939c-24b413ed47e3

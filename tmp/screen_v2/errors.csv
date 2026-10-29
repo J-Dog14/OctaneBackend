@@ -1,0 +1,8 @@
+athlete_folder,session_date,trial_name,file,error
+Augie Morris_AM,2026-08-20,SLVR1,Augie Morris_AM\2026-08-20_\SLVR 1.c3d,Fz mostly NaN
+Daniel Brown_DB,2025-09-04,PPU1,Daniel Brown_DB\2025-09-04_\PPU 1.c3d,Fz mostly NaN
+Daniel Brown_DB,2025-09-04,SLVL1,Daniel Brown_DB\2025-09-04_\SLVL 1.c3d,TrialError: no flight phase found
+Leon Hunter_LH,2025-09-24,SLVR1,Leon Hunter_LH\2025-09-24_\SLVR 1.c3d,TrialError: contact before takeoff shorter than 50 ms
+Trey Roberts_TR,2025-12-05,DJ1,Trey Roberts_TR\2025-12-05_\DJ 1.c3d,TrialError: contact before takeoff shorter than 50 ms
+Trey Roberts_TR,2025-12-16,DJ1,Trey Roberts_TR\2025-12-16_\DJ 1.c3d,TrialError: contact before takeoff shorter than 50 ms
+Troy Haynes_TH,2025-10-02,SLVL1,Troy Haynes_TH\2025-10-02_\SLVL 1.c3d,TrialError: no flight phase found

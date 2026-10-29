@@ -466,6 +466,10 @@ def _merge_athlete_into_canonical(source_uuid: str, target_uuid: str, conn) -> b
         'f_athletic_screen', 'f_athletic_screen_cmj', 'f_athletic_screen_dj',
         'f_athletic_screen_nmt', 'f_athletic_screen_ppu', 'f_athletic_screen_slv',
         'f_athletic_screen_v2_cmj', 'f_athletic_screen_v2_dj', 'f_athletic_screen_v2_ppu', 'f_athletic_screen_v2_slv', 'f_athletic_screen_v2_force_curve',
+        'f_readiness_screen_v2_cmj',
+        'f_readiness_screen_v2_ppu',
+        'f_readiness_screen_v2_iso',
+        'f_readiness_screen_v2_force_curve',
         'f_pro_sup', 'f_readiness_screen', 'f_readiness_screen_i', 'f_readiness_screen_y',
         'f_readiness_screen_t', 'f_readiness_screen_ir90', 'f_readiness_screen_cmj', 'f_readiness_screen_ppu',
         'f_mobility', 'f_proteus', 'f_kinematics_pitching', 'f_kinematics_hitting',
@@ -599,10 +603,31 @@ def _normalize_for_sim(name: str) -> str:
 
 
 def _name_similarity(name1: str, name2: str) -> float:
-    """Similarity ratio 0.0--1.0 (uses same logic as duplicate_detector)."""
+    """Ordered similarity for automatic matching; review additionally considers word order."""
     if not name1 or not name2:
         return 0.0
     return SequenceMatcher(None, _normalize_for_sim(name1), _normalize_for_sim(name2)).ratio()
+
+
+def guard_reordered_identity(conn, normalized_name):
+    """Hold unresolved reordered names instead of creating a second identity.
+
+    Same-DOB matches are resolved earlier. Missing or conflicting DOB requires
+    an explicit selection rather than guessing or silently creating a row.
+    """
+    try:
+        from .identity_matching import same_name_reordered
+    except ImportError:
+        from common.identity_matching import same_name_reordered
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        cur.execute("SELECT athlete_uuid, name, normalized_name FROM analytics.d_athletes "
+                    "WHERE normalized_name IS NOT NULL")
+        candidates = [row for row in cur.fetchall()
+                      if same_name_reordered(normalized_name, row['normalized_name'])]
+    if candidates:
+        matches = ', '.join(f"{r['name']} ({r['athlete_uuid']})" for r in candidates)
+        raise ValueError(f"IDENTITY_REVIEW: reordered name '{normalized_name}' may already exist: {matches}. "
+                         "Verify the birth date and select the existing athlete; no new profile was created.")
 
 
 def find_existing_athlete_by_name_or_email(
@@ -616,7 +641,8 @@ def find_existing_athlete_by_name_or_email(
     Single source of truth for athlete resolution so all pipelines (Athletic Screen, Pro Sup, Pitching, etc.)
     resolve to the same athlete when running multiple assessments without ATHLETE_UUID.
 
-    Order: (1) normalized email match if email provided, (2) exact normalized_name (+ DOB), (3) fuzzy name >= NAME_SIMILARITY_THRESHOLD.
+    Order: email, exact name, unique reversed two-part name with the same DOB,
+    then fuzzy name >= NAME_SIMILARITY_THRESHOLD.
     """
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
         # 1. Email match (normalized)
@@ -639,6 +665,20 @@ def find_existing_athlete_by_name_or_email(
         existing = get_athlete_from_warehouse(normalized_name, date_of_birth, conn)
         if existing:
             return existing
+        # Some QTM exports contain "Last First" without a comma. Require the
+        # same DOB and one unambiguous reversed-name match before reusing it.
+        parts = normalized_name.split()
+        if date_of_birth and len(parts) == 2:
+            cur.execute(
+                """SELECT * FROM analytics.d_athletes
+                   WHERE normalized_name = %s AND date_of_birth = %s""",
+                (" ".join(reversed(parts)), date_of_birth),
+            )
+            reversed_matches = cur.fetchall()
+            if len(reversed_matches) == 1:
+                return dict(reversed_matches[0])
+            if len(reversed_matches) > 1:
+                raise ValueError("Ambiguous reversed-name/DOB match; select an athlete UUID")
         # 3. Fuzzy name match (90% threshold)
         cur.execute(
             """
@@ -720,6 +760,7 @@ def create_athlete_in_warehouse(
                 f"{existing['name']} ({existing['athlete_uuid']}). "
                 f"Use get_or_create_athlete() instead of create_athlete_in_warehouse()."
             )
+        guard_reordered_identity(conn, normalized_name)
         
         # Check verceldb first (master source of truth)
         if athlete_uuid is None:
@@ -889,7 +930,7 @@ def update_athlete_in_warehouse(
         gender: Gender (only updates if current value is NULL)
         height: Height (only updates if current value is NULL)
         weight: Weight (only updates if current value is NULL)
-        email: Email (only updates if current value is NULL, normalized)
+        email: Email (only fills NULL or blank values, normalized)
         phone: Phone (only updates if current value is NULL)
         notes: Notes (only updates if current value is NULL)
         app_db_uuid: App DB UUID (always updates if provided)
@@ -944,9 +985,10 @@ def update_athlete_in_warehouse(
             updates.append("weight = COALESCE(weight, %s)")
             params.append(weight)
         
-        if email is not None:
-            updates.append("email = COALESCE(email, %s)")
-            params.append(normalize_email(email))
+        email_norm = normalize_email(email)
+        if email_norm:
+            updates.append("email = COALESCE(NULLIF(TRIM(email), ''), %s)")
+            params.append(email_norm)
         
         if notes is not None:
             updates.append("notes = COALESCE(notes, %s)")
@@ -982,7 +1024,7 @@ def get_or_create_athlete(
     gender: Optional[str] = None,
     height: Optional[float] = None,
     weight: Optional[float] = None,
-    email: Optional[str] = None,  # Not stored in d_athletes, kept for API compatibility
+    email: Optional[str] = None,
     phone: Optional[str] = None,  # Not stored in d_athletes, kept for API compatibility
     notes: Optional[str] = None,
     source_system: Optional[str] = None,
@@ -1384,6 +1426,10 @@ def update_uuid_across_tables(old_uuid: str, new_uuid: str, conn=None) -> bool:
                 'f_athletic_screen_v2_ppu',
                 'f_athletic_screen_v2_slv',
                 'f_athletic_screen_v2_force_curve',
+                'f_readiness_screen_v2_cmj',
+                'f_readiness_screen_v2_ppu',
+                'f_readiness_screen_v2_iso',
+                'f_readiness_screen_v2_force_curve',
                 'f_pro_sup',
                 'f_readiness_screen',
                 'f_readiness_screen_i',

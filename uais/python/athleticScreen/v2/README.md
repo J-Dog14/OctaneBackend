@@ -48,6 +48,9 @@ Visual3D → Output Files → `f_athletic_screen_*` writer is disabled; `process
   5. Readiness baseline cross-insert for CMJ/PPU (v2 values). It never overwrites a row that came from a
      real readiness session.
   6. Set the has_athletic_screen_data flag.
+- Emails are also refreshed from already-ingested sessions, without reprocessing c3d. All session
+  emails are considered, so an empty first session does not hide a later address. Existing profile
+  emails are preserved; conflicting addresses go to email review.
 - **After all athletes:** duplicate-athlete check.
 - **Not generated yet:** the PDF report. Report-only and comparison runs still use the legacy report code.
 - One-time setup: `patch_flag_functions.py --apply` (adds the v2 tables to the d_athletes flag functions and
@@ -75,7 +78,17 @@ python uais/python/athleticScreen/v2/load_v2.py --apply
 python uais/python/athleticScreen/v2/validate_v2.py
 ```
 
-Only `public.f_athletic_screen_v2_{cmj,dj,ppu,slv}` and `public.f_athletic_screen_v2_force_curve` are written. The old tables, d_athletes and the App DB are never touched. The DDL is in `uais/sql/create_athletic_screen_v2_tables.sql`, generated from `schema.py`.
+The bulk loader writes `public.f_athletic_screen_v2_{cmj,dj,ppu,slv}` and
+`public.f_athletic_screen_v2_force_curve`, and fills missing `d_athletes.email` for confidently
+matched athletes. It preserves existing addresses and skips conflicting emails. The old tables and
+the App DB are never touched. The DDL is in `uais/sql/create_athletic_screen_v2_tables.sql`, generated from `schema.py`.
+
+To repair historical missing emails using the existing v2 session links (no name matching or merges):
+
+```
+python uais/python/athleticScreen/v2/backfill_emails.py          # read-only preview
+python uais/python/athleticScreen/v2/backfill_emails.py --apply  # fill blanks only
+```
 
 Column name changes vs. the old tables:
 

@@ -35,11 +35,11 @@ export async function POST() {
         SELECT a2.athlete_uuid,
           COALESCE(
             (SELECT (s.session_date - (s.age_at_collection * INTERVAL '365 days 6 hours'))::date
-             FROM public.f_athletic_screen_cmj s
+             FROM public.f_athletic_screen_v2_cmj s
              WHERE s.athlete_uuid = a2.athlete_uuid AND s.age_at_collection IS NOT NULL
              ORDER BY s.session_date DESC LIMIT 1),
             (SELECT (s.session_date - (s.age_at_collection * INTERVAL '365 days 6 hours'))::date
-             FROM public.f_readiness_screen s
+             FROM public.v_readiness_screen_sessions s
              WHERE s.athlete_uuid = a2.athlete_uuid AND s.age_at_collection IS NOT NULL
              ORDER BY s.session_date DESC LIMIT 1),
             (SELECT (s.session_date - (s.age_at_collection * INTERVAL '365 days 6 hours'))::date

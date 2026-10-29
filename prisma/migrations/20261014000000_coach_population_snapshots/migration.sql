@@ -48,7 +48,11 @@ BEGIN
     ('public.f_athletic_screen_cmj', ARRAY['population-athletic-screen', 'population-athletic-screen-female', 'coach-screen-CMJ-all-v1', 'coach-screen-CMJ-female-v1']::text[]),
     ('public.f_athletic_screen_dj', ARRAY['population-athletic-screen', 'population-athletic-screen-female', 'coach-screen-DJ-all-v1', 'coach-screen-DJ-female-v1']::text[]),
     ('public.f_athletic_screen_ppu', ARRAY['population-athletic-screen', 'population-athletic-screen-female', 'coach-screen-PPU-all-v1', 'coach-screen-PPU-female-v1']::text[]),
-    ('public.f_athletic_screen_slv', ARRAY['population-athletic-screen', 'population-athletic-screen-female', 'coach-screen-SLV-all-v1', 'coach-screen-SLV-female-v1']::text[])
+    ('public.f_athletic_screen_slv', ARRAY['population-athletic-screen', 'population-athletic-screen-female', 'coach-screen-SLV-all-v1', 'coach-screen-SLV-female-v1']::text[]),
+    ('public.f_athletic_screen_v2_cmj', ARRAY['population-athletic-screen', 'population-athletic-screen-female', 'coach-screen-CMJ-all-v1', 'coach-screen-CMJ-female-v1']::text[]),
+    ('public.f_athletic_screen_v2_dj', ARRAY['population-athletic-screen', 'population-athletic-screen-female', 'coach-screen-DJ-all-v1', 'coach-screen-DJ-female-v1']::text[]),
+    ('public.f_athletic_screen_v2_ppu', ARRAY['population-athletic-screen', 'population-athletic-screen-female', 'coach-screen-PPU-all-v1', 'coach-screen-PPU-female-v1']::text[]),
+    ('public.f_athletic_screen_v2_slv', ARRAY['population-athletic-screen', 'population-athletic-screen-female', 'coach-screen-SLV-all-v1', 'coach-screen-SLV-female-v1']::text[])
   ) AS t(table_name, population_keys) LOOP
     IF to_regclass(mapping.table_name) IS NOT NULL THEN
       SELECT string_agg(quote_literal(k), ', ') INTO args FROM unnest(mapping.population_keys) k;

@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { requireAuth } from "@/lib/auth/requireAuth";
 import { success, badRequest, internalError } from "@/lib/responses";
 import { prisma } from "@/lib/db/prisma";
+import { ATHLETIC_SCREEN_V2_VARIABLES } from "@/lib/research/athleticScreenV2";
 
 export type VariableInfo = {
   key: string;
@@ -25,63 +26,15 @@ const DIRECT_COLUMNS: Record<string, VariableInfo[]> = {
     { key: "height",            label: "Height (in)",             isJsonb: false, group: "Direct" },
     { key: "weight",            label: "Weight (lbs)",            isJsonb: false, group: "Direct" },
   ],
-  athletic_screen_cmj: [
-    { key: "jh_in",                label: "Jump Height (in)",               isJsonb: false, group: "Direct" },
-    { key: "peak_power",           label: "Peak Power (normalized)",         isJsonb: false, group: "Direct" },
-    { key: "pp_forceplate",        label: "Peak Power — Force Plate",       isJsonb: false, group: "Direct" },
-    { key: "force_at_pp",          label: "Force at Peak Power",            isJsonb: false, group: "Direct" },
-    { key: "vel_at_pp",            label: "Velocity at Peak Power",         isJsonb: false, group: "Direct" },
-    { key: "pp_w_per_kg",          label: "Peak Power (W/kg)",              isJsonb: false, group: "Direct" },
-    { key: "peak_power_w",         label: "Peak Power (W)",                 isJsonb: false, group: "Direct" },
-    { key: "time_to_peak_s",       label: "Time to Peak (s)",               isJsonb: false, group: "Direct" },
-    { key: "rpd_max_w_per_s",      label: "Max Rate of Power Dev (W/s)",    isJsonb: false, group: "Direct" },
-    { key: "time_to_rpd_max_s",    label: "Time to Max RPD (s)",            isJsonb: false, group: "Direct" },
-    { key: "rise_time_10_90_s",    label: "Rise Time 10–90% (s)",           isJsonb: false, group: "Direct" },
-    { key: "fwhm_s",               label: "FWHM (s)",                       isJsonb: false, group: "Direct" },
-    { key: "auc_j",                label: "Area Under Curve (J)",           isJsonb: false, group: "Direct" },
-    { key: "work_early_pct",       label: "Work Early %",                   isJsonb: false, group: "Direct" },
-    { key: "decay_90_10_s",        label: "Decay 90–10% (s)",               isJsonb: false, group: "Direct" },
-    { key: "t_com_norm_0to1",      label: "COM Timing (0–1 normalized)",    isJsonb: false, group: "Direct" },
-    { key: "skewness",             label: "Skewness",                       isJsonb: false, group: "Direct" },
-    { key: "kurtosis",             label: "Kurtosis",                       isJsonb: false, group: "Direct" },
-    { key: "spectral_centroid_hz", label: "Spectral Centroid (Hz)",         isJsonb: false, group: "Direct" },
-  ],
-  athletic_screen_dj: [
-    { key: "jh_in",             label: "Jump Height (in)",            isJsonb: false, group: "Direct" },
-    { key: "ct",                label: "Contact Time (s)",            isJsonb: false, group: "Direct" },
-    { key: "rsi",               label: "Reactive Strength Index",     isJsonb: false, group: "Direct" },
-    { key: "pp_w_per_kg",       label: "Peak Power (W/kg)",           isJsonb: false, group: "Direct" },
-    { key: "peak_power_w",      label: "Peak Power (W)",              isJsonb: false, group: "Direct" },
-    { key: "time_to_peak_s",    label: "Time to Peak (s)",            isJsonb: false, group: "Direct" },
-    { key: "rpd_max_w_per_s",   label: "Max Rate of Power Dev (W/s)", isJsonb: false, group: "Direct" },
-    { key: "rise_time_10_90_s", label: "Rise Time 10–90% (s)",        isJsonb: false, group: "Direct" },
-    { key: "fwhm_s",            label: "FWHM (s)",                    isJsonb: false, group: "Direct" },
-    { key: "auc_j",             label: "AUC (J)",                     isJsonb: false, group: "Direct" },
-  ],
-  athletic_screen_slv: [
-    { key: "jh_in",           label: "Jump Height (in)",            isJsonb: false, group: "Direct" },
-    { key: "pp_w_per_kg",     label: "Peak Power (W/kg)",           isJsonb: false, group: "Direct" },
-    { key: "peak_power_w",    label: "Peak Power (W)",              isJsonb: false, group: "Direct" },
-    { key: "time_to_peak_s",  label: "Time to Peak (s)",            isJsonb: false, group: "Direct" },
-    { key: "rpd_max_w_per_s", label: "Max Rate of Power Dev (W/s)", isJsonb: false, group: "Direct" },
-    { key: "fwhm_s",          label: "FWHM (s)",                    isJsonb: false, group: "Direct" },
-    { key: "auc_j",           label: "AUC (J)",                     isJsonb: false, group: "Direct" },
-  ],
+  // Athletic Screen v2 (CMJ / DJ / PPU / SLV) - every metric and curve-shape column on the v2 tables
+  ...Object.fromEntries(
+    Object.entries(ATHLETIC_SCREEN_V2_VARIABLES).map(([table, vars]) => [table, vars.map((v) => ({ ...v, isJsonb: false }))]),
+  ),
   athletic_screen_nmt: [
     { key: "num_taps_10s", label: "Taps in First 10s",  isJsonb: false, group: "Direct" },
     { key: "num_taps_20s", label: "Taps in First 20s",  isJsonb: false, group: "Direct" },
     { key: "num_taps_30s", label: "Taps in First 30s",  isJsonb: false, group: "Direct" },
     { key: "num_taps",     label: "Total Taps",          isJsonb: false, group: "Direct" },
-  ],
-  athletic_screen_ppu: [
-    { key: "jh_in",           label: "Jump Height (in)",            isJsonb: false, group: "Direct" },
-    { key: "peak_power",      label: "Peak Power (normalized)",      isJsonb: false, group: "Direct" },
-    { key: "pp_w_per_kg",     label: "Peak Power (W/kg)",           isJsonb: false, group: "Direct" },
-    { key: "peak_power_w",    label: "Peak Power (W)",              isJsonb: false, group: "Direct" },
-    { key: "time_to_peak_s",  label: "Time to Peak (s)",            isJsonb: false, group: "Direct" },
-    { key: "rpd_max_w_per_s", label: "Max Rate of Power Dev (W/s)", isJsonb: false, group: "Direct" },
-    { key: "fwhm_s",          label: "FWHM (s)",                    isJsonb: false, group: "Direct" },
-    { key: "auc_j",           label: "AUC (J)",                     isJsonb: false, group: "Direct" },
   ],
   mobility: [
     { key: "cervical_rotation",             label: "Cervical Rotation",                isJsonb: false, group: "Direct" },

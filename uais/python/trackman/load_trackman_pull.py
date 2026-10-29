@@ -240,8 +240,9 @@ class Resolver:
             self._athletes = self.q("SELECT athlete_uuid, name, normalized_name, date_of_birth::text AS dob FROM analytics.d_athletes "
                                     "WHERE normalized_name IS NOT NULL AND normalized_name <> ''")
         best, best_r = None, 0.0
+        from python.common.identity_matching import review_similarity
         for a in self._athletes:
-            r = self.am._name_similarity(normalized, a["normalized_name"])
+            r = review_similarity(normalized, a["normalized_name"])
             same_dob = bool(dob and a["dob"] and a["dob"] == dob)
             if (r >= REVIEW_SIMILARITY or (same_dob and r >= REVIEW_SIMILARITY_SAME_DOB)) and r > best_r:
                 best, best_r = a, r

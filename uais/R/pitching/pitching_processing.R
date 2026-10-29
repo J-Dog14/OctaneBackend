@@ -1439,14 +1439,15 @@ process_all_files <- function(data_root = NULL) {
           athlete_info$uid <- athlete_uuid
           log_progress("  [WAREHOUSE] Got/created athlete UUID for", athlete_name, ":", athlete_uuid)
         }, error = function(e) {
-          err_msg <- conditionMessage(e)
-          log_progress("  [WARNING] Failed to get UUID from warehouse:", err_msg)
-          cat("  [ERROR] get_or_create_athlete (Python) failed:\n", err_msg, "\n", sep = "")
-          cat("  Falling back to local UUID. No data will be written for this athlete until the error above is fixed and you re-run.\n")
-          flush.console()
-          athlete_info$uid <- uuid::UUIDgenerate()
+          stop(paste0("Athlete identity resolution failed for '", athlete_name, "': ",
+                      conditionMessage(e), ". Import stopped; no fallback identity will be generated."),
+               call. = FALSE)
         })
       } else {
+        if (USE_WAREHOUSE) {
+          stop("Warehouse import requires the shared athlete manager; no fallback identity will be generated.",
+               call. = FALSE)
+        }
         # Fallback: Try to get UUID from app database by matching name
         normalized_name <- normalize_name_for_matching(athlete_name)
         matched_uuid <- get_uuid_by_name(athlete_name, uuid_map)
@@ -1463,6 +1464,7 @@ process_all_files <- function(data_root = NULL) {
       
       # Safety check: ensure uid was set
       if (!"uid" %in% names(athlete_info) || is.na(athlete_info$uid[1])) {
+        if (USE_WAREHOUSE) stop("Warehouse athlete UUID is missing; import stopped.", call. = FALSE)
         log_progress("  [ERROR] uid was not set for athlete", athlete_name, "- generating now")
         athlete_info$uid <- uuid::UUIDgenerate()
       }

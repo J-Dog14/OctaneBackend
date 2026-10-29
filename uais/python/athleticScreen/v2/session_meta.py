@@ -23,6 +23,17 @@ def _f(fields, tag):
     return el.text.strip() if el is not None and el.text else None
 
 
+def _email(fields):
+    """Accept the email field spellings used by old and new QTM templates."""
+    if fields is not None:
+        for child in fields:
+            tag = child.tag.rsplit("}", 1)[-1].lower().replace("-", "").replace("_", "")
+            value = (child.text or "").strip().lower()
+            if tag in ("email", "emailaddress") and "@" in value:
+                return value
+    return None
+
+
 def parse_session_xml(path):
     txt = _read_text(path)
     txt = re.sub(r"^<\?xml[^>]*\?>", "", txt.strip())
@@ -48,7 +59,7 @@ def parse_session_xml(path):
         subject_name=_f(sfields, "Name"), subject_id=_f(sfields, "ID"),
         height_m=num(_f(xfields, "Height") or _f(sfields, "Height")),
         weight_kg=num(_f(xfields, "Weight") or _f(sfields, "Weight")),
-        dob=_f(sfields, "DOB"), gender=_f(sfields, "Gender"), email=_f(sfields, "email"),
+        dob=_f(sfields, "DOB"), gender=_f(sfields, "Gender"), email=_email(sfields),
         creation_date=_f(xfields, "Creation_date") or _f(sfields, "Creation_date"),
         session_types=[(x.get("Type") or "").strip() for x in all_sess],
         measurement_session_type=meas_type,

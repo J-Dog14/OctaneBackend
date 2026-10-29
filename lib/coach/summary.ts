@@ -8,9 +8,10 @@ import { prisma } from "@/lib/db/prisma";
 import { getDb } from "@/lib/pitch-intel/db";
 import { getTrackingSessionDates } from "@/lib/athlete-tracking/sessionDates";
 import { programSummary } from "@/lib/coach/program";
+import { clientForAthlete } from "@/lib/client-hub/repository";
 import type { DomainId } from "@/lib/athlete-tracking/types";
 
-export type CoachTabId = "overview" | "pitching" | "biomechanics" | "hitting" | "assessments" | "mobility" | "prosup" | "curveball" | "readiness" | "proteus" | "program" | "throwing";
+export type CoachTabId = "overview" | "pitching" | "biomechanics" | "hitting" | "assessments" | "mobility" | "prosup" | "curveball" | "readiness" | "proteus" | "program" | "throwing" | "programManagement";
 
 export interface DataSource {
   id: string;
@@ -41,6 +42,8 @@ export interface CoachAthleteSummary {
   /** Session dates per tracking domain, newest first. */
   trackingDates: Partial<Record<DomainId, string[]>>;
   tabs: Record<CoachTabId, boolean>;
+  /** Client Hub record (coach.hub_clients), when this athlete has ever been on an 8ctane program. */
+  hubClient: { id: string; status: string; isActive: boolean } | null;
 }
 
 export interface ProSupSession {
@@ -125,9 +128,9 @@ export async function getCoachAthleteSummary(athleteUuid: string): Promise<Coach
   if (!a) return null;
 
   const conn = await getDb();
-  const [trackingDates, readiness, proSup, curveball, links, savant, trackman, reports, program] = await Promise.all([
+  const [trackingDates, readiness, proSup, curveball, links, savant, trackman, reports, program, hubClient] = await Promise.all([
     getTrackingSessionDates(athleteUuid),
-    prisma.f_readiness_screen.aggregate({ where: { athlete_uuid: athleteUuid }, _count: { _all: true }, _max: { session_date: true } }),
+    prisma.v_readiness_screen_sessions.aggregate({ where: { athlete_uuid: athleteUuid }, _count: { _all: true }, _max: { session_date: true } }),
     prisma.f_pro_sup.aggregate({ where: { athlete_uuid: athleteUuid }, _count: { _all: true }, _max: { session_date: true } }),
     prisma.f_curveball_test.aggregate({ where: { athlete_uuid: athleteUuid }, _count: { _all: true }, _max: { session_date: true } }),
     conn.query<{ source: string; throws: string | null; level: string | null; league: string | null }>(
@@ -148,6 +151,7 @@ export async function getCoachAthleteSummary(athleteUuid: string): Promise<Coach
     ).catch(pitchIntelMissing),
     // 8ctane app programs (App DB snapshot); missing snapshot → no Program tab.
     programSummary(athleteUuid).catch(() => ({ lift: 0, throwing: 0, lastLift: null, lastThrowing: null })),
+    clientForAthlete(athleteUuid).catch(() => null),
   ]);
 
   const sources: DataSource[] = [
@@ -201,7 +205,10 @@ export async function getCoachAthleteSummary(athleteUuid: string): Promise<Coach
       proteus: has("proteus"),
       program: has("program"),
       throwing: has("throwing"),
+      // Anyone in the Client Hub (active, paused or expired), so a returning client's history is one click away.
+      programManagement: !!hubClient,
     },
+    hubClient,
   };
 }
 

@@ -95,14 +95,12 @@ instead (`lib/pitch-intel/legacy/adapter.ts`), which answers in the same format:
   reviewed pitch types). Savant wins when both have the same date. Bullpens are
   not outings; they're on the Sessions page. His Trackman path has no pitch
   locations, so Locations is empty for Trackman-only outings.
-- `scoreArsenal`: graded here with **Octane's xArsenal engine**
-  (`lib/pitch-intel/xarsenal/`). `octane-engine.ts` is copied verbatim from
-  Octane's `services/xArsenal/scoreArsenal.ts` (benchmarks, curve, bonuses, caps,
-  labels) and is server-only. `score.ts` wraps it in the request/response Ryan's
-  dashboard expects (Statcast pitch codes, missing metrics dropped, estimated spin
-  efficiency, importance tiers, levers, batch). Set `PITCH_INTEL_XARSENAL_URL` to
-  use Ryan's Worker instead. After changing benchmarks in Octane, run
-  `node scripts/pitch-intel/sync-xarsenal.mjs ../Octane`.
+- `scoreArsenal`: **xArsenal v3 + 8-Stuff+**, graded by Ryan's 8ctane API Worker
+  (`https://8ctane-api.ryan-77b.workers.dev/?action=scoreArsenal`; override with
+  `PITCH_INTEL_XARSENAL_URL`). The 8-Stuff+ model is private to the Worker, so nothing is
+  graded locally any more. `lib/pitch-intel/xarsenal/worker.ts` batches requests, caches them
+  for 6 h and parses the response; the old v2 engine (`score.ts`, `octane-engine.ts`) is unused.
+  `npm run xa:check` prints a live response for the example in the rules PDF.
 - `analyze` (Season / Outing Insight): Claude, same request as his Code.gs, when
   `ANTHROPIC_API_KEY` is set (optional `PITCH_INTEL_AI_MODEL`, default `claude-sonnet-4-5`)
 - writes (add athlete, add/delete outing, bulk import): refused, and hidden by

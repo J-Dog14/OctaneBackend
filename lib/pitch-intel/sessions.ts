@@ -6,7 +6,7 @@
 
 import { getDb } from "./db";
 import { PITCH_LABELS, isPitchCode, type PitchCode } from "./pitch-types";
-import { scoreArsenalRequest, type XaResult } from "./xarsenal/score";
+import { gradeArsenals, xaLevel, type ArsenalGrade, type PitchGrade } from "./xarsenal/worker";
 
 /** Pitches of one type needed in a session to grade it (same as Ryan's per-outing grades). */
 export const SESSION_GRADE_MIN = 5;
@@ -25,12 +25,15 @@ export interface PitchTypeSummary {
   extension: number | null;
   relHeight: number | null;
   relSide: number | null;
+  /** Savant arm angle (degrees), when the source measures it. */
+  armAngle?: number | null;
   vaa: number | null;
   spinEfficiency: number | null;
   whiffPct: number | null;
   /** Swings behind whiffPct (Trackman sessions only; null on screenshot reports). */
   swings: number | null;
-  grade: { score: number; grade: string; subtype: string } | null;
+  /** xArsenal v3 (20-80) + 8-Stuff+, from Ryan's Worker. */
+  grade: PitchGrade | null;
 }
 
 export interface SessionSummary {
@@ -39,7 +42,7 @@ export interface SessionSummary {
   pitches: number;
   sourceFiles: string[];
   byType: PitchTypeSummary[];
-  arsenal: { score: number; grade: string; label: string; compLevel: string } | null;
+  arsenal: ArsenalGrade | null;
 }
 
 export interface ReportSummary {
@@ -59,43 +62,68 @@ export interface AthleteSessions {
   athlete: { athleteUuid: string; name: string; throws: "L" | "R" | null; level: string | null; hasSavant: boolean };
   sessions: SessionSummary[];
   reports: ReportSummary[];
+  /** Set when the xArsenal service couldn't be reached (grades are then missing). */
+  xaError: string | null;
 }
 
 const r1 = (v: unknown) => (v == null ? null : Math.round(Number(v) * 10) / 10);
 
-function grade(rows: PitchTypeSummary[], throws: "L" | "R" | null, level: string | null, minCount: number) {
-  const gradable = rows.filter((r) => r.pitchType !== "OTHER" && (r.count == null || r.count >= minCount) && r.velo != null);
-  if (!gradable.length) return { byKey: new Map<string, XaResult["pitches"][number]>(), arsenal: null };
-  const res = scoreArsenalRequest({
-    hand: throws ?? "R",
-    level: level ?? "",
-    veloWeighted: true,
-    pitches: gradable.map((r) => ({
-      key: r.pitchType,
-      code: r.pitchType,
-      velocity: r.velo,
-      spinRate: r.spinRate,
-      ivb: r.ivb,
-      // xArsenal takes HB in the right-handed convention and flips it for lefties itself.
-      hb: r.hbArm == null ? null : throws === "L" ? -r.hbArm : r.hbArm,
-      extension: r.extension,
-      vaa: r.vaa,
-      spinEfficiency: r.spinEfficiency,
-    })),
-  });
-  return {
-    byKey: new Map(res.pitches.map((p) => [p.key, p])),
-    arsenal: res.pitches.length ? { score: res.arsenalScore, grade: res.arsenalGrade, label: res.arsenalLabel, compLevel: res.compLevel } : null,
-  };
+export interface GradeGroup {
+  rows: PitchTypeSummary[];
+  throws: "L" | "R" | null;
+  level: string | null;
+  /** Pitches of a type needed to grade it (0 = grade every row with a velocity). */
+  minCount: number;
+  /** Savant's release_pos_x is catcher's view: -1 turns it into the pitcher's-right-positive side the Worker wants. */
+  relSideSign?: 1 | -1;
+  setArsenal: (a: ArsenalGrade | null) => void;
 }
 
-export function attachGrades(rows: PitchTypeSummary[], throws: "L" | "R" | null, level: string | null, minCount: number) {
-  const { byKey, arsenal } = grade(rows, throws, level, minCount);
-  for (const r of rows) {
-    const g = byKey.get(r.pitchType);
-    r.grade = g ? { score: g.score, grade: g.grade, subtype: g.subtype } : null;
+/**
+ * Grades several pitch-type tables (seasons, sessions, reports) with xArsenal v3 + 8-Stuff+
+ * in one call to Ryan's Worker. Returns an error message when the Worker can't be reached
+ * (every grade is then null), else null.
+ */
+export async function gradeGroups(groups: GradeGroup[]): Promise<string | null> {
+  const items = groups.map((g, i) => ({
+    id: String(i),
+    hand: (g.throws ?? "R") as "R" | "L",
+    level: xaLevel(g.level),
+    pitches: g.rows
+      .filter((r) => r.pitchType !== "OTHER" && (r.count == null || r.count >= g.minCount) && r.velo != null && r.ivb != null && r.hbArm != null)
+      .map((r) => ({
+        key: r.pitchType,
+        code: r.pitchType,
+        count: r.count,
+        velocity: r.velo!,
+        spinRate: r.spinRate,
+        ivb: r.ivb!,
+        // The Worker takes HB as measured (+ = pitcher's right) and mirrors lefties itself.
+        hb: g.throws === "L" ? -r.hbArm! : r.hbArm!,
+        extension: r.extension,
+        vaa: r.vaa,
+        armAngle: r.armAngle ?? null,
+        releaseHeight: r.relHeight,
+        releaseSide: r.relSide == null ? null : r.relSide * (g.relSideSign ?? 1),
+        spinEfficiency: r.spinEfficiency,
+      })),
+  }));
+  try {
+    const graded = await gradeArsenals(items);
+    groups.forEach((g, i) => {
+      const res = graded.get(String(i));
+      for (const r of g.rows) r.grade = res?.pitches.get(r.pitchType) ?? null;
+      g.setArsenal(res?.arsenal ?? null);
+    });
+    return null;
+  } catch (err) {
+    console.error("[xarsenal]", err);
+    for (const g of groups) {
+      for (const r of g.rows) r.grade = null;
+      g.setArsenal(null);
+    }
+    return err instanceof Error ? err.message : String(err);
   }
-  return arsenal;
 }
 
 export async function getAthleteSessions(athleteUuid: string): Promise<AthleteSessions | null> {
@@ -161,7 +189,6 @@ export async function getAthleteSessions(athleteUuid: string): Promise<AthleteSe
     });
   }
   const sessions = [...sessionMap.values()];
-  for (const s of sessions) s.arsenal = attachGrades(s.byType, throws, level, SESSION_GRADE_MIN);
 
   // Screenshot reports
   const reportRows = await conn.query<{
@@ -181,7 +208,7 @@ export async function getAthleteSessions(athleteUuid: string): Promise<AthleteSe
         reportRows.map((r) => r.id),
       )
     : [];
-  const reports: ReportSummary[] = reportRows.map((rep) => {
+  const reports: Array<ReportSummary & { throws: "L" | "R" | null }> = reportRows.map((rep) => {
     const repThrows = rep.throws === "L" || rep.throws === "R" ? rep.throws : throws;
     const byType: PitchTypeSummary[] = pitchRows
       .filter((p) => p.report_id === rep.id)
@@ -217,14 +244,25 @@ export async function getAthleteSessions(athleteUuid: string): Promise<AthleteSe
       notes: rep.notes,
       createdAt: rep.created_at,
       byType,
-      // Reports often have no pitch counts; grade every row that has a velocity.
-      arsenal: attachGrades(byType, repThrows, rep.level || level, 0),
+      arsenal: null,
+      throws: repThrows,
     };
   });
+
+  const xaError = await gradeGroups([
+    ...sessions.map((s): GradeGroup => ({ rows: s.byType, throws, level, minCount: SESSION_GRADE_MIN, setArsenal: (a) => (s.arsenal = a) })),
+    // Reports often have no pitch counts; grade every row that has a velocity.
+    ...reports.map((r): GradeGroup => ({ rows: r.byType, throws: r.throws, level: r.level || level, minCount: 0, setArsenal: (a) => (r.arsenal = a) })),
+  ]);
 
   return {
     athlete: { athleteUuid, name: athleteRows[0].name, throws, level, hasSavant: !!savant },
     sessions,
-    reports,
+    reports: reports.map((r) => {
+      const { throws: _drop, ...rest } = r;
+      void _drop;
+      return rest;
+    }),
+    xaError,
   };
 }

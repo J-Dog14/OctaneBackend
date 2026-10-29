@@ -134,8 +134,8 @@ async function _getRecentAthletes(limit: number): Promise<RecentAthlete[]> {
     FROM analytics.d_athletes a
     LEFT JOIN (
       SELECT athlete_uuid, MAX(created_at) AS latest_insert FROM public.f_pitching_trials    GROUP BY athlete_uuid UNION ALL
-      SELECT athlete_uuid, MAX(created_at) AS latest_insert FROM public.f_athletic_screen     GROUP BY athlete_uuid UNION ALL
-      SELECT athlete_uuid, MAX(created_at) AS latest_insert FROM public.f_readiness_screen    GROUP BY athlete_uuid UNION ALL
+      SELECT athlete_uuid, MAX(created_at) AS latest_insert FROM public.v_athletic_screen_sessions GROUP BY athlete_uuid UNION ALL
+      SELECT athlete_uuid, MAX(created_at) AS latest_insert FROM public.v_readiness_screen_sessions GROUP BY athlete_uuid UNION ALL
       SELECT athlete_uuid, MAX(created_at) AS latest_insert FROM public.f_mobility            GROUP BY athlete_uuid UNION ALL
       SELECT athlete_uuid, MAX(created_at) AS latest_insert FROM public.f_proteus             GROUP BY athlete_uuid UNION ALL
       SELECT athlete_uuid, MAX(created_at) AS latest_insert FROM public.f_arm_action          GROUP BY athlete_uuid UNION ALL

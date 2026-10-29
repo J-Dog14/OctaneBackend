@@ -44,22 +44,22 @@ export async function buildAthleticScreenPayload(
     resolvedSessionDate = new Date(sessionDate);
   } else {
     const [latestCmj, latestDj, latestPpu, latestSlv] = await Promise.all([
-      prisma.f_athletic_screen_cmj.findFirst({
+      prisma.v_athletic_screen_cmj.findFirst({
         where: { athlete_uuid: athleteUuid },
         orderBy: [{ session_date: "desc" }, { created_at: "desc" }],
         select: { session_date: true },
       }),
-      prisma.f_athletic_screen_dj.findFirst({
+      prisma.v_athletic_screen_dj.findFirst({
         where: { athlete_uuid: athleteUuid },
         orderBy: [{ session_date: "desc" }, { created_at: "desc" }],
         select: { session_date: true },
       }),
-      prisma.f_athletic_screen_ppu.findFirst({
+      prisma.v_athletic_screen_ppu.findFirst({
         where: { athlete_uuid: athleteUuid },
         orderBy: [{ session_date: "desc" }, { created_at: "desc" }],
         select: { session_date: true },
       }),
-      prisma.f_athletic_screen_slv.findFirst({
+      prisma.v_athletic_screen_slv.findFirst({
         where: { athlete_uuid: athleteUuid },
         orderBy: [{ session_date: "desc" }, { created_at: "desc" }],
         select: { session_date: true },
@@ -80,7 +80,7 @@ export async function buildAthleticScreenPayload(
   }
 
   const [cmjRows, djRows, ppuRows, slvRows] = await Promise.all([
-    prisma.f_athletic_screen_cmj.findMany({
+    prisma.v_athletic_screen_cmj.findMany({
       where: { athlete_uuid: athleteUuid, session_date: resolvedSessionDate },
       select: {
         jh_in: true,
@@ -91,7 +91,7 @@ export async function buildAthleticScreenPayload(
         time_to_rpd_max_s: true,
       },
     }),
-    prisma.f_athletic_screen_dj.findMany({
+    prisma.v_athletic_screen_dj.findMany({
       where: { athlete_uuid: athleteUuid, session_date: resolvedSessionDate },
       select: {
         jh_in: true,
@@ -104,7 +104,7 @@ export async function buildAthleticScreenPayload(
         ct: true,
       },
     }),
-    prisma.f_athletic_screen_ppu.findMany({
+    prisma.v_athletic_screen_ppu.findMany({
       where: { athlete_uuid: athleteUuid, session_date: resolvedSessionDate },
       select: {
         jh_in: true,
@@ -115,7 +115,7 @@ export async function buildAthleticScreenPayload(
         time_to_rpd_max_s: true,
       },
     }),
-    prisma.f_athletic_screen_slv.findMany({
+    prisma.v_athletic_screen_slv.findMany({
       where: { athlete_uuid: athleteUuid, session_date: resolvedSessionDate },
       select: {
         side: true,

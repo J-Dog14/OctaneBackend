@@ -10,7 +10,7 @@ const DOMAIN_TABLES: Record<DomainId, string[]> = {
   pitching: ["public.f_pitching_trials", "public.f_kinematics_pitching"],
   hitting: ["public.f_kinematics_hitting"],
   armAction: ["public.f_arm_action"],
-  athleticScreen: ["public.f_athletic_screen_cmj", "public.f_athletic_screen_dj", "public.f_athletic_screen_ppu", "public.f_athletic_screen_slv"],
+  athleticScreen: ["public.v_athletic_screen_cmj", "public.v_athletic_screen_dj", "public.v_athletic_screen_ppu", "public.v_athletic_screen_slv"],
   mobility: ["public.f_mobility"], proteus: ["public.f_proteus"],
 };
 const PITCH_TABLES = ["pitch_intel.savant_pitches", "pitch_intel.trackman_pitches", "pitch_intel.aggregate_reports"];
@@ -37,7 +37,7 @@ export async function athleteDataFilter(scope: ComparisonScope, domain?: DomainI
     case "proteus": tables = DOMAIN_TABLES.proteus; break;
     case "prosup": tables = ["public.f_pro_sup"]; break;
     case "curveball": tables = ["public.f_curveball_test"]; break;
-    case "readiness": tables = ["public.f_readiness_screen"]; break;
+    case "readiness": tables = ["public.v_readiness_screen_sessions"]; break;
     default: return Prisma.sql`TRUE`;
   }
   if (!tables.length) return Prisma.sql`FALSE`;

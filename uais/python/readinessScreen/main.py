@@ -12,6 +12,14 @@ python_dir = project_root / "python"
 if str(python_dir) not in sys.path:
     sys.path.insert(0, str(python_dir))
 
+if __name__ == "__main__":
+    # Ingest: the legacy Visual3D / Readiness Output Files pipeline is retired (its CMJ/PPU power was
+    # wrong). Every ingest goes through the Readiness Screen v2 c3d pipeline, which writes only
+    # f_readiness_screen_v2_* and scores the new sessions. Routed before the legacy imports below.
+    # See v2/ingest.py and v2/README.md.
+    from v2.ingest import main as v2_ingest_main
+    sys.exit(v2_ingest_main())
+
 from common.config import get_raw_paths
 from common.units import inches_to_meters
 from common.age_utils import (
@@ -237,6 +245,9 @@ def upsert_grip(athlete_uuid: str, session_date, left_kg: float, right_kg: float
 
 
 def process_txt_files(output_path: str, athlete_uuid: str = None, profile: dict = None):
+    raise RuntimeError(
+        "Legacy Readiness Screen ingest (Visual3D Output Files -> f_readiness_screen_*) is retired. "
+        "Use v2/ingest.py (main.py now routes ingest there).")
     """
     Process all txt files from Output Files directory and insert into PostgreSQL.
     Extracts name and date from first line of each txt file (like Athletic Screen).
@@ -833,5 +844,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main()   # not reached when run as a script - see the v2 routing at the top of this file
 

@@ -4,7 +4,8 @@ Athletic Screen v2 - Phase B: match athletes and load the scan into NEW tables.
 
 Reads the Phase A output (tmp/screen_v2 by default). Writes ONLY to
 public.f_athletic_screen_v2_* and public.f_athletic_screen_v2_force_curve.
-Never writes d_athletes or the old f_athletic_screen_* tables, never touches the App DB.
+Fills missing d_athletes.email for confidently matched athletes. Never touches the App DB
+or the old f_athletic_screen_* tables.
 
 Athlete matching (read-only lookups), first hit wins, disagreements -> review:
   1. existing_session  old screen rows on the same date whose source_athlete_id
@@ -35,6 +36,7 @@ sys.path.insert(0, str(HERE.parent))
 sys.path.insert(0, str(UAIS))
 
 from v2 import schema                                                       # noqa: E402
+from v2.profile_emails import fill_missing_emails                             # noqa: E402
 from python.common.athlete_manager import (get_warehouse_connection,       # noqa: E402
                                            normalize_name_for_matching, normalize_email)
 from python.common.age_utils import calculate_age_group                    # noqa: E402
@@ -229,6 +231,9 @@ def main():
     try:
         with conn.cursor() as cur:
             cur.execute(schema.create_sql())
+        loaded = {uuid for df in frames.values() for uuid in df.athlete_uuid}
+        filled, email_review = fill_missing_emails(conn, m[m.athlete_uuid.isin(loaded)].to_dict("records"))
+        print(f"  filled {len(filled)} missing profile emails; {len(email_review)} need email review")
         for mv, df in frames.items():
             n = upsert(conn, schema.TABLE.format(mv), df, schema.trial_columns(mv), schema.UNIQUE_KEY)
             print(f"  upserted {n} -> {schema.TABLE.format(mv)}")

@@ -29,16 +29,16 @@ export async function getTrackingSessionDates(athleteUuid: string): Promise<Doma
       FROM public.f_mobility WHERE athlete_uuid = ${athleteUuid}
     UNION
     SELECT 'athleticScreen', session_date::text
-      FROM public.f_athletic_screen_cmj WHERE athlete_uuid = ${athleteUuid}
+      FROM public.v_athletic_screen_cmj WHERE athlete_uuid = ${athleteUuid}
     UNION
     SELECT 'athleticScreen', session_date::text
-      FROM public.f_athletic_screen_dj WHERE athlete_uuid = ${athleteUuid}
+      FROM public.v_athletic_screen_dj WHERE athlete_uuid = ${athleteUuid}
     UNION
     SELECT 'athleticScreen', session_date::text
-      FROM public.f_athletic_screen_ppu WHERE athlete_uuid = ${athleteUuid}
+      FROM public.v_athletic_screen_ppu WHERE athlete_uuid = ${athleteUuid}
     UNION
     SELECT 'athleticScreen', session_date::text
-      FROM public.f_athletic_screen_slv WHERE athlete_uuid = ${athleteUuid}
+      FROM public.v_athletic_screen_slv WHERE athlete_uuid = ${athleteUuid}
     UNION
     SELECT 'armAction', session_date::text
       FROM public.f_arm_action WHERE athlete_uuid = ${athleteUuid}

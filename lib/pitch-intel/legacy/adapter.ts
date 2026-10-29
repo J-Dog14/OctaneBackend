@@ -8,8 +8,8 @@
  *                              plus uploaded Trackman games (parseTrackmanBulk on the original rows
  *                              in pitch_intel.trackman_pitches, with the reviewed pitch types).
  *                              Savant wins when both have the same date. Bullpens stay out (Sessions page).
- *   scoreArsenal            -> graded here with Octane's xArsenal engine (or his Worker if
- *                              PITCH_INTEL_XARSENAL_URL is set)
+ *   scoreArsenal            -> passed through to Ryan's Worker (xArsenal v3 + 8-Stuff+);
+ *                              PITCH_INTEL_XARSENAL_URL overrides the Worker URL
  *   analyze                 -> Claude, same request as his Code.gs, if ANTHROPIC_API_KEY is set
  *   anything that writes    -> refused (data comes from the nightly pulls)
  *
@@ -249,20 +249,16 @@ export async function getOutings(athleteId: string | undefined) {
 // ---------------------------------------------------------------------------
 
 /**
- * xArsenal grades. Computed here with Octane's engine (lib/pitch-intel/xarsenal).
- * Set PITCH_INTEL_XARSENAL_URL to use Ryan's Worker instead (e.g. to compare).
+ * xArsenal v3 + 8-Stuff+ grades: passed straight through to Ryan's Worker (the one place
+ * every 8ctane app is graded). PITCH_INTEL_XARSENAL_URL overrides the Worker URL.
  */
 async function scoreArsenal(body: Record<string, unknown>) {
   const { action: _ignored, ...payload } = body;
   void _ignored;
-  const url = process.env.PITCH_INTEL_XARSENAL_URL;
-  if (!url) {
-    const { scoreArsenalBody } = await import("../xarsenal/score");
-    return scoreArsenalBody(payload);
-  }
-  const res = await fetch(`${url.replace(/\/+$/, "")}/?action=scoreArsenal`, {
+  const { xarsenalUrl } = await import("../xarsenal/worker");
+  const res = await fetch(`${xarsenalUrl()}/?action=scoreArsenal`, {
     method: "POST",
-    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
     cache: "no-store",
   });

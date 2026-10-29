@@ -11,6 +11,9 @@
     "test:coach-comparison": "node --test tests/coach-comparison.test.cjs",
     "test:coach-comparison:db": "node --test tests/coach-comparison-db.integration.cjs",
     "test:populations": "node --test tests/population-snapshots.test.cjs",
+    "test:client-hub": "npx --yes tsx --test tests/client-hub.test.ts",
+    "hub:setup": "prisma db execute --file uais/sql/create_coach_client_hub.sql --schema prisma/schema.prisma",
+    "hub:sync": "npx --yes tsx scripts/client-hub/sync.ts",
     "test:populations:db": "node --test tests/population-db.integration.cjs",
     "populations:setup": "prisma db execute --file prisma/migrations/20261014000000_coach_population_snapshots/migration.sql --schema prisma/schema.prisma",
     "populations:refresh": "npx --yes tsx scripts/percentiles/refresh.ts",
@@ -26,7 +29,8 @@
     "pi:nightly": "npx --yes tsx scripts/pitch-intel/cli.ts nightly",
     "pi:unlink": "npx --yes tsx scripts/pitch-intel/cli.ts unlink",
     "pi:list": "npx --yes tsx scripts/pitch-intel/cli.ts list",
-    "pi:runs": "npx --yes tsx scripts/pitch-intel/cli.ts runs"
+    "pi:runs": "npx --yes tsx scripts/pitch-intel/cli.ts runs",
+    "xa:check": "npx --yes tsx scripts/pitch-intel/xa-check.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1007.0",

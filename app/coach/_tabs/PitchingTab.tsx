@@ -5,7 +5,7 @@ import useSWR from "swr";
 import { Alert, Badge, Button, Group, Loader, Paper, ScrollArea, SegmentedControl, Select, Stack, Table, Text } from "@mantine/core";
 import type { ArsenalSnapshot, CoachPitching } from "@/lib/coach/pitching";
 import { fmt, fmtDate, pitchingKey, swrOpts } from "../_components/fetcher";
-import { ArsenalBadge, MovementPlot, PitchTypeTable, WHIFF_MIN_SWINGS } from "../_components/pitching";
+import { ArsenalBadge, ArsenalMoves, MovementPlot, PitchTypeTable, WHIFF_MIN_SWINGS } from "../_components/pitching";
 import { PitchReport } from "../_components/pitchReport";
 import { MetricTrends } from "../_components/metricTrends";
 import { SectionHead } from "./shared";
@@ -42,6 +42,7 @@ function ArsenalView({ d }: { d: CoachPitching }) {
   const options = all.map((s) => ({ value: s.key, label: s.label }));
   return (
     <Stack gap="md">
+      {d.xaError && <Alert color="yellow">xArsenal / 8-Stuff+ grades are unavailable right now ({d.xaError}). Pitch data below is unaffected.</Alert>}
       <Group gap="sm" align="flex-end">
         <Select label="Showing" data={options} value={cur.key} onChange={setKey} w={380} allowDeselect={false} />
         <Select label="Compare with" data={options.filter((o) => o.value !== cur.key)} value={compareKey} onChange={setCompareKey} w={380} clearable placeholder="Optional" />
@@ -55,6 +56,7 @@ function ArsenalView({ d }: { d: CoachPitching }) {
           </Group>
         </Group>
         <MovementPlot sets={cmp ? [{ name: cur.label, rows: cur.byType, throws: d.athlete.throws }, { name: cmp.label, rows: cmp.byType, throws: d.athlete.throws }] : [{ name: cur.label, rows: cur.byType, throws: d.athlete.throws }]} />
+        <ArsenalMoves arsenal={cur.arsenal} />
       </div>
       <div className="card" style={{ marginBottom: 0 }}>
         <SectionHead title={cur.label} sub="HB arm-side positive · IVB and HB in inches" />
@@ -67,7 +69,7 @@ function ArsenalView({ d }: { d: CoachPitching }) {
           </>
         )}
         <Text size="xs" c="dimmed" mt="xs">
-          Grades: xArsenal, 5+ pitches of a type per session (10+ per Savant season). Whiff% marked * rests on fewer than {WHIFF_MIN_SWINGS} swings.
+          xArsenal v3 (20-80, 50 = MLB average for that shape) and 8-Stuff+ (100 = average MLB pitch), graded by the 8ctane API; 5+ pitches of a type per session (10+ per Savant season). Whiff% marked * rests on fewer than {WHIFF_MIN_SWINGS} swings.
         </Text>
       </div>
     </Stack>

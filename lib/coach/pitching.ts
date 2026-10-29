@@ -12,8 +12,8 @@
 import { getDb } from "@/lib/pitch-intel/db";
 import { PITCH_LABELS, isPitchCode, type PitchCode } from "@/lib/pitch-intel/pitch-types";
 import {
-  attachGrades,
   getAthleteSessions,
+  gradeGroups,
   type AthleteSessions,
   type PitchTypeSummary,
   type ReportSummary,
@@ -83,6 +83,8 @@ export interface CoachPitching {
    * this database yet (`npm run pi:setup` adds them). Savant data still shows.
    */
   uploadTablesMissing: boolean;
+  /** Set when xArsenal (Ryan's Worker) couldn't be reached; grades are then missing. */
+  xaError: string | null;
 }
 
 const MISSING_RELATION = /42P01|relation "pitch_intel\.[a-z_]+" does not exist/;
@@ -111,6 +113,7 @@ async function sessionsWithoutUploads(athleteUuid: string): Promise<AthleteSessi
     },
     sessions: [],
     reports: [],
+    xaError: null,
   };
 }
 
@@ -127,12 +130,12 @@ const VAA = `degrees(atan(
     (vz0 + az * ((-sqrt(greatest(vy0 * vy0 - 2 * ay * (50 - 17.0 / 12), 0)) - vy0) / nullif(ay, 0)))
     / nullif(abs(-sqrt(greatest(vy0 * vy0 - 2 * ay * (50 - 17.0 / 12), 0))), 0)))`;
 
-async function savantSeasons(athleteUuid: string, throws: "L" | "R" | null, level: string | null): Promise<SavantSeason[]> {
+async function savantSeasons(athleteUuid: string): Promise<SavantSeason[]> {
   const conn = await getDb();
   const rows = await conn.query<{
     season: number; pitch_type: string; n: number; total: number; first_date: string; last_date: string;
     velo: number | null; velo_max: number | null; spin: number | null; ivb: number | null; hb_arm: number | null;
-    ext: number | null; rel_h: number | null; rel_s: number | null; vaa: number | null; swings: number; whiffs: number;
+    ext: number | null; rel_h: number | null; rel_s: number | null; arm: number | null; vaa: number | null; swings: number; whiffs: number;
   }>(
     `SELECT game_year::int AS season, pitch_type, count(*)::int AS n,
             (sum(count(*)) OVER (PARTITION BY game_year))::int AS total,
@@ -142,7 +145,7 @@ async function savantSeasons(athleteUuid: string, throws: "L" | "R" | null, leve
             avg(pfx_z) * 12 AS ivb,
             avg(CASE WHEN p_throws = 'L' THEN pfx_x ELSE -pfx_x END) * 12 AS hb_arm,
             avg(release_extension) AS ext, avg(release_pos_z) AS rel_h, avg(release_pos_x) AS rel_s,
-            avg(${VAA}) AS vaa,
+            avg(arm_angle) AS arm, avg(${VAA}) AS vaa,
             count(*) FILTER (WHERE ${SWING})::int AS swings,
             count(*) FILTER (WHERE ${WHIFF})::int AS whiffs
        FROM pitch_intel.savant_pitches
@@ -188,6 +191,7 @@ async function savantSeasons(athleteUuid: string, throws: "L" | "R" | null, leve
       extension: r1(r.ext),
       relHeight: r1(r.rel_h),
       relSide: r1(r.rel_s),
+      armAngle: r1(r.arm),
       vaa: r1(r.vaa),
       spinEfficiency: null,
       whiffPct: r.swings ? r1((r.whiffs / r.swings) * 100) : null,
@@ -195,9 +199,7 @@ async function savantSeasons(athleteUuid: string, throws: "L" | "R" | null, leve
       grade: null,
     });
   }
-  const seasons = [...map.values()];
-  for (const s of seasons) s.arsenal = attachGrades(s.byType, throws, level, SEASON_GRADE_MIN);
-  return seasons;
+  return [...map.values()];
 }
 
 async function savantGames(athleteUuid: string): Promise<SavantGame[]> {
@@ -286,7 +288,15 @@ export async function getCoachPitching(athleteUuid: string): Promise<CoachPitchi
   ]);
   if (!base) return null;
   const { throws, level } = base.athlete;
-  const seasons = await savantSeasons(athleteUuid, throws, level);
+  const seasons = await savantSeasons(athleteUuid);
+  const seasonXaError = await gradeGroups(
+    seasons.map((s) => ({
+      rows: s.byType, throws, level, minCount: SEASON_GRADE_MIN,
+      // Savant release_pos_x is catcher's view; the Worker wants + = pitcher's right.
+      relSideSign: -1 as const,
+      setArsenal: (a) => (s.arsenal = a),
+    })),
+  );
 
   const trackmanVelo: VeloPoint[] = [];
   for (const s of base.sessions) {
@@ -310,5 +320,6 @@ export async function getCoachPitching(athleteUuid: string): Promise<CoachPitchi
     velo,
     latest: pickLatest(seasons, base.sessions, base.reports),
     uploadTablesMissing,
+    xaError: base.xaError ?? seasonXaError,
   };
 }

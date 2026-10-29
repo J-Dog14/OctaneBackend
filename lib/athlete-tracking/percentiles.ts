@@ -168,12 +168,12 @@ const getCachedAthleticScreenPopulation = definePopulation(
 const getCachedAthleticScreenPopulationFemale = definePopulation(
   "population-athletic-screen-female",
   async () => {
-    const rows = await prisma.f_athletic_screen_cmj.findMany({
-      where: { d_athletes: { gender: "Female" } },
-      select: { athlete_uuid: true },
-      distinct: ["athlete_uuid"],
-      take: POPULATION_LIMIT,
-    });
+    const rows = await prisma.$queryRaw<Array<{ athlete_uuid: string }>>`
+      SELECT DISTINCT v.athlete_uuid
+        FROM public.v_athletic_screen_cmj v
+        JOIN analytics.d_athletes d ON d.athlete_uuid = v.athlete_uuid
+       WHERE d.gender = 'Female'
+       LIMIT ${POPULATION_LIMIT}`;
     const uuids = rows.map((r) => r.athlete_uuid);
     return getPopulationPayloads(uuids, async (uuid) => {
       const p = await buildAthleticScreenPayload(uuid);
@@ -317,7 +317,7 @@ export async function getMobilityWithPercentiles(
 }
 
 async function getAthleteUuidsWithAthleticScreen(): Promise<string[]> {
-  const rows = await prisma.f_athletic_screen_cmj.findMany({
+  const rows = await prisma.v_athletic_screen_cmj.findMany({
     select: { athlete_uuid: true },
     distinct: ["athlete_uuid"],
     take: POPULATION_LIMIT,

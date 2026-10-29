@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
 import { Alert, Badge, Box, Button, Group, Loader, Paper, ScrollArea, SegmentedControl, Select, Stack, Table, Text, Title, Tooltip } from "@mantine/core";
-import type { AthleteSessions, PitchTypeSummary, SessionSummary } from "@/lib/pitch-intel/sessions";
+import { ArsenalBadge, PitchGradeBadge, StuffPlusBadge } from "@/app/coach/_components/pitching";
+import type { AthleteSessions, PitchTypeSummary } from "@/lib/pitch-intel/sessions";
 import type { LinkWithStatus } from "@/lib/pitch-intel/db";
 import { PITCH_COLORS } from "@/lib/pitch-intel/pitch-types";
 
@@ -29,23 +30,7 @@ const WHIFF_MIN_SWINGS = 30;
 
 const fmt = (v: number | null | undefined, digits = 1) => (v == null ? "—" : v.toFixed(digits));
 
-/** Colors follow the letter grade the xArsenal engine returns. */
-function gradeColor(grade: string | null | undefined): string {
-  const g = (grade ?? "").trim().charAt(0).toUpperCase();
-  return g === "A" ? "green" : g === "B" ? "teal" : g === "C" ? "yellow" : g === "D" || g === "F" ? "red" : "gray";
-}
-
-function ArsenalBadge({ arsenal }: { arsenal: SessionSummary["arsenal"] }) {
-  if (!arsenal) return null;
-  return (
-    <Tooltip label={`xArsenal ${arsenal.score} · graded against ${arsenal.compLevel}`}>
-      <Badge color={gradeColor(arsenal.grade)} variant="light" size="lg">
-        Arsenal {arsenal.grade} · {arsenal.label}
-      </Badge>
-    </Tooltip>
-  );
-}
-
+// xArsenal v3 + 8-Stuff+ badges are shared with the coach suite.
 function TypeTable({ rows, minCount }: { rows: PitchTypeSummary[]; minCount: number }) {
   const showWhiff = rows.some((r) => r.whiffPct != null);
   const showVaa = rows.some((r) => r.vaa != null);
@@ -66,7 +51,7 @@ function TypeTable({ rows, minCount }: { rows: PitchTypeSummary[]; minCount: num
             {showVaa && <Table.Th ta="right">VAA</Table.Th>}
             <Table.Th ta="right">Spin eff</Table.Th>
             {showWhiff && <Table.Th ta="right">Whiff/swing</Table.Th>}
-            <Table.Th ta="right">Grade</Table.Th>
+            <Table.Th ta="right">xArsenal · 8-Stuff+</Table.Th>
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
@@ -107,11 +92,10 @@ function TypeTable({ rows, minCount }: { rows: PitchTypeSummary[]; minCount: num
                 )}
                 <Table.Td ta="right">
                   {r.grade ? (
-                    <Tooltip label={`${r.grade.subtype} · ${r.grade.score}`}>
-                      <Badge color={gradeColor(r.grade.grade)} variant="light">
-                        {r.grade.grade}
-                      </Badge>
-                    </Tooltip>
+                    <Group gap={4} justify="flex-end" wrap="nowrap">
+                      <PitchGradeBadge grade={r.grade} />
+                      <StuffPlusBadge grade={r.grade} />
+                    </Group>
                   ) : small ? (
                     <Text span size="xs" c="dimmed">
                       &lt;{minCount}

@@ -46,10 +46,10 @@ const sessionDateQuery = (athleteUuid: string) =>
 async function athleticScreenSessions(athleteUuid: string): Promise<SessionDetail[]> {
   const q = sessionDateQuery(athleteUuid);
   const [dj, cmj, ppu, slv] = await Promise.all([
-    prisma.f_athletic_screen_dj.findMany(q),
-    prisma.f_athletic_screen_cmj.findMany(q),
-    prisma.f_athletic_screen_ppu.findMany(q),
-    prisma.f_athletic_screen_slv.findMany(q),
+    prisma.v_athletic_screen_dj.findMany(q),
+    prisma.v_athletic_screen_cmj.findMany(q),
+    prisma.v_athletic_screen_ppu.findMany(q),
+    prisma.v_athletic_screen_slv.findMany(q),
   ]);
 
   const byDate = new Map<string, string[]>();

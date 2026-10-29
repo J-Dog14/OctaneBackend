@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import useSWR from "swr";
-import { Badge, Group } from "@mantine/core";
+import { Badge, Group, SegmentedControl } from "@mantine/core";
 import { UserButton } from "@clerk/nextjs";
 import type { CoachAthleteSummary } from "@/lib/coach/summary";
 import { useIsAdmin } from "./CoachGuard";
@@ -20,6 +20,7 @@ export function CoachHeader() {
   const isAdmin = useIsAdmin();
   const current = pathname.match(/^\/coach\/athletes\/([A-Za-z0-9-]{1,64})/)?.[1] ?? null;
   const { data } = useSWR<CoachAthleteSummary>(current ? summaryKey(current) : null, swrOpts);
+  const section = pathname.startsWith("/coach/clients") ? "clients" : "athletes";
 
   return (
     <Group h="100%" px="md" gap="lg" wrap="nowrap" justify="space-between">
@@ -27,6 +28,16 @@ export function CoachHeader() {
         <Link href="/coach?browse=1" style={{ color: "var(--text-primary)", textDecoration: "none", fontWeight: 700, fontSize: "1.1rem", whiteSpace: "nowrap" }}>
           8ctane <span style={{ color: "var(--accent)" }}>Coach</span>
         </Link>
+        {/* Two sections: athlete data (assessments, pitching, programs) and the Client Hub (program management). */}
+        <SegmentedControl
+          size="xs"
+          value={section}
+          onChange={(v) => router.push(v === "clients" ? "/coach/clients" : current ? `/coach/athletes/${current}` : "/coach")}
+          data={[
+            { value: "athletes", label: "Athlete Data" },
+            { value: "clients", label: "Client Hub" },
+          ]}
+        />
         <AthleteSearchSelect
           // Remount per athlete so the box shows the new name, not the old search text.
           key={`${current ?? "none"}:${data ? 1 : 0}`}

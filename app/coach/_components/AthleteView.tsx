@@ -31,6 +31,7 @@ const ProteusTab = dynamic(() => import("../_tabs/ProteusTab").then((m) => m.Pro
 const ProgramTab = dynamic(() => import("../_tabs/ProgramTab").then((m) => m.ProgramTab), { loading: () => <Loader size="sm" /> });
 const HittingTab = dynamic(() => import("../_tabs/HittingTab").then((m) => m.HittingTab), { loading: () => <Loader size="sm" /> });
 const ThrowingTab = dynamic(() => import("../_tabs/ThrowingTab").then((m) => m.ThrowingTab), { loading: () => <Loader size="sm" /> });
+const ProgramManagementTab = dynamic(() => import("../_tabs/ProgramManagementTab").then((m) => m.ProgramManagementTab), { loading: () => <Loader size="sm" /> });
 
 type TabId = CoachTabId | "compare";
 
@@ -47,6 +48,8 @@ const TABS: Array<{ id: CoachTabId; label: string }> = [
   { id: "proteus", label: "Proteus" },
   { id: "program", label: "Program Lift" },
   { id: "throwing", label: "Program Throwing" },
+  // Athletes in the Client Hub (summary.tabs.programManagement): their client page.
+  { id: "programManagement", label: "Program Management" },
 ];
 
 const MAX_COMPARE = 3; // plus the athlete on the page
@@ -324,6 +327,9 @@ function AthleteViewInner({ athleteUuid }: { athleteUuid: string }) {
           </Tabs.Panel>
           <Tabs.Panel value="throwing">
             <ThrowingTab athleteUuid={athleteUuid} />
+          </Tabs.Panel>
+          <Tabs.Panel value="programManagement">
+            <ProgramManagementTab summary={summary} />
           </Tabs.Panel>
           </>}
           {allVs.length > 0 && (
