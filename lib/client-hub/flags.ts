@@ -94,6 +94,8 @@ export interface ClientRow {
   oldestUpdateTone: Tone;
   updatesDue: boolean;
   onboardingMissing: OnboardingStep[];
+  /** Onboarding review ticked by a coach. */
+  reviewDone: boolean;
   lastAssessment: IsoDay | null;
   /** Mobility / Proteus / 3D / Athletic screen for the current (or latest) program. */
   checklist: ChecklistItem[];
@@ -153,6 +155,7 @@ export function buildRow(
     oldestUpdateTone: active ? updateAgeTone(oldest) : 'none',
     updatesDue: active && isUpdatesDue(c, today),
     onboardingMissing: active ? missingOnboarding(extra.onboarding) : [],
+    reviewDone: extra.onboarding.review,
     lastAssessment: extra.lastAssessment,
     checklist: extra.checklist,
     nextAssessmentDue: c.nextAssessmentDue,

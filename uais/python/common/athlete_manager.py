@@ -489,6 +489,16 @@ def _merge_athlete_into_canonical(source_uuid: str, target_uuid: str, conn) -> b
                     logger.info(f"Merged {cur.rowcount} row(s) from {table} into {target_uuid}")
             except Exception as e:
                 logger.warning(f"Error merging {table}: {e}")
+        # Video Hub clips (coach.athlete_videos, FK is ON DELETE RESTRICT): move them with the athlete.
+        # The 5-clip cap is only enforced on upload, so a merge can leave more than 5; coaches trim them.
+        try:
+            cur.execute("SELECT to_regclass('coach.athlete_videos') IS NOT NULL")
+            if cur.fetchone()[0]:
+                cur.execute('UPDATE coach.athlete_videos SET athlete_uuid = %s WHERE athlete_uuid = %s', (target_uuid, source_uuid))
+                if cur.rowcount > 0:
+                    logger.info(f"Merged {cur.rowcount} video(s) into {target_uuid}")
+        except Exception as e:
+            logger.warning(f"Error merging coach.athlete_videos: {e}")
         try:
             cur.execute('UPDATE analytics.source_athlete_map SET athlete_uuid = %s WHERE athlete_uuid = %s', (target_uuid, source_uuid))
         except Exception as e:

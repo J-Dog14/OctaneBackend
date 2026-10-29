@@ -26,7 +26,7 @@ const FOCUS_LABEL: Record<Focus, string> = {
 };
 
 const STALE_MS = 6 * 3_600_000;
-/** Assessment checklist badges: Mobility, Proteus, 3D, Athletic screen. Green = in the database, blue = checked by a coach. */
+/** Assessment checklist: Mobility, Proteus, 3D, Athletic screen. Green = in the database, blue = checked by a coach. */
 const SHORT: Record<string, string> = { mobility: "Mob", proteus: "Pro", pitching_3d: "3D", athletic_screen: "AS" };
 
 function Stat({ label, value, active, tone, onClick }: { label: string; value: number; active?: boolean; tone?: "warn" | "bad"; onClick: () => void }) {
@@ -50,16 +50,69 @@ function Toned({ tone, children, title }: { tone: keyof typeof TONE_COLOR; child
   return <span title={title} style={{ color: TONE_COLOR[tone], fontWeight: tone === "bad" || tone === "warn" ? 600 : undefined }}>{children}</span>;
 }
 
+/** One fixed-width check box in the onboarding & assessments column, so they line up row to row. */
+function Pip({ label, state, tip }: { label: string; state: "db" | "coach" | "open"; tip: string }) {
+  const bg = state === "db" ? "var(--accent-green)" : state === "coach" ? "var(--accent)" : "transparent";
+  return (
+    <Tooltip label={tip}>
+      <span style={{
+        display: "inline-flex", alignItems: "center", justifyContent: "center", width: 30, height: 20, borderRadius: 4,
+        fontSize: 11, fontWeight: 600, background: bg, color: state === "open" ? "var(--text-muted)" : "#0d1117",
+        border: state === "open" ? "1px dashed var(--border)" : "1px solid transparent",
+      }}>{label}</span>
+    </Tooltip>
+  );
+}
+
+type SortKey = "name" | "status" | "program" | "coverage" | "week" | "update" | "phase" | "checks" | "contract";
+const STATUS_ORDER: Record<string, number> = { active: 0, paused: 1, expired: 2 };
+
+/** Value each column sorts by. null always sorts last, in either direction. */
+const SORT_VALUE: Record<SortKey, (r: ClientRow) => string | number | null> = {
+  name: (r) => r.name.toLowerCase(),
+  status: (r) => STATUS_ORDER[r.status] ?? 9,
+  program: (r) => r.periodEnd,
+  coverage: (r) => r.coverage.lastScheduled ?? (r.coverage.days === -1 ? "0000-00-00" : null),
+  week: (r) => (r.week && r.week.trackable ? r.week.done / r.week.trackable : null),
+  update: (r) => r.oldestUpdateDays,
+  phase: (r) => r.phase?.toLowerCase() ?? null,
+  checks: (r) => r.checklist.filter((c) => c.done).length + (r.reviewDone ? 1 : 0),
+  contract: (r) => r.contractEnd,
+};
+
+function sortRows(rows: ClientRow[], key: SortKey | null, dir: "asc" | "desc"): ClientRow[] {
+  if (!key) return rows;
+  const get = SORT_VALUE[key];
+  return [...rows].sort((a, b) => {
+    const x = get(a);
+    const y = get(b);
+    if (x == null && y == null) return a.name.localeCompare(b.name);
+    if (x == null) return 1;
+    if (y == null) return -1;
+    const c = typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y));
+    return (dir === "asc" ? c : -c) || a.name.localeCompare(b.name);
+  });
+}
+
+function Th({ k, label, sort, dir, onSort, style }: { k: SortKey; label: string; sort: SortKey | null; dir: "asc" | "desc"; onSort: (k: SortKey) => void; style?: React.CSSProperties }) {
+  const on = sort === k;
+  return (
+    <th style={{ cursor: "pointer", userSelect: "none", verticalAlign: "bottom", ...style }} onClick={() => onSort(k)} title="Sort (click again to reverse)">
+      {label}&nbsp;<span style={{ opacity: on ? 1 : 0.3, fontSize: 10, whiteSpace: "nowrap" }}>{on ? (dir === "asc" ? "▲" : "▼") : "↕"}</span>
+    </th>
+  );
+}
+
 function Row({ r, onOpen }: { r: ClientRow; onOpen: () => void }) {
   const period = r.periodStart || r.periodEnd ? `${fmtDay(r.periodStart, false)} → ${r.periodEnd ? fmtDay(r.periodEnd) : "open"}` : "—";
   return (
     <tr onClick={onOpen} style={{ cursor: "pointer" }}>
-      <td>
+      <td style={{ minWidth: 210 }}>
         <Group gap={6} wrap="nowrap">
-          <span style={{ fontWeight: 600 }}>{r.name}</span>
-          {r.isMine && <Badge size="xs" variant="light">Mine</Badge>}
-          {r.needsReview && <Badge size="xs" color="orange" variant="light">Review</Badge>}
-          {r.linkReview && <Tooltip label="Couldn't tell which warehouse athlete this is. Open to link."><Badge size="xs" color="red" variant="light">Link athlete</Badge></Tooltip>}
+          <span style={{ fontWeight: 600, whiteSpace: "nowrap" }}>{r.name}</span>
+          {r.isMine && <Badge size="xs" style={{ flexShrink: 0, overflow: "visible" }} variant="light">Mine</Badge>}
+          {r.needsReview && <Badge size="xs" style={{ flexShrink: 0, overflow: "visible" }} color="orange" variant="light">Review</Badge>}
+          {r.linkReview && <Tooltip label="Couldn't tell which warehouse athlete this is. Open to link."><Badge size="xs" style={{ flexShrink: 0, overflow: "visible" }} color="red" variant="light">Link athlete</Badge></Tooltip>}
         </Group>
         <Text size="xs" c="dimmed">{[r.programName, r.programTypeLabel, r.info].filter(Boolean).join(" · ") || "—"}</Text>
       </td>
@@ -87,25 +140,21 @@ function Row({ r, onOpen }: { r: ClientRow; onOpen: () => void }) {
       <td style={{ whiteSpace: "nowrap" }}>
         {r.status === "active" ? <Toned tone={r.oldestUpdateTone}>{r.oldestUpdateDays == null ? "Not set" : `${r.oldestUpdateDays}d`}</Toned> : <Text size="sm" c="dimmed">—</Text>}
       </td>
-      <td><Text size="sm">{r.phase ?? "—"}</Text></td>
-      <td>
-        {r.onboardingMissing.length ? (
-          <Group gap={4}>{r.onboardingMissing.map((s) => <Badge key={s} size="xs" color="yellow" variant="outline">{s}</Badge>)}</Group>
-        ) : r.status === "active" ? <Text size="sm" c="green">Done</Text> : <Text size="sm" c="dimmed">—</Text>}
-      </td>
+      <td style={{ whiteSpace: "nowrap" }}><Text size="sm">{r.phase ?? "—"}</Text></td>
       <td style={{ whiteSpace: "nowrap" }}>
-        <Group gap={3} wrap="nowrap">
+        <Group gap={4} wrap="nowrap">
           {r.checklist.map((a) => (
-            <Tooltip key={a.kind} label={a.done ? (a.auto ? `${a.label}: in the database ${fmtDay(a.auto)}` : `${a.label}: checked by ${a.manualBy ?? "a coach"} ${fmtDay(a.manual)}`) : `${a.label}: not done this program${a.last ? ` (last ${fmtDay(a.last)})` : ""}`}>
-              <Badge size="sm" radius="sm" variant={a.done ? "filled" : "outline"} color={a.done ? (a.auto ? "green" : "blue") : "gray"}
-                styles={{ root: { flexShrink: 0, paddingInline: 6 }, label: { overflow: "visible", textTransform: "none" } }}>
-                {SHORT[a.kind] ?? a.label}
-              </Badge>
-            </Tooltip>
+            <Pip key={a.kind} label={SHORT[a.kind] ?? a.label} state={a.done ? (a.auto ? "db" : "coach") : "open"}
+              tip={a.done ? (a.auto ? `${a.label}: in the database ${fmtDay(a.auto)}` : `${a.label}: checked by ${a.manualBy ?? "a coach"} ${fmtDay(a.manual)}`)
+                : `${a.label}: not done this program${a.last ? ` (last ${fmtDay(a.last)})` : ""}`} />
           ))}
+          <span style={{ width: 1, height: 16, background: "var(--border)", margin: "0 2px" }} />
+          <Pip label="Rev" state={r.reviewDone ? "coach" : "open"} tip={r.reviewDone ? "Onboarding review done" : "Onboarding review not done"} />
         </Group>
-        {r.nextAssessmentDue ? <Text size="xs" c="dimmed">due {fmtDay(r.nextAssessmentDue, false)}</Text>
-          : r.assessmentDue && <Text size="xs" style={{ color: TONE_COLOR.warn }}>{r.lastAssessment ? `last ${fmtDay(r.lastAssessment, false)}` : "never assessed"}</Text>}
+        <Text size="xs" mt={2} style={{ color: r.assessmentDue ? TONE_COLOR.warn : "var(--text-muted)" }}>
+          {r.nextAssessmentDue ? `next due ${fmtDay(r.nextAssessmentDue, false)}`
+            : r.lastAssessment ? `last assessed ${fmtDay(r.lastAssessment, false)}` : "never assessed"}
+        </Text>
       </td>
       <td style={{ whiteSpace: "nowrap" }}>
         <Toned tone={r.contractTone}>{fmtDay(r.contractEnd)}</Toned>
@@ -123,6 +172,9 @@ function ClientHubInner() {
   const types = (sp.get("types") ?? "").split(",").filter(Boolean);
   const focus = (sp.get("focus") as Focus | null) ?? null;
   const [q, setQ] = useState(sp.get("q") ?? "");
+  const sortParam = sp.get("sort");
+  const sortKey: SortKey | null = sortParam && sortParam in SORT_VALUE ? (sortParam as SortKey) : null;
+  const sortDir: "asc" | "desc" = sp.get("dir") === "desc" ? "desc" : "asc";
 
   const params = new URLSearchParams({ status, scope, types: types.join(","), q: sp.get("q") ?? "" });
   if (focus) params.set("focus", focus);
@@ -185,12 +237,20 @@ function ClientHubInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
+  // Click a header: ascending (A→Z, earliest first); click it again: reversed.
+  const sortProps = {
+    sort: sortKey,
+    dir: sortDir,
+    onSort: (k: SortKey) => setParam({ sort: k, dir: sortKey === k && sortDir === "asc" ? "desc" : "asc" }),
+  };
+  const rows = data ? sortRows(data.rows, sortKey, sortDir) : [];
+
   const notInstalled = error instanceof HubError && error.code === "HubNotInstalledError";
   const s = data?.stats;
   const goFocus = (f: Focus | null, st = "active") => setParam({ focus: f === focus ? null : f, status: st });
 
   return (
-    <Stack gap="md" maw={1400} mx="auto">
+    <Stack gap="md" maw={1920} mx="auto">
       <Group justify="space-between" align="flex-end" wrap="wrap">
         <div>
           <Title order={2}>Client Hub</Title>
@@ -248,14 +308,21 @@ function ClientHubInner() {
           <table style={{ width: "100%", margin: 0 }}>
             <thead>
               <tr>
-                <th>Client</th><th>Status</th><th>Program</th><th>Programmed through</th><th>Checked off (7d)</th>
-                <th>Oldest update</th><th>Phase</th><th>Onboarding</th><th style={{ minWidth: 170 }}>Assessments (this program)</th><th>Contract ends</th>
+                <Th k="name" label="Client" {...sortProps} />
+                <Th k="status" label="Status" {...sortProps} />
+                <Th k="program" label="Program" {...sortProps} />
+                <Th k="coverage" label="Programmed through" {...sortProps} />
+                <Th k="week" label="Checked off (7d)" {...sortProps} />
+                <Th k="update" label="Oldest update" {...sortProps} />
+                <Th k="phase" label="Phase" {...sortProps} />
+                <Th k="checks" label="Assessments · onboarding" {...sortProps} style={{ minWidth: 200 }} />
+                <Th k="contract" label="Contract ends" {...sortProps} />
               </tr>
             </thead>
             <tbody>
-              {data.rows.map((r) => <Row key={r.id} r={r} onOpen={() => router.push(`/coach/clients/${r.id}`)} />)}
+              {rows.map((r) => <Row key={r.id} r={r} onOpen={() => router.push(`/coach/clients/${r.id}`)} />)}
               {!data.rows.length && (
-                <tr><td colSpan={10}><Text size="sm" c="dimmed" ta="center" py="md">
+                <tr><td colSpan={9}><Text size="sm" c="dimmed" ta="center" py="md">
                   {data.totalClients ? "No clients match these filters." : syncing ? "Syncing from the app…" : "No clients yet. Sync from the app to load everyone on a program."}
                 </Text></td></tr>
               )}
@@ -263,7 +330,20 @@ function ClientHubInner() {
           </table>
         </div>
       )}
-      {data && <Text size="xs" c="dimmed">{data.rows.length} shown · {data.totalClients} clients in the hub</Text>}
+      {data && (
+        <Group justify="space-between" gap="xs">
+          <Group gap="md">
+            <Text size="xs" c="dimmed">{data.rows.length} shown · {data.totalClients} clients in the hub</Text>
+            {sortKey && <Text size="xs" c="blue" style={{ cursor: "pointer" }} onClick={() => setParam({ sort: null, dir: null })}>Reset sort</Text>}
+          </Group>
+          <Group gap="sm">
+            <Group gap={4}><Pip label="" state="db" tip="" /><Text size="xs" c="dimmed">in the database</Text></Group>
+            <Group gap={4}><Pip label="" state="coach" tip="" /><Text size="xs" c="dimmed">checked by a coach</Text></Group>
+            <Group gap={4}><Pip label="" state="open" tip="" /><Text size="xs" c="dimmed">not done</Text></Group>
+            <Text size="xs" c="dimmed">Mob = mobility · Pro = Proteus · AS = athletic screen · Rev = onboarding review</Text>
+          </Group>
+        </Group>
+      )}
     </Stack>
   );
 }

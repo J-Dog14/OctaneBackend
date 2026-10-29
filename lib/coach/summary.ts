@@ -9,9 +9,10 @@ import { getDb } from "@/lib/pitch-intel/db";
 import { getTrackingSessionDates } from "@/lib/athlete-tracking/sessionDates";
 import { programSummary } from "@/lib/coach/program";
 import { clientForAthlete } from "@/lib/client-hub/repository";
+import { videoCount } from "@/lib/videos/service";
 import type { DomainId } from "@/lib/athlete-tracking/types";
 
-export type CoachTabId = "overview" | "pitching" | "biomechanics" | "hitting" | "assessments" | "mobility" | "prosup" | "curveball" | "readiness" | "proteus" | "program" | "throwing" | "programManagement";
+export type CoachTabId = "overview" | "pitching" | "biomechanics" | "hitting" | "assessments" | "mobility" | "prosup" | "curveball" | "readiness" | "proteus" | "program" | "throwing" | "programManagement" | "videos";
 
 export interface DataSource {
   id: string;
@@ -128,7 +129,7 @@ export async function getCoachAthleteSummary(athleteUuid: string): Promise<Coach
   if (!a) return null;
 
   const conn = await getDb();
-  const [trackingDates, readiness, proSup, curveball, links, savant, trackman, reports, program, hubClient] = await Promise.all([
+  const [trackingDates, readiness, proSup, curveball, links, savant, trackman, reports, program, hubClient, videos] = await Promise.all([
     getTrackingSessionDates(athleteUuid),
     prisma.v_readiness_screen_sessions.aggregate({ where: { athlete_uuid: athleteUuid }, _count: { _all: true }, _max: { session_date: true } }),
     prisma.f_pro_sup.aggregate({ where: { athlete_uuid: athleteUuid }, _count: { _all: true }, _max: { session_date: true } }),
@@ -152,6 +153,8 @@ export async function getCoachAthleteSummary(athleteUuid: string): Promise<Coach
     // 8ctane app programs (App DB snapshot); missing snapshot → no Program tab.
     programSummary(athleteUuid).catch(() => ({ lift: 0, throwing: 0, lastLift: null, lastThrowing: null })),
     clientForAthlete(athleteUuid).catch(() => null),
+    // Video Hub clips; table not installed yet → no badge (the tab still shows).
+    videoCount(athleteUuid).catch(() => ({ n: 0, last: null })),
   ]);
 
   const sources: DataSource[] = [
@@ -170,6 +173,7 @@ export async function getCoachAthleteSummary(athleteUuid: string): Promise<Coach
     { id: "readiness", label: "Readiness", tab: "readiness", sessions: readiness._count._all, lastDate: day(readiness._max.session_date) },
     { id: "program", label: "Program lift days", tab: "program", sessions: program.lift, lastDate: program.lastLift },
     { id: "programThrowing", label: "Program throwing days", tab: "throwing", sessions: program.throwing, lastDate: program.lastThrowing },
+    { id: "videos", label: "Videos", tab: "videos", sessions: videos.n, lastDate: videos.last },
   ];
   const present = sources.filter((s) => s.sessions > 0);
   const has = (tab: CoachTabId) => present.some((s) => s.tab === tab);
@@ -207,6 +211,8 @@ export async function getCoachAthleteSummary(athleteUuid: string): Promise<Coach
       throwing: has("throwing"),
       // Anyone in the Client Hub (active, paused or expired), so a returning client's history is one click away.
       programManagement: !!hubClient,
+      // Always shown: it's where coaches add an athlete's first clip.
+      videos: true,
     },
     hubClient,
   };

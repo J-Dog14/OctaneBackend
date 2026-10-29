@@ -20,7 +20,7 @@ export function CoachHeader() {
   const isAdmin = useIsAdmin();
   const current = pathname.match(/^\/coach\/athletes\/([A-Za-z0-9-]{1,64})/)?.[1] ?? null;
   const { data } = useSWR<CoachAthleteSummary>(current ? summaryKey(current) : null, swrOpts);
-  const section = pathname.startsWith("/coach/clients") ? "clients" : "athletes";
+  const section = pathname.startsWith("/coach/clients") ? "clients" : pathname.startsWith("/coach/videos") ? "videos" : "athletes";
 
   return (
     <Group h="100%" px="md" gap="lg" wrap="nowrap" justify="space-between">
@@ -28,14 +28,15 @@ export function CoachHeader() {
         <Link href="/coach?browse=1" style={{ color: "var(--text-primary)", textDecoration: "none", fontWeight: 700, fontSize: "1.1rem", whiteSpace: "nowrap" }}>
           8ctane <span style={{ color: "var(--accent)" }}>Coach</span>
         </Link>
-        {/* Two sections: athlete data (assessments, pitching, programs) and the Client Hub (program management). */}
+        {/* Sections: athlete data (assessments, pitching, programs), the Client Hub (program management) and the Video Hub (film room). */}
         <SegmentedControl
           size="xs"
           value={section}
-          onChange={(v) => router.push(v === "clients" ? "/coach/clients" : current ? `/coach/athletes/${current}` : "/coach")}
+          onChange={(v) => router.push(v === "clients" ? "/coach/clients" : v === "videos" ? "/coach/videos" : current ? `/coach/athletes/${current}` : "/coach")}
           data={[
             { value: "athletes", label: "Athlete Data" },
             { value: "clients", label: "Client Hub" },
+            { value: "videos", label: "Video Hub" },
           ]}
         />
         <AthleteSearchSelect

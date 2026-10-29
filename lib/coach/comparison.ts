@@ -5,7 +5,7 @@ export type ComparisonScope = CoachTabId | "all";
 export const COMPARISON_LABELS: Record<ComparisonScope, string> = {
   all: "All areas", overview: "Overview", pitching: "Pitching", biomechanics: "Biomechanics", hitting: "Hitting",
   assessments: "Athletic Screen", mobility: "Mobility", prosup: "Pro/Sup",
-  curveball: "Curveball", readiness: "Readiness", proteus: "Proteus", program: "Program Lift", throwing: "Program Throwing", programManagement: "Program Management",
+  curveball: "Curveball", readiness: "Readiness", proteus: "Proteus", program: "Program Lift", throwing: "Program Throwing", programManagement: "Program Management", videos: "Videos",
 };
 export const TRACKING_DOMAINS: DomainId[] = ["pitching", "hitting", "mobility", "athleticScreen", "armAction", "proteus"];
 export function isComparisonScope(value: string): value is ComparisonScope {

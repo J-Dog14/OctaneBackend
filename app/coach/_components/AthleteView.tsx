@@ -31,12 +31,16 @@ const ProteusTab = dynamic(() => import("../_tabs/ProteusTab").then((m) => m.Pro
 const ProgramTab = dynamic(() => import("../_tabs/ProgramTab").then((m) => m.ProgramTab), { loading: () => <Loader size="sm" /> });
 const HittingTab = dynamic(() => import("../_tabs/HittingTab").then((m) => m.HittingTab), { loading: () => <Loader size="sm" /> });
 const ThrowingTab = dynamic(() => import("../_tabs/ThrowingTab").then((m) => m.ThrowingTab), { loading: () => <Loader size="sm" /> });
+const VideosTab = dynamic(() => import("./videoHub/AthleteVideos").then((m) => m.VideosTab), { loading: () => <Loader size="sm" /> });
+const VideoCompare = dynamic(() => import("./videoHub/AthleteVideos").then((m) => m.VideoCompare), { loading: () => <Loader size="sm" /> });
 const ProgramManagementTab = dynamic(() => import("../_tabs/ProgramManagementTab").then((m) => m.ProgramManagementTab), { loading: () => <Loader size="sm" /> });
 
 type TabId = CoachTabId | "compare";
 
 const TABS: Array<{ id: CoachTabId; label: string }> = [
   { id: "overview", label: "Overview" },
+  // Video Hub clips for this athlete (always shown so the first clip can be added here).
+  { id: "videos", label: "Videos" },
   { id: "pitching", label: "Pitching" },
   { id: "biomechanics", label: "Biomechanics" },
   { id: "hitting", label: "Hitting" },
@@ -291,7 +295,8 @@ function AthleteViewInner({ athleteUuid }: { athleteUuid: string }) {
           )}
         </Tabs.List>
         <div style={{ paddingTop: "1.25rem" }}>
-          {vs.length > 0 && activeTab !== "compare" ? <Tabs.Panel value={activeTab}><CompareBody key={scope} ids={[athleteUuid, ...vs]} scope={scope} /></Tabs.Panel> : <>
+          {vs.length > 0 && activeTab === "videos" ? <Tabs.Panel value="videos"><VideoCompare ids={[athleteUuid, ...vs]} /></Tabs.Panel>
+          : vs.length > 0 && activeTab !== "compare" ? <Tabs.Panel value={activeTab}><CompareBody key={scope} ids={[athleteUuid, ...vs]} scope={scope} /></Tabs.Panel> : <>
           <Tabs.Panel value="overview">
             <OverviewTab athleteUuid={athleteUuid} summary={summary} onOpenTab={setTab} />
           </Tabs.Panel>
@@ -327,6 +332,9 @@ function AthleteViewInner({ athleteUuid }: { athleteUuid: string }) {
           </Tabs.Panel>
           <Tabs.Panel value="throwing">
             <ThrowingTab athleteUuid={athleteUuid} />
+          </Tabs.Panel>
+          <Tabs.Panel value="videos">
+            <VideosTab athleteUuid={athleteUuid} athleteName={summary.athlete.name} />
           </Tabs.Panel>
           <Tabs.Panel value="programManagement">
             <ProgramManagementTab summary={summary} />
