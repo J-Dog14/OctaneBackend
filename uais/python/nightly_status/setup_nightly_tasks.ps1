@@ -13,13 +13,14 @@ $aiLayer = Join-Path (Split-Path $backend -Parent) "OctaneAiLayer"
 $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Limited
 New-Item -ItemType Directory -Force -Path (Join-Path $backend "uais\data\nightly_status") | Out-Null
 
-function Register-Task($name, $exe, $argText, $workDir, $triggers, $hours, $desc) {
+function Register-Task($name, $exe, $argText, $workDir, $triggers, $hours, $desc, [switch]$Wake) {
     if (Get-ScheduledTask -TaskName $name -ErrorAction SilentlyContinue) {
         Unregister-ScheduledTask -TaskName $name -Confirm:$false
     }
     $action = New-ScheduledTaskAction -Execute $exe -Argument $argText -WorkingDirectory $workDir
     $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
         -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Hours $hours)
+    if ($Wake) { $settings.WakeToRun = $true }
     Register-ScheduledTask -TaskName $name -Action $action -Trigger $triggers -Settings $settings -Principal $principal -Description $desc | Out-Null
     Write-Host "[OK] $name" -ForegroundColor Green
 }
@@ -28,9 +29,8 @@ function Register-Task($name, $exe, $argText, $workDir, $triggers, $hours, $desc
 $syncBat = Join-Path $aiLayer "scripts\run_app_db_sync.bat"
 if (Test-Path $syncBat) {
     $t = New-ScheduledTaskTrigger -Daily -At $SyncAt
-    $t.WakeToRun = $true
     Register-Task "8ctane App DB Sync" "cmd.exe" "/c `"$syncBat`"" $aiLayer $t 2 `
-        "Snapshot Octane App DB (users, programs, exercises, workout logs) into the backend's app_db_snapshot schema."
+        "Snapshot Octane App DB (users, programs, exercises, workout logs) into the backend's app_db_snapshot schema." -Wake
     Write-Host "     Daily at $SyncAt. Log: $aiLayer\outputs\app_db_sync.log" -ForegroundColor Cyan
 } else {
     Write-Host "[SKIP] $syncBat not found" -ForegroundColor Yellow

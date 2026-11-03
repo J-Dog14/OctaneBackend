@@ -7,7 +7,7 @@
  */
 
 import { useState } from "react";
-import { ActionIcon, Checkbox, Group, Popover, ScrollArea, Stack, Text, UnstyledButton } from "@mantine/core";
+import { ActionIcon, Badge, Button, Checkbox, Group, Popover, ScrollArea, Stack, Text, UnstyledButton } from "@mantine/core";
 import { PITCH_COLORS } from "@/lib/pitch-intel/pitch-types";
 import type { SyncPitch } from "@/lib/coach/pitchSync";
 import { fmt } from "./fetcher";
@@ -76,7 +76,7 @@ export function PitchPicker({
       <ActionIcon variant="light" size="lg" aria-label="Previous pitch" onClick={() => step(-1)} disabled={order.length < 2}>
         ◀
       </ActionIcon>
-      <Popover opened={open} onChange={setOpen} position="bottom-start" shadow="md" width={290} withinPortal>
+      <Popover opened={open} onChange={setOpen} position="bottom-start" shadow="md" width={320} withinPortal>
         <Popover.Target>
           <UnstyledButton
             onClick={() => setOpen((o) => !o)}
@@ -135,20 +135,32 @@ export function PitchPicker({
                     {g.items.map((p) => {
                       const k = trialKey(p);
                       const pv = pitchVelo(p);
+                      const isMain = k === trialKey(focus);
                       return (
-                        <Checkbox
-                          key={k}
-                          size="xs"
-                          ml={22}
-                          checked={sel.has(k)}
-                          onChange={(e) => toggleMany([k], e.currentTarget.checked)}
-                          label={
-                            <Text size="sm" fw={k === trialKey(focus) ? 700 : 400}>
-                              {names.get(k)}
-                              {pv != null && <Text span size="xs" c="dimmed"> · {fmt(pv)} mph</Text>}
-                            </Text>
-                          }
-                        />
+                        <Group key={k} gap={6} wrap="nowrap" justify="space-between" ml={22}>
+                          <Checkbox
+                            size="xs"
+                            checked={sel.has(k)}
+                            onChange={(e) => toggleMany([k], e.currentTarget.checked)}
+                            label={
+                              <Text size="sm" fw={isMain ? 700 : 400}>
+                                {names.get(k)}
+                                {pv != null && <Text span size="xs" c="dimmed"> · {fmt(pv)} mph</Text>}
+                              </Text>
+                            }
+                          />
+                          {/* With several pitches drawn: which one is the main (highlighted) pitch, and a way to switch. */}
+                          {selected.length > 1 && sel.has(k) &&
+                            (isMain ? (
+                              <Badge size="xs" variant="light" color="gray" style={{ textTransform: "none", flex: "none" }}>
+                                Main
+                              </Badge>
+                            ) : (
+                              <Button size="compact-xs" variant="subtle" color="gray" style={{ flex: "none" }} onClick={() => onPick(k)}>
+                                Make main
+                              </Button>
+                            ))}
+                        </Group>
                       );
                     })}
                   </Stack>

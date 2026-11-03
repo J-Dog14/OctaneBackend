@@ -208,7 +208,7 @@ export function PitchMetricsPanel({
       >
         Biomechanics
       </SectionTitle>
-      <Group justify="space-between" gap={24} wrap="wrap" style={{ fontSize: 12, rowGap: 2, padding: "0 28px 0 20px" }}>
+      <Group justify="space-between" gap={16} wrap="wrap" style={{ fontSize: 12, rowGap: 2, padding: "0 20px 0 14px" }}>
         <Tooltip label="Visual3D STRIDE_LENGTH" withArrow>
           <span>
             <Text span size="xs" c="dimmed">
@@ -220,6 +220,19 @@ export function PitchMetricsPanel({
             <Text span size="10px" c="dimmed">
               {" "}
               in
+            </Text>
+          </span>
+        </Tooltip>
+        <Tooltip label="Stride length as a % of the athlete's height (Visual3D STRIDE_LENGTH_MEAN_PERCENT)" withArrow>
+          <span>
+            <Text span size="xs" c="dimmed">
+              Stride{" "}
+            </Text>
+            <Text span size="sm" fw={600}>
+              {fmt(mean(pitches.map((p) => p.mech.stridePct ?? null)), 0)}
+            </Text>
+            <Text span size="10px" c="dimmed">
+              % ht
             </Text>
           </span>
         </Tooltip>

@@ -395,14 +395,23 @@ function ArmPanel({
                   // Last piece stops at the ball.
                   const end: V3 = b[0] > ballMs ? flightAt(path, ballMs) : [b[1], b[2], b[3]];
                   const l = clip([a[1], a[2], a[3]], end);
-                  if (l) lines.push(<line key={i} {...l} stroke={colorOf(t)} strokeOpacity={focused || !many ? 0.8 : 0.3} strokeWidth={focused || !many ? 1.8 : 1.2} />);
+                  if (l) lines.push(<line key={i} {...l} stroke={colorOf(t)} strokeOpacity={focused || !many ? 0.85 : 0.5} strokeWidth={focused || !many ? 1.8 : 1.3} />);
                 }
                 const ball = ballMs >= 0 ? flightAt(path, ballMs) : null;
                 return (
                   <g key={`fl-${trialKey(t)}`}>
                     {lines}
-                    {ball && depth(ball) > NEAR && (focused || !many) && (
-                      <circle cx={P(ball)[0]} cy={P(ball)[1]} r={Math.max(2, Math.min(6, (0.121 * cam.k) / depth(ball)))} fill="#f5f8fa" stroke={colorOf(t)} strokeWidth={1.5} />
+                    {ball && depth(ball) > NEAR && (
+                      <circle
+                        cx={P(ball)[0]}
+                        cy={P(ball)[1]}
+                        r={Math.max(2, Math.min(6, (0.121 * cam.k) / depth(ball)))}
+                        fill="#f5f8fa"
+                        fillOpacity={focused || !many ? 1 : 0.55}
+                        stroke={colorOf(t)}
+                        strokeOpacity={focused || !many ? 1 : 0.7}
+                        strokeWidth={1.5}
+                      />
                     )}
                   </g>
                 );
@@ -653,7 +662,9 @@ export function ArmFlightView({
       const dt = now - last;
       last = now;
       setMs((m) => {
-        const rate = m < 0 ? Number(speed) : Math.max(Number(speed), tMax / FLIGHT_PLAY_MS);
+        // Slow motion through the whole arm window (MER → release → follow-through), then the rest of
+        // the flight speeds up so it still takes about FLIGHT_PLAY_MS.
+        const rate = m < armEnd ? Number(speed) : Math.max(Number(speed), Math.max(1, tMax - armEnd) / FLIGHT_PLAY_MS);
         const n = m + dt * rate;
         if (n >= tMax) {
           setPlaying(false);
@@ -667,7 +678,7 @@ export function ArmFlightView({
     return () => {
       if (raf.current) cancelAnimationFrame(raf.current);
     };
-  }, [playing, speed, tMax]);
+  }, [playing, speed, tMax, armEnd]);
 
   if (isLoading && !d) return <Loader size="sm" />;
   if (error && !d) return <Alert color="red">{error.message}</Alert>;
@@ -804,7 +815,7 @@ export function ArmFlightView({
             ]}
           />
         </div>
-        <Tooltip label="Slow motion for the arm, from just before MER to release. The ball flight then plays in about a second, so the hitter's view picks up right as the arm lets go." withArrow>
+        <Tooltip label="Slow motion for the arm, from just before MER through release and follow-through. After the arm finishes, the rest of the ball flight plays in about a second." withArrow>
           <Select
             size="xs"
             w={110}
@@ -821,7 +832,7 @@ export function ArmFlightView({
       </Group>
       <Text size="sm">
         <b>{msClamped >= 0 ? "+" : ""}{Math.round(msClamped)} ms</b> from release · {phase}
-        {ms >= 0 && Number(speed) < tMax / FLIGHT_PLAY_MS ? " · flight sped up" : ""}
+        {ms >= armEnd && Number(speed) < (tMax - armEnd) / FLIGHT_PLAY_MS ? " · flight sped up" : ""}
         {shown.some((t) => t.merSource !== "event")
           ? shown.some((t) => t.merSource === "default")
             ? " · events not stored yet: release from peak hand speed, MER 35 ms before it"
