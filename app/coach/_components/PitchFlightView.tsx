@@ -18,6 +18,7 @@ import { flightPath, spinAxisFromFlight } from "@/lib/coach/armFlight/geometry";
 import { fmt, fmtDate, swrOpts } from "./fetcher";
 import { HitterViewPanel, PitcherViewPanel, type Batter, type FlightBall } from "./ballFlight";
 import { PitchListPicker, type PickItem } from "./PitchPicker";
+import { TrackmanStats } from "./PitchMetricsPanel";
 
 const base = (uuid: string) => `/api/coach/athletes/${encodeURIComponent(uuid)}/pitches`;
 
@@ -50,6 +51,24 @@ function toBall(p: PitchRow): FlightBall | null {
     color: PITCH_COLORS[p.type],
     flight,
     spin: { rpm: p.spin, eff: p.spinEff, tilt: p.tilt, axis: spinAxisFromFlight(flight.path, p.spinEff) },
+  };
+}
+
+/** A pitch-log row in the shared TrackMan block's metric ids (arm side +, spin eff in %). */
+function statValues(p: PitchRow): Record<string, number | null> {
+  const arm = p.throws === "L" ? -1 : 1;
+  return {
+    velo: p.velo,
+    spin: p.spin,
+    extension: p.extension,
+    hbArm: p.hbArm,
+    ivb: p.ivb,
+    spinEff: p.spinEff == null ? null : p.spinEff <= 1 ? p.spinEff * 100 : p.spinEff,
+    gyro: p.gyro,
+    haa: p.haa,
+    vaa: p.vaa,
+    relSideArm: p.relSide == null ? null : p.relSide * arm,
+    relHeight: p.relHeight,
   };
 }
 
@@ -154,15 +173,8 @@ export function PitchFlightView({ athleteUuid }: { athleteUuid: string }) {
     if (ids.length && (!focus || !ids.includes(focus.id))) setFocusId(ids[0]!);
   };
   const missing = rows.length - drawable.length;
-  const spinTxt = focus
-    ? [
-        focus.spin != null ? `${fmt(focus.spin, 0)} rpm` : null,
-        focus.tilt,
-        focus.spinEff != null ? `${fmt(focus.spinEff <= 1 ? focus.spinEff * 100 : focus.spinEff, 0)}% eff` : null,
-        focus.ivb != null ? `IVB ${fmt(focus.ivb)}` : null,
-        focus.hb != null ? `HB ${fmt(focus.hb)}` : null,
-      ].filter(Boolean)
-    : [];
+  const spinTxt = focus?.tilt ? [`tilt ${focus.tilt}`] : [];
+  const statRows = shownRows.filter((p) => p.velo != null);
 
   return (
     <Stack gap="sm">
@@ -189,7 +201,7 @@ export function PitchFlightView({ athleteUuid }: { athleteUuid: string }) {
         <Loader size="sm" />
       ) : (
         <>
-          <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md" style={{ alignItems: "start" }}>
+          <SimpleGrid cols={{ base: 1, md: 2, xl: 3 }} spacing="md" style={{ alignItems: "start" }}>
             <div style={{ minWidth: 0 }}>
               <Group justify="space-between" mb={4} wrap="nowrap" h={28}>
                 <Text fw={600} size="sm">Pitcher&apos;s view</Text>
@@ -208,6 +220,22 @@ export function PitchFlightView({ athleteUuid }: { athleteUuid: string }) {
               <Text size="xs" c="dimmed" mt={4}>
                 True perspective from behind the plate (or the batter&apos;s eye): the ball barely moves on screen for most of its flight, then rushes in.
               </Text>
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <Stack gap={8}>
+                <TrackmanStats
+                  values={statRows.map(statValues)}
+                  names={shownRows.map((p) => `${names.get(p.id) ?? ""}${p.velo != null ? ` · ${fmt(p.velo)} MPH` : ""}`)}
+                  total={shownRows.length}
+                  xa={statRows.map((p) => p.xa ?? null)}
+                  xaHelp={
+                    statRows.every((p) => p.source === "savant")
+                      ? "Per-pitch xArsenal is graded for TrackMan pitches only."
+                      : "Not graded yet. The nightly npm run pi:grade grades every pitch with the full TrackMan read (velo, spin, IVB, HB, extension, VAA, release height and side)."
+                  }
+                  emptyText="No pitch selected."
+                />
+              </Stack>
             </div>
           </SimpleGrid>
 

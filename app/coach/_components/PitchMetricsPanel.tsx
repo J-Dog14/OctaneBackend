@@ -108,48 +108,54 @@ function SegTable({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function PitchMetricsPanel({
-  pitches,
+/**
+ * TrackMan block (4 × 3, xArsenal first) for one pitch or the average of several. `values` use
+ * the Mechanics + Flight metric ids (velo, spin, extension, hbArm, ivb, spinEff %, gyro, haa, vaa,
+ * relSideArm, relHeight). Shared by TM + 3D and Pitching → Flight.
+ */
+export function TrackmanStats({
+  values,
   names,
-  arms,
-  xaStatus,
+  total,
+  xa: grades,
+  xaHelp,
+  emptyText,
+  pairedNote = "",
 }: {
-  pitches: SyncPitch[];
+  values: Array<Record<string, number | null | undefined>>;
   names: string[];
-  arms: Array<ArmTrial | null>;
-  xaStatus: { state: string; message: string | null } | null;
+  /** Pitches selected (values may cover fewer). */
+  total: number;
+  xa: Array<{ score: number | null; stuffPlus: number | null } | null>;
+  /** Shown on the xArsenal tile when there's no grade. */
+  xaHelp: string;
+  emptyText: string;
+  pairedNote?: string;
 }) {
-  const [mode, setMode] = useState<"angle" | "velocity">("angle");
-  const n = pitches.length;
-  if (!n) return null;
-  const multi = n > 1;
-  const paired = pitches.filter((p) => p.tm);
-  const fl = (id: string) => mean(paired.map((p) => p.flight[id] ?? null));
+  const multi = total > 1;
+  const fl = (id: string) => mean(values.map((v) => v[id] ?? null));
   const f = (id: string, d = 1) => fmt(fl(id), d);
-  const xaScores = paired.map((p) => p.tm!.xa?.score ?? null).filter((x): x is number => x != null);
+  const xaScores = grades.map((g) => g?.score ?? null).filter((x): x is number => x != null);
   const xa = mean(xaScores);
-  const stuff = mean(paired.map((p) => p.tm!.xa?.stuffPlus ?? null));
-  const strides = arms.map((a) => a?.stride ?? null);
-  const scope = multi ? `avg of ${n}` : (names[0] ?? "");
-
+  const stuff = mean(grades.map((g) => g?.stuffPlus ?? null));
+  const scope = multi ? `avg of ${total}` : (names[0] ?? "");
   return (
-    <Stack gap={8}>
-      {/* TRACKMAN */}
+    <>
       <SectionTitle
         right={
           <Tooltip label={names.join(", ")} disabled={!multi} multiline w={260} withArrow>
             <Text size="xs" c="dimmed" truncate maw={220}>
               {scope}
-              {multi && paired.length < n ? ` (${paired.length} with TrackMan)` : ""}
+              {pairedNote}
             </Text>
           </Tooltip>
         }
       >
         TrackMan
       </SectionTitle>
-      {!paired.length ? (
+      {!values.length ? (
         <Text size="sm" c="dimmed">
-          No TrackMan pitch paired with {multi ? "these 3D trials" : "this 3D trial"}.
+          {emptyText}
         </Text>
       ) : (
         <SimpleGrid cols={4} spacing={8} verticalSpacing={6}>
@@ -158,7 +164,7 @@ export function PitchMetricsPanel({
             help={
               xa != null
                 ? `xArsenal v3 per pitch${multi ? `, averaged over ${xaScores.length} graded` : ""}. 50 = MLB average for the shape.${stuff != null ? ` 8-Stuff+ ${Math.round(stuff)}.` : ""}`
-                : [...new Set(paired.map((p) => xaReason(p, xaStatus)))].join(" ")
+                : xaHelp
             }
             value={xa == null ? "—" : String(Math.round(xa))}
             unit={stuff != null ? `Stuff+ ${Math.round(stuff)}` : undefined}
@@ -176,6 +182,40 @@ export function PitchMetricsPanel({
           <Stat label="Release ht" value={f("relHeight", 2)} unit="ft" />
         </SimpleGrid>
       )}
+    </>
+  );
+}
+
+export function PitchMetricsPanel({
+  pitches,
+  names,
+  arms,
+  xaStatus,
+}: {
+  pitches: SyncPitch[];
+  names: string[];
+  arms: Array<ArmTrial | null>;
+  xaStatus: { state: string; message: string | null } | null;
+}) {
+  const [mode, setMode] = useState<"angle" | "velocity">("angle");
+  const n = pitches.length;
+  if (!n) return null;
+  const multi = n > 1;
+  const paired = pitches.filter((p) => p.tm);
+  const strides = arms.map((a) => a?.stride ?? null);
+
+  return (
+    <Stack gap={8}>
+      {/* TRACKMAN */}
+      <TrackmanStats
+        values={paired.map((p) => p.flight)}
+        names={names}
+        total={n}
+        xa={paired.map((p) => p.tm!.xa ?? null)}
+        xaHelp={[...new Set(paired.map((p) => xaReason(p, xaStatus)))].join(" ")}
+        emptyText={`No TrackMan pitch paired with ${multi ? "these 3D trials" : "this 3D trial"}.`}
+        pairedNote={multi && paired.length < n ? ` (${paired.length} with TrackMan)` : ""}
+      />
 
       {/* BIOMECHANICS */}
       <SectionTitle

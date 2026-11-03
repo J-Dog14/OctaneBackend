@@ -72,6 +72,8 @@ export interface PitchRow {
   zoneBot: number | null;
   /** Savant: inning / PA context for the pitch log. */
   context: string | null;
+  /** Stored per-pitch xArsenal (TrackMan, single-session reads only); null = not graded. */
+  xa?: { score: number | null; stuffPlus: number | null } | null;
 }
 
 export interface PitchLog {
@@ -348,6 +350,21 @@ export async function getPitchLog(athleteUuid: string, q: PitchQuery): Promise<P
   }
 
   const rows = [...tm, ...sv].map(toRow);
+  if (q.session && tm.length) {
+    // Per-pitch xArsenal from pi:grade (table may not exist yet on a fresh database).
+    const grades = await safe(() =>
+      conn.query<{ pitch_uid: string; score: number | null; stuff_plus: number | null }>(
+        `SELECT pitch_uid, score, stuff_plus::float8 AS stuff_plus FROM pitch_intel.trackman_pitch_grades WHERE pitch_uid = ANY($1::text[])`,
+        tm.map((r) => r.id),
+      ),
+    );
+    const byUid = new Map(grades.map((g) => [g.pitch_uid, g]));
+    for (const r of rows) {
+      if (r.source !== "trackman") continue;
+      const g = byUid.get(r.id);
+      r.xa = g ? { score: num(g.score), stuffPlus: num(g.stuff_plus) } : null;
+    }
+  }
   // Newest first for the cap, then back to chronological for display.
   rows.sort((a, b) => b.date.localeCompare(a.date) || b.sessionKey.localeCompare(a.sessionKey) || b.no - a.no);
   const truncated = rows.length > PITCH_LIMIT;
