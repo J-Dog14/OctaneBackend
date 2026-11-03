@@ -86,13 +86,14 @@ DBI::dbExecute(con, "
     source_athlete_id VARCHAR(100),
     owner_filename TEXT,
     trial_index INTEGER NOT NULL,
+    pitch_category TEXT NOT NULL DEFAULT 'fastball',
     label_names JSONB,
     data JSONB,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT f_pitching_marker_data_fkey
       FOREIGN KEY (athlete_uuid) REFERENCES analytics.d_athletes(athlete_uuid) ON DELETE CASCADE,
     CONSTRAINT f_pitching_marker_data_unique
-      UNIQUE (athlete_uuid, session_date, trial_index)
+      UNIQUE (athlete_uuid, session_date, pitch_category, trial_index)
   )
 ")
 
@@ -105,13 +106,14 @@ DBI::dbExecute(con, "
     source_athlete_id VARCHAR(100),
     owner_filename TEXT,
     trial_index INTEGER NOT NULL,
+    pitch_category TEXT NOT NULL DEFAULT 'fastball',
     segment_names JSONB,
     data JSONB,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT f_pitching_segment_pos_data_fkey
       FOREIGN KEY (athlete_uuid) REFERENCES analytics.d_athletes(athlete_uuid) ON DELETE CASCADE,
     CONSTRAINT f_pitching_segment_pos_data_unique
-      UNIQUE (athlete_uuid, session_date, trial_index)
+      UNIQUE (athlete_uuid, session_date, pitch_category, trial_index)
   )
 ")
 
@@ -124,13 +126,14 @@ DBI::dbExecute(con, "
     source_athlete_id VARCHAR(100),
     owner_filename TEXT,
     trial_index INTEGER NOT NULL,
+    pitch_category TEXT NOT NULL DEFAULT 'fastball',
     segment_names JSONB,
     data JSONB,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT f_pitching_segment_rot_data_fkey
       FOREIGN KEY (athlete_uuid) REFERENCES analytics.d_athletes(athlete_uuid) ON DELETE CASCADE,
     CONSTRAINT f_pitching_segment_rot_data_unique
-      UNIQUE (athlete_uuid, session_date, trial_index)
+      UNIQUE (athlete_uuid, session_date, pitch_category, trial_index)
   )
 ")
 
@@ -143,12 +146,13 @@ DBI::dbExecute(con, "
     source_athlete_id VARCHAR(100),
     owner_filename TEXT,
     trial_index INTEGER NOT NULL,
+    pitch_category TEXT NOT NULL DEFAULT 'fastball',
     data JSONB,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT f_pitching_force_data_fkey
       FOREIGN KEY (athlete_uuid) REFERENCES analytics.d_athletes(athlete_uuid) ON DELETE CASCADE,
     CONSTRAINT f_pitching_force_data_unique
-      UNIQUE (athlete_uuid, session_date, trial_index)
+      UNIQUE (athlete_uuid, session_date, pitch_category, trial_index)
   )
 ")
 cat("Typed tables created.\n")
@@ -171,7 +175,7 @@ if (n_rows > 0) {
         jsonb_path_query_array(frames, '$[*].markers')
       FROM public.f_pitching_time_data
       WHERE frames IS NOT NULL AND labels IS NOT NULL
-      ON CONFLICT (athlete_uuid, session_date, trial_index) DO NOTHING
+      ON CONFLICT (athlete_uuid, session_date, pitch_category, trial_index) DO NOTHING
     "), error = function(e) { cat("  [ERROR]", conditionMessage(e), "\n"); 0L })
     cat("  Inserted", n_marker, "marker data rows.\n")
   } else {
@@ -191,7 +195,7 @@ if (n_rows > 0) {
         jsonb_path_query_array(frames, '$[*].segmentPos')
       FROM public.f_pitching_time_data
       WHERE frames IS NOT NULL AND segments IS NOT NULL
-      ON CONFLICT (athlete_uuid, session_date, trial_index) DO NOTHING
+      ON CONFLICT (athlete_uuid, session_date, pitch_category, trial_index) DO NOTHING
     "), error = function(e) { cat("  [ERROR]", conditionMessage(e), "\n"); 0L })
     cat("  Inserted", n_seg_pos, "segment position rows.\n")
   } else {
@@ -211,7 +215,7 @@ if (n_rows > 0) {
         jsonb_path_query_array(frames, '$[*].segmentRot')
       FROM public.f_pitching_time_data
       WHERE frames IS NOT NULL AND segments IS NOT NULL
-      ON CONFLICT (athlete_uuid, session_date, trial_index) DO NOTHING
+      ON CONFLICT (athlete_uuid, session_date, pitch_category, trial_index) DO NOTHING
     "), error = function(e) { cat("  [ERROR]", conditionMessage(e), "\n"); 0L })
     cat("  Inserted", n_seg_rot, "segment rotation rows.\n")
   } else {
@@ -234,7 +238,7 @@ if (n_rows > 0) {
         AND jsonb_array_length(frames) > 0
         AND (frames->0)->'force' IS NOT NULL
         AND jsonb_array_length((frames->0)->'force') > 0
-      ON CONFLICT (athlete_uuid, session_date, trial_index) DO NOTHING
+      ON CONFLICT (athlete_uuid, session_date, pitch_category, trial_index) DO NOTHING
     ")
     cat("  Inserted", n_force, "force data rows.\n")
   }, error = function(e) {

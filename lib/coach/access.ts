@@ -10,12 +10,16 @@
 import { checkRoles, COACH_SUITE_ROLES } from "@/lib/auth/requireAuth";
 import { notFound } from "@/lib/responses";
 import { prisma } from "@/lib/db/prisma";
+import { touchCoachActivity } from "./activity";
 
 const UUID_RE = /^[A-Za-z0-9-]{1,64}$/;
 
 /** 401/403 response when the caller can't use the coach suite, else null. */
-export function requireCoach() {
-  return checkRoles(COACH_SUITE_ROLES);
+export async function requireCoach() {
+  const denied = await checkRoles(COACH_SUITE_ROLES);
+  // Only real coach traffic wakes the background percentile worker.
+  if (!denied) touchCoachActivity();
+  return denied;
 }
 
 /** Roster hook. All athletes for now. */

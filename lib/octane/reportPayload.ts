@@ -77,7 +77,7 @@ export async function buildAthleteReportPayload(
       (SELECT COUNT(*) FROM public.f_pro_sup                WHERE athlete_uuid = ${athleteUuid})::int AS pro_sup,
       (SELECT COUNT(*) FROM public.f_proteus                WHERE athlete_uuid = ${athleteUuid})::int AS proteus,
       (SELECT COUNT(*) FROM public.v_readiness_screen_sessions WHERE athlete_uuid = ${athleteUuid})::int AS readiness_screen,
-      (SELECT COUNT(*) FROM public.f_pitching_trials        WHERE athlete_uuid = ${athleteUuid})::int AS pitching_trials,
+      (SELECT COUNT(*) FROM public.f_pitching_trials        WHERE athlete_uuid = ${athleteUuid} AND pitch_category = 'fastball')::int AS pitching_trials,
       (SELECT COUNT(*) FROM public.f_kinematics_pitching    WHERE athlete_uuid = ${athleteUuid})::int AS kinematics_pitching,
       (SELECT COUNT(*) FROM public.f_kinematics_hitting     WHERE athlete_uuid = ${athleteUuid})::int AS kinematics_hitting,
       (SELECT COUNT(*) FROM public.f_curveball_test         WHERE athlete_uuid = ${athleteUuid})::int AS curveball_test

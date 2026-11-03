@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import useSWR from "swr";
-import { Alert, Group, Loader, Select, Text } from "@mantine/core";
+import { Alert, Group, Loader, SegmentedControl, Select, Text } from "@mantine/core";
 import type { BiomechReport as Report } from "@/lib/coach/biomech/report";
+import { PITCH_CATEGORY_LABEL, PITCH_CATEGORY_SHORT, type PitchCategory } from "@/lib/coach/biomech/pitchCategory";
 import type { CylinderCard, CylinderPercentiles, Status } from "@/lib/coach/biomech/framework";
 import { fmtDate, swrOpts } from "../_components/fetcher";
 import s from "./biomechReport.module.css";
@@ -118,7 +119,12 @@ function heightText(inches: number | null): string | null {
 /** In-app version of the biomech-pitching-breakdown PDF, rebuilt from the warehouse on every load. */
 export function BiomechReport({ athleteUuid }: { athleteUuid: string }) {
   const [date, setDate] = useState<string | null>(null);
-  const key = `/api/coach/athletes/${encodeURIComponent(athleteUuid)}/biomech-report${date ? `?date=${date}` : ""}`;
+  const [category, setCategory] = useState<PitchCategory>("fastball");
+  const qs = new URLSearchParams();
+  if (date) qs.set("date", date);
+  if (category !== "fastball") qs.set("category", category);
+  const q = qs.toString();
+  const key = `/api/coach/athletes/${encodeURIComponent(athleteUuid)}/biomech-report${q ? `?${q}` : ""}`;
   const { data: r, error, isLoading } = useSWR<Report>(key, { ...swrOpts, keepPreviousData: true });
 
   if (isLoading && !r) return <Loader size="sm" />;
@@ -130,16 +136,30 @@ export function BiomechReport({ athleteUuid }: { athleteUuid: string }) {
   const rp = m.releasePhase;
   const pron = rp.pronationFlag ? PRON_LABEL[rp.pronationFlag]! : null;
   const ir = rp.irFlag ? IR_LABEL[rp.irFlag]! : null;
+  // Fastball is the graded view; other categories are measurements beside the fastball.
+  const graded = r.category === "fastball";
+  const lbl = PITCH_CATEGORY_LABEL[r.category];
+  const short = PITCH_CATEGORY_SHORT[r.category];
   const size = [heightText(r.athlete.heightIn), r.athlete.weightLb ? `${Math.round(r.athlete.weightLb)} lb` : null].filter(Boolean).join(" / ");
 
   return (
     <div>
       <Group justify="space-between" mb="sm">
         <Text size="sm" c="dimmed">
-          8-Cylinder framework, rebuilt from the warehouse. Percentiles vs each pitcher&apos;s latest capture ({r.cohortN} pitchers).
+          {graded
+            ? <>8-Cylinder framework, rebuilt from the warehouse. Percentiles vs each pitcher&apos;s latest fastball capture ({r.cohortN} pitchers).</>
+            : <>{lbl.one} captures, shown beside his fastball from the same session. Not graded.</>}
         </Text>
         <Group gap="xs">
           {isLoading && <Loader size="xs" />}
+          {r.categories.length > 1 && (
+            <SegmentedControl
+              size="xs"
+              value={r.category}
+              onChange={(c) => setCategory(c as PitchCategory)}
+              data={r.categories.map((c) => ({ value: c.category, label: `${PITCH_CATEGORY_LABEL[c.category].one} (${c.count})` }))}
+            />
+          )}
           <Select
             size="xs"
             w={190}
@@ -151,25 +171,44 @@ export function BiomechReport({ athleteUuid }: { athleteUuid: string }) {
         </Group>
       </Group>
 
+      {!graded && (
+        <Alert color="gray" variant="light" mb="sm" title={`${lbl.one} — not graded`}>
+          Our framework, bands and percentiles are built on fastball mechanics. These {lbl.many} are stored for the coach hub only: they never feed
+          percentiles, cohorts, scores or anything sent to the Octane app. Each value sits beside his fastball from this session.
+        </Alert>
+      )}
       <div className={s.report}>
         {/* COVER */}
         <div className={s.cover}>
           <div className={s.coverRule} />
           <div className={s.brand}>8ctane · Biomechanics Report</div>
           <h1 className={s.name}>{r.athlete.name}</h1>
-          <div className={s.tagline}>{r.athlete.handed === "LHP" ? "Left-Handed Pitcher" : r.athlete.handed === "RHP" ? "Right-Handed Pitcher" : "Pitcher"}</div>
+          <div className={s.tagline}>
+            {r.athlete.handed === "LHP" ? "Left-Handed Pitcher" : r.athlete.handed === "RHP" ? "Right-Handed Pitcher" : "Pitcher"}
+            {!graded && ` · ${lbl.one} captures`}
+          </div>
           <div className={s.coverMain}>
             <div>
               <div className={s.veloNum}>{v.mean != null ? v.mean.toFixed(1) : "—"}</div>
-              <div className={s.veloLabel}>Mean Fastball — MPH</div>
+              <div className={s.veloLabel}>Mean {lbl.one} — MPH</div>
             </div>
-            <div className={s.overall}>
-              <div className={s.overallNum}>{r.percentiles?.overall ?? "—"}</div>
-              <div>
-                <div className={s.overallPct}>Overall %ile</div>
-                <div className={s.overallSub}>vs cohort (n={r.cohortN})</div>
+            {graded ? (
+              <div className={s.overall}>
+                <div className={s.overallNum}>{r.percentiles?.overall ?? "—"}</div>
+                <div>
+                  <div className={s.overallPct}>Overall %ile</div>
+                  <div className={s.overallSub}>vs cohort (n={r.cohortN})</div>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className={s.overall}>
+                <div className={s.overallNum}>{r.fastballVelo != null ? r.fastballVelo.toFixed(1) : "—"}</div>
+                <div>
+                  <div className={s.overallPct}>Fastball MPH</div>
+                  <div className={s.overallSub}>same session</div>
+                </div>
+              </div>
+            )}
           </div>
           <div className={s.stats}>
             <div>
@@ -186,7 +225,9 @@ export function BiomechReport({ athleteUuid }: { athleteUuid: string }) {
             </div>
             <div>
               <div className={s.statLabel}>Captures</div>
-              <div className={s.statValue}>{v.throws.length} fastballs</div>
+              <div className={s.statValue}>
+                {v.throws.length} {v.throws.length === 1 ? lbl.one.toLowerCase() : lbl.many}
+              </div>
             </div>
           </div>
           <div className={s.coverRuleBottom} />
@@ -207,19 +248,20 @@ export function BiomechReport({ athleteUuid }: { athleteUuid: string }) {
             <div className={`${s.rpCell} ${pron?.cls ? s[pron.cls] : ""}`}>
               <div className={s.rpLabel}>Pronation Vel Offset</div>
               <div className={s.rpValue}>{rp.pronationOffsetMs != null ? `${rp.pronationOffsetMs >= 0 ? "+" : ""}${Math.round(rp.pronationOffsetMs)} ms` : "—"}</div>
-              <div className={s.rpMeta}>+25 to +50 ms is clean · &gt; 60 delayed = cut · &lt; 0 early = run</div>
-              {pron && <div className={`${s.rpFlag} ${pron.flag ? s[pron.flag] : ""}`}>{pron.text}</div>}
+              <div className={s.rpMeta}>{graded ? <>+25 to +50 ms is clean · &gt; 60 delayed = cut · &lt; 0 early = run</> : "Fastball bands don't apply"}</div>
+              {graded && pron && <div className={`${s.rpFlag} ${pron.flag ? s[pron.flag] : ""}`}>{pron.text}</div>}
             </div>
             <div className={`${s.rpCell} ${ir?.cls ? s[ir.cls] : ""}`}>
               <div className={s.rpLabel}>% IR Before Release</div>
               <div className={s.rpValue}>{rp.pctIrBeforeRelease != null ? `${Math.round(rp.pctIrBeforeRelease)}%` : "—"}</div>
-              <div className={s.rpMeta}>&lt; 50% is clean · 50–55% borderline · &gt; 55% flags cut</div>
-              {ir && <div className={`${s.rpFlag} ${ir.flag ? s[ir.flag] : ""}`}>{ir.text}</div>}
+              <div className={s.rpMeta}>{graded ? <>&lt; 50% is clean · 50–55% borderline · &gt; 55% flags cut</> : "Fastball bands don't apply"}</div>
+              {graded && ir && <div className={`${s.rpFlag} ${ir.flag ? s[ir.flag] : ""}`}>{ir.text}</div>}
             </div>
           </div>
         )}
 
-        {/* 01 PROFILE */}
+        {/* 01 PROFILE (fastball only: the cohort is fastballs) */}
+        {graded && (
         <div className={s.section}>
           <div className={s.sectionHead}>01 — Profile Snapshot</div>
           <div className={s.sectionTitle}>Cohort Position</div>
@@ -234,6 +276,7 @@ export function BiomechReport({ athleteUuid }: { athleteUuid: string }) {
             </div>
           </div>
         </div>
+        )}
 
         {/* 02 SUMMARY */}
         <div className={s.section}>
@@ -251,7 +294,9 @@ export function BiomechReport({ athleteUuid }: { athleteUuid: string }) {
             {v.throws.map((t) => (
               <div key={t.trial} className={s.veloCell}>
                 <div className={s.veloCellNum}>{t.velocity != null ? t.velocity.toFixed(1) : "—"}</div>
-                <div className={s.veloCellLabel}>FB #{t.trial}</div>
+                <div className={s.veloCellLabel}>
+                  {short} #{t.trial}
+                </div>
               </div>
             ))}
           </div>
@@ -264,7 +309,14 @@ export function BiomechReport({ athleteUuid }: { athleteUuid: string }) {
               <div>
                 SD <b>{v.sd.toFixed(2)}</b> mph
               </div>
-              <div>{v.count} fastballs with velocity</div>
+              <div>
+                {v.count} {v.count === 1 ? lbl.one.toLowerCase() : lbl.many} with velocity
+              </div>
+              {!graded && r.fastballVelo != null && v.mean != null && (
+                <div>
+                  {(v.mean - r.fastballVelo).toFixed(1)} mph vs fastball ({r.fastballVelo.toFixed(1)})
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -288,7 +340,7 @@ export function BiomechReport({ athleteUuid }: { athleteUuid: string }) {
                     <div className={s.cylPctLabel}>%ILE</div>
                   </div>
                 )}
-                <Chip status={c.status} />
+                {graded && <Chip status={c.status} />}
               </div>
             ))}
           </div>
@@ -305,8 +357,8 @@ export function BiomechReport({ athleteUuid }: { athleteUuid: string }) {
                   <th />
                   <th>Metric</th>
                   <th style={{ textAlign: "center" }}>Value</th>
-                  <th>Reference</th>
-                  <th style={{ textAlign: "center" }}>Status</th>
+                  <th>{graded ? "Reference" : "Fastball (same session)"}</th>
+                  {graded && <th style={{ textAlign: "center" }}>Status</th>}
                 </tr>
               </thead>
               <tbody>
@@ -316,9 +368,11 @@ export function BiomechReport({ athleteUuid }: { athleteUuid: string }) {
                     <td className={s.dmLabel}>{d.label}</td>
                     <td className={s.dmValue}>{d.valueText}</td>
                     <td className={s.dmRef}>{d.refText}</td>
-                    <td className={s.dmStatus}>
-                      <Chip status={d.status} />
-                    </td>
+                    {graded && (
+                      <td className={s.dmStatus}>
+                        <Chip status={d.status} />
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -326,7 +380,9 @@ export function BiomechReport({ athleteUuid }: { athleteUuid: string }) {
           </div>
         </div>
 
-        {/* 06 FINDINGS */}
+        {/* 06 FINDINGS + 08 PLAN (fastball-referenced reads) */}
+        {graded && (
+        <>
         <div className={`${s.section} ${s.findingsGrid}`}>
           <div className={s.working}>
             <div className={s.sectionHead}>06 — Strengths</div>
@@ -371,6 +427,8 @@ export function BiomechReport({ athleteUuid }: { athleteUuid: string }) {
             ))}
           </ol>
         </div>
+        </>
+        )}
 
         {/* BOTTOM LINE */}
         <div className={s.bottomLine}>

@@ -129,7 +129,7 @@ export function ArsenalMoves({ arsenal }: { arsenal: SessionSummary["arsenal"] }
 }
 
 export function PitchDot({ code }: { code: PitchCode }) {
-  return <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 999, background: PITCH_COLORS[code], marginRight: 6, verticalAlign: "middle" }} />;
+  return <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 999, background: PITCH_COLORS[code], boxShadow: "0 0 0 1px rgba(255,255,255,0.35)", marginRight: 6, verticalAlign: "middle" }} />;
 }
 
 /** Per-pitch-type table: usage, velo, shape, release, whiff%, xArsenal grade, 8-Stuff+. */

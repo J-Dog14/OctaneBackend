@@ -431,6 +431,7 @@ def ensure_table(conn) -> None:
               source_athlete_id VARCHAR(100),
               owner_filename TEXT,
               trial_index INTEGER NOT NULL,
+              pitch_category TEXT NOT NULL DEFAULT 'fastball',
               velocity_mph NUMERIC,
               score NUMERIC,
               age_at_collection NUMERIC,
@@ -476,7 +477,7 @@ def ensure_table(conn) -> None:
         cur.execute(
             """
             CREATE UNIQUE INDEX IF NOT EXISTS idx_f_pitching_trials_unique
-              ON public.f_pitching_trials(athlete_uuid, session_date, trial_index);
+              ON public.f_pitching_trials(athlete_uuid, session_date, pitch_category, trial_index);
             """
         )
         cur.execute(
@@ -679,6 +680,10 @@ def main() -> int:
                     if not prompt_duplicate_session(session_date.isoformat()[:10]):
                         continue
 
+            # Legacy rebuild: fastball trials only. Breaking Ball / Off Speed / Pitch trials
+            # are tagged by the R ingest (pitch_category) and must be re-ingested there;
+            # this script would store them as fastballs.
+            owners = [(o, m) for (o, m) in owners if "FASTBALL" in str(o).upper()]
             # Insert each owner (trial) in document order, using trial_index
             for trial_index, (owner_filename, metrics) in enumerate(owners):
                 if is_static_owner(owner_filename):
@@ -733,7 +738,7 @@ def main() -> int:
                            height, weight, metrics, session_xml_path, session_data_xml_path)
                         VALUES
                           (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s, %s)
-                        ON CONFLICT (athlete_uuid, session_date, trial_index) DO UPDATE
+                        ON CONFLICT (athlete_uuid, session_date, pitch_category, trial_index) DO UPDATE
                           SET owner_filename = EXCLUDED.owner_filename,
                               source_athlete_id = COALESCE(EXCLUDED.source_athlete_id, f_pitching_trials.source_athlete_id),
                               velocity_mph = EXCLUDED.velocity_mph,

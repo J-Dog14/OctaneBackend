@@ -1166,6 +1166,8 @@ model f_pitching_trials {
   velocity_mph          Decimal?   @db.Decimal
   score                 Decimal?   @db.Decimal
   metrics               Json
+  /// V3D EVENT_LABEL times (s from start of cropped capture = frame / frame rate). TIMING.*Time metrics are relative to SETUP instead.
+  events                Json?
   session_xml_path      String?
   session_data_xml_path String?
   created_at            DateTime   @default(now()) @db.Timestamptz(6)
@@ -1175,9 +1177,14 @@ model f_pitching_trials {
   weight                Decimal?   @db.Decimal
   handedness            String?
   name                  String?
+  /// fastball | breaking_ball | off_speed | pitch. Only fastball leaves the coach hub.
+  pitch_category        String     @default("fastball")
+  qtm_pitch_type        String?
+  /// QTM PC local time of the capture (session.xml Creation_date + Creation_time).
+  capture_time          DateTime?  @db.Timestamp(6)
   d_athletes            d_athletes @relation(fields: [athlete_uuid], references: [athlete_uuid], onDelete: Cascade, onUpdate: NoAction)
 
-  @@unique([athlete_uuid, session_date, trial_index], map: "idx_f_pitching_trials_unique")
+  @@unique([athlete_uuid, session_date, pitch_category, trial_index], map: "idx_f_pitching_trials_unique")
   @@index([session_date], map: "idx_f_pitching_trials_date")
   @@index([owner_filename], map: "idx_f_pitching_trials_owner")
   @@schema("public")
@@ -1316,9 +1323,11 @@ model f_pitching_force_data {
   trial_index       Int
   data              Json?
   created_at        DateTime   @default(now()) @db.Timestamptz(6)
+  /// Part of the trial key; set from owner_filename by trigger (trial numbers count within a category).
+  pitch_category    String     @default("fastball")
   d_athletes        d_athletes @relation(fields: [athlete_uuid], references: [athlete_uuid], onDelete: Cascade, onUpdate: NoAction, map: "f_pitching_force_data_fkey")
 
-  @@unique([athlete_uuid, session_date, trial_index], map: "f_pitching_force_data_unique")
+  @@unique([athlete_uuid, session_date, pitch_category, trial_index], map: "f_pitching_force_data_unique")
   @@schema("public")
 }
 
@@ -1404,9 +1413,11 @@ model f_pitching_force_metrics {
   qa_warnings_json                Json?
   processor_version               String     @db.VarChar(20)
   created_at                      DateTime   @default(now()) @db.Timestamptz(6)
+  /// Part of the trial key; set from owner_filename by trigger (trial numbers count within a category).
+  pitch_category    String     @default("fastball")
   d_athletes                      d_athletes @relation(fields: [athlete_uuid], references: [athlete_uuid], onDelete: Cascade, onUpdate: NoAction, map: "f_pitching_force_metrics_fkey")
 
-  @@unique([athlete_uuid, session_date, trial_index], map: "f_pitching_force_metrics_unique")
+  @@unique([athlete_uuid, session_date, pitch_category, trial_index], map: "f_pitching_force_metrics_unique")
   @@index([athlete_uuid, session_date], map: "idx_force_metrics_athlete_date")
   @@index([owner_filename], map: "idx_force_metrics_owner")
   @@schema("public")
@@ -1423,9 +1434,11 @@ model f_pitching_marker_data {
   label_names       Json?
   data              Json?
   created_at        DateTime   @default(now()) @db.Timestamptz(6)
+  /// Part of the trial key; set from owner_filename by trigger (trial numbers count within a category).
+  pitch_category    String     @default("fastball")
   d_athletes        d_athletes @relation(fields: [athlete_uuid], references: [athlete_uuid], onDelete: Cascade, onUpdate: NoAction, map: "f_pitching_marker_data_fkey")
 
-  @@unique([athlete_uuid, session_date, trial_index], map: "f_pitching_marker_data_unique")
+  @@unique([athlete_uuid, session_date, pitch_category, trial_index], map: "f_pitching_marker_data_unique")
   @@schema("public")
 }
 
@@ -1440,9 +1453,11 @@ model f_pitching_segment_pos_data {
   segment_names     Json?
   data              Json?
   created_at        DateTime   @default(now()) @db.Timestamptz(6)
+  /// Part of the trial key; set from owner_filename by trigger (trial numbers count within a category).
+  pitch_category    String     @default("fastball")
   d_athletes        d_athletes @relation(fields: [athlete_uuid], references: [athlete_uuid], onDelete: Cascade, onUpdate: NoAction, map: "f_pitching_segment_pos_data_fkey")
 
-  @@unique([athlete_uuid, session_date, trial_index], map: "f_pitching_segment_pos_data_unique")
+  @@unique([athlete_uuid, session_date, pitch_category, trial_index], map: "f_pitching_segment_pos_data_unique")
   @@schema("public")
 }
 
@@ -1457,9 +1472,11 @@ model f_pitching_segment_rot_data {
   segment_names     Json?
   data              Json?
   created_at        DateTime   @default(now()) @db.Timestamptz(6)
+  /// Part of the trial key; set from owner_filename by trigger (trial numbers count within a category).
+  pitch_category    String     @default("fastball")
   d_athletes        d_athletes @relation(fields: [athlete_uuid], references: [athlete_uuid], onDelete: Cascade, onUpdate: NoAction, map: "f_pitching_segment_rot_data_fkey")
 
-  @@unique([athlete_uuid, session_date, trial_index], map: "f_pitching_segment_rot_data_unique")
+  @@unique([athlete_uuid, session_date, pitch_category, trial_index], map: "f_pitching_segment_rot_data_unique")
   @@schema("public")
 }
 
@@ -1557,9 +1574,11 @@ model f_pitching_time_data {
   session_xml_path      String?
   session_data_xml_path String?
   created_at            DateTime   @default(now()) @db.Timestamptz(6)
+  /// Part of the trial key; set from owner_filename by trigger (trial numbers count within a category).
+  pitch_category    String     @default("fastball")
   d_athletes            d_athletes @relation(fields: [athlete_uuid], references: [athlete_uuid], onDelete: Cascade, onUpdate: NoAction)
 
-  @@unique([athlete_uuid, session_date, trial_index], map: "idx_f_pitching_time_data_unique")
+  @@unique([athlete_uuid, session_date, pitch_category, trial_index], map: "idx_f_pitching_time_data_unique")
   @@index([session_date], map: "idx_f_pitching_time_data_date")
   @@index([owner_filename], map: "idx_f_pitching_time_data_owner")
   @@schema("public")

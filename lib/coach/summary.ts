@@ -12,7 +12,7 @@ import { clientForAthlete } from "@/lib/client-hub/repository";
 import { videoCount } from "@/lib/videos/service";
 import type { DomainId } from "@/lib/athlete-tracking/types";
 
-export type CoachTabId = "overview" | "pitching" | "biomechanics" | "hitting" | "assessments" | "mobility" | "prosup" | "curveball" | "readiness" | "proteus" | "program" | "throwing" | "programManagement" | "videos";
+export type CoachTabId = "overview" | "pitching" | "tm3d" | "biomechanics" | "hitting" | "assessments" | "mobility" | "prosup" | "curveball" | "readiness" | "proteus" | "program" | "throwing" | "programManagement" | "videos";
 
 export interface DataSource {
   id: string;
@@ -43,6 +43,8 @@ export interface CoachAthleteSummary {
   /** Session dates per tracking domain, newest first. */
   trackingDates: Partial<Record<DomainId, string[]>>;
   tabs: Record<CoachTabId, boolean>;
+  /** Capture dates with 3D trials paired to TrackMan (Biomechanics → Mechanics + Flight), newest first. */
+  pitchSyncDates: string[];
   /** Client Hub record (coach.hub_clients), when this athlete has ever been on an 8ctane program. */
   hubClient: { id: string; status: string; isActive: boolean } | null;
 }
@@ -129,7 +131,7 @@ export async function getCoachAthleteSummary(athleteUuid: string): Promise<Coach
   if (!a) return null;
 
   const conn = await getDb();
-  const [trackingDates, readiness, proSup, curveball, links, savant, trackman, reports, program, hubClient, videos] = await Promise.all([
+  const [trackingDates, readiness, proSup, curveball, links, savant, trackman, reports, program, hubClient, videos, pitchSync] = await Promise.all([
     getTrackingSessionDates(athleteUuid),
     prisma.v_readiness_screen_sessions.aggregate({ where: { athlete_uuid: athleteUuid }, _count: { _all: true }, _max: { session_date: true } }),
     prisma.f_pro_sup.aggregate({ where: { athlete_uuid: athleteUuid }, _count: { _all: true }, _max: { session_date: true } }),
@@ -155,6 +157,11 @@ export async function getCoachAthleteSummary(athleteUuid: string): Promise<Coach
     clientForAthlete(athleteUuid).catch(() => null),
     // Video Hub clips; table not installed yet → no badge (the tab still shows).
     videoCount(athleteUuid).catch(() => ({ n: 0, last: null })),
+    // 3D ↔ TrackMan pairs (pitch_intel.biomech_trackman_links); table missing → no Mechanics + Flight view.
+    conn.query<{ d: string }>(
+      `SELECT DISTINCT session_date::text AS d FROM pitch_intel.biomech_trackman_links WHERE athlete_uuid = $1 ORDER BY d DESC`,
+      athleteUuid,
+    ).catch(pitchIntelMissing),
   ]);
 
   const sources: DataSource[] = [
@@ -199,6 +206,8 @@ export async function getCoachAthleteSummary(athleteUuid: string): Promise<Coach
     tabs: {
       overview: true,
       pitching: has("pitching") || links.length > 0,
+      // TM + 3D: only once a 3D capture has been paired with TrackMan (uais/python/trackman/match_3d.py).
+      tm3d: pitchSync.length > 0,
       biomechanics: has("biomechanics"),
       hitting: has("hitting"),
       assessments: has("assessments"),
@@ -214,6 +223,7 @@ export async function getCoachAthleteSummary(athleteUuid: string): Promise<Coach
       // Always shown: it's where coaches add an athlete's first clip.
       videos: true,
     },
+    pitchSyncDates: pitchSync.map((r) => r.d),
     hubClient,
   };
 }

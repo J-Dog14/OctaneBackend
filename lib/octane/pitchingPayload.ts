@@ -42,6 +42,12 @@ type MetricSpec = {
   computeFromMap?: (map: Map<string, number | null>) => number | null;
 };
 
+/**
+ * Octane app payloads are built from fastball trials only. Breaking ball / off speed /
+ * untyped "Pitch" captures are stored for the coach hub and never leave it.
+ */
+const FASTBALL = "fastball";
+
 /** Parsed metrics from f_pitching_trials.metrics JSON (metric name -> value). */
 export type TrialMetricsMap = Map<string, number | null>;
 
@@ -744,7 +750,7 @@ export async function buildPitchingPayloadFromTrials(
     resolvedDate = new Date(sessionDate);
   } else {
     const recent = await prisma.f_pitching_trials.findFirst({
-      where: { athlete_uuid: athleteUuid },
+      where: { athlete_uuid: athleteUuid, pitch_category: FASTBALL },
       orderBy: { session_date: "desc" },
       select: { session_date: true },
     });
@@ -754,7 +760,7 @@ export async function buildPitchingPayloadFromTrials(
 
   // Get all trials from that session and average their metrics.
   const allTrials = await prisma.f_pitching_trials.findMany({
-    where: { athlete_uuid: athleteUuid, session_date: resolvedDate },
+    where: { athlete_uuid: athleteUuid, session_date: resolvedDate, pitch_category: FASTBALL },
     select: { metrics: true, velocity_mph: true, weight: true, session_date: true },
   });
 
@@ -810,14 +816,14 @@ export async function getPitchingTrialValueMapAndAthlete(athleteUuid: string): P
   if (!athlete) return null;
 
   const recentSession = await prisma.f_pitching_trials.findFirst({
-    where: { athlete_uuid: athleteUuid },
+    where: { athlete_uuid: athleteUuid, pitch_category: FASTBALL },
     orderBy: { session_date: "desc" },
     select: { session_date: true },
   });
   if (!recentSession) return null;
 
   const allTrials = await prisma.f_pitching_trials.findMany({
-    where: { athlete_uuid: athleteUuid, session_date: recentSession.session_date },
+    where: { athlete_uuid: athleteUuid, session_date: recentSession.session_date, pitch_category: FASTBALL },
     select: { metrics: true, velocity_mph: true, weight: true, session_date: true },
   });
   if (allTrials.length === 0) return null;
@@ -946,6 +952,7 @@ export async function buildPitchingPayload(
   const hasTrials = await prisma.f_pitching_trials.findFirst({
     where: {
       athlete_uuid: athleteUuid,
+      pitch_category: FASTBALL,
       ...(sessionDate ? { session_date: new Date(sessionDate) } : {}),
     },
     select: { id: true },

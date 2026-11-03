@@ -11,6 +11,7 @@
  *   npm run pi:unlink   -- --athlete <...>
  *   npm run pi:list
  *   npm run pi:runs     -- [--limit 20]
+ *   npm run pi:grade    -- [--athlete <name|uuid>] [--date YYYY-MM-DD] [--force] [--pause 250]   (xArsenal per TrackMan pitch; resumable)
  */
 
 import "./env";
@@ -266,6 +267,27 @@ async function cmdRuns(args: Args): Promise<void> {
   }
 }
 
+/** xArsenal v3 + 8-Stuff+ for every TrackMan pitch with a full read (new or changed ones only, unless --force). */
+async function cmdGrade(args: Args): Promise<void> {
+  const { gradeTrackmanPitches } = await import("../../lib/pitch-intel/xarsenal/pitchGrades");
+  let athleteUuids: string[] | undefined;
+  const q = str(args.athlete);
+  if (q) {
+    athleteUuids = [...new Set((await findLinks(q)).map((l) => l.athlete_uuid))];
+    if (!athleteUuids.length) throw new Error(`No linked athlete matches "${q}"`);
+  }
+  const date = str(args.date);
+  if (date && !isIsoDate(date)) throw new Error("--date must be YYYY-MM-DD");
+  log(`Grading TrackMan pitches${q ? ` for ${athleteUuids!.length} athlete(s)` : ""}${date ? ` on ${date}` : ""}${args.force ? " (force)" : ""}...`);
+  const pause = str(args.pause);
+  const r = await gradeTrackmanPitches({ athleteUuids, sessionDate: date ?? null, force: !!args.force, pauseMs: pause ? Number(pause) : undefined, log });
+  log(`${r.complete} pitches with a full TrackMan read, ${r.incomplete} partial reads skipped. Sent ${r.sent}, ${r.graded} came back graded.`);
+  if (r.error) {
+    console.error(`xArsenal service error: ${r.error}`);
+    process.exitCode = 1;
+  }
+}
+
 const COMMANDS: Record<string, (args: Args) => Promise<void>> = {
   setup: cmdSetup,
   link: cmdLink,
@@ -277,6 +299,7 @@ const COMMANDS: Record<string, (args: Args) => Promise<void>> = {
   unlink: cmdUnlink,
   list: cmdList,
   runs: cmdRuns,
+  grade: cmdGrade,
 };
 
 async function main(): Promise<void> {

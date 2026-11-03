@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import useSWR, { SWRConfig, useSWRConfig } from "swr";
 import { coachFetcher, createCoachFetcher, swrOpts } from "./fetcher";
+import { useUserActive } from "@/hooks/useUserActive";
 
 type PopulationStatus = { version: string; ready: number; pending: number; failed: number };
 const PopulationStatusContext = createContext<PopulationStatus | undefined>(undefined);
@@ -11,9 +12,17 @@ export const usePopulationStatus = () => useContext(PopulationStatusContext);
 function PopulationUpdates({ fetcher, children }: { fetcher: ReturnType<typeof createCoachFetcher>; children: React.ReactNode }) {
   const { mutate } = useSWRConfig();
   const previous = useRef<string | undefined>(undefined);
-  const { data } = useSWR<PopulationStatus>("/api/coach/populations/status", coachFetcher, {
-    ...swrOpts, refreshInterval: 15_000, dedupingInterval: 5_000,
+  // Poll only while someone is using the tab; an idle/hidden tab makes no requests.
+  const active = useUserActive();
+  const { data, mutate: refreshStatus } = useSWR<PopulationStatus>("/api/coach/populations/status", coachFetcher, {
+    ...swrOpts, refreshInterval: active ? 15_000 : 0, dedupingInterval: 5_000,
   });
+  const wasActive = useRef(active);
+  useEffect(() => {
+    // Catch up immediately when the user comes back instead of waiting 15 s.
+    if (active && !wasActive.current) void refreshStatus();
+    wasActive.current = active;
+  }, [active, refreshStatus]);
   useEffect(() => {
     if (!data) return;
     fetcher.setPopulationVersion(data.version);

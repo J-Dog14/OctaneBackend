@@ -14,6 +14,7 @@ ensure_force_metrics_table <- function(con) {
       source_athlete_id               VARCHAR(100),
       owner_filename                  TEXT,
       trial_index                     INTEGER NOT NULL,
+      pitch_category                  TEXT NOT NULL DEFAULT 'fastball',
       handedness                      VARCHAR(20),
       body_weight_kg                  NUMERIC,
       body_weight_n                   NUMERIC,
@@ -113,7 +114,7 @@ ensure_force_metrics_table <- function(con) {
       CONSTRAINT f_pitching_force_metrics_fkey
         FOREIGN KEY (athlete_uuid) REFERENCES analytics.d_athletes(athlete_uuid) ON DELETE CASCADE,
       CONSTRAINT f_pitching_force_metrics_unique
-        UNIQUE (athlete_uuid, session_date, trial_index)
+        UNIQUE (athlete_uuid, session_date, pitch_category, trial_index)
     )
   ")
 
@@ -156,7 +157,7 @@ upsert_force_metrics <- function(con, row) {
   sql <- paste0("
     INSERT INTO public.f_pitching_force_metrics (
       athlete_uuid, session_date, source_system, source_athlete_id,
-      owner_filename, trial_index, handedness, body_weight_kg, body_weight_n,
+      owner_filename, trial_index, pitch_category, handedness, body_weight_kg, body_weight_n,
       lead_plate_id, drive_plate_id, braking_sign, axis_braking, axis_vertical, axis_mediolateral,
       fc_frame, br_frame, mer_frame, fc_time_s, br_time_s, mer_time_s,
       initial_contact_frame, initial_contact_time_s, foot_loading_time_ms,
@@ -188,6 +189,7 @@ upsert_force_metrics <- function(con, row) {
       ", .L(row$source_athlete_id), ",
       ", .L(row$owner_filename), ",
       ", .L(row$trial_index), ",
+      ", .L(if (is.null(row$pitch_category)) "fastball" else row$pitch_category), ",
       ", .L(row$handedness), ",
       ", .L(row$body_weight_kg), ",
       ", .L(row$body_weight_n), ",
@@ -262,7 +264,7 @@ upsert_force_metrics <- function(con, row) {
       ", .L(warnings_json_str), "::jsonb,
       ", .L(row$processor_version), "
     )
-    ON CONFLICT (athlete_uuid, session_date, trial_index) DO UPDATE SET
+    ON CONFLICT (athlete_uuid, session_date, pitch_category, trial_index) DO UPDATE SET
       source_athlete_id = EXCLUDED.source_athlete_id,
       owner_filename = EXCLUDED.owner_filename,
       handedness = EXCLUDED.handedness,

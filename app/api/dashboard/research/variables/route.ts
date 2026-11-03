@@ -179,7 +179,7 @@ const DIRECT_COLUMNS: Record<string, VariableInfo[]> = {
 
 /** Tables whose metrics column is JSONB and the actual SQL table name */
 const JSONB_SQL_TABLES: Record<string, string> = {
-  pitching: "f_pitching_trials",
+  pitching: "v_pitching_trials_fastball", // fastball trials only
   hitting:  "f_hitting_trials",
 };
 

@@ -41,8 +41,18 @@ export class TrialLookup {
     }
   }
 
-  /** `Trunk_Angle@Release_X` → Trunk_Angle@Release / X; `STRIDE_LENGTH_MEAN_PERCENT` → X component. */
+  /**
+   * `Trunk_Angle@Release_X` → Trunk_Angle@Release / X; `STRIDE_LENGTH_MEAN_PERCENT` → X component.
+   * Foot contact is "Footstrike" in some Visual3D pipelines and "Foot_Contact" in others (the R ingest
+   * accepts both too), so a missing *Footstrike* id is retried under the other name.
+   */
   get(id: string): number | null {
+    const v = this.getExact(id);
+    if (v != null || !id.includes("Footstrike")) return v;
+    return this.getExact(id.replace("Footstrike", "Foot_Contact"));
+  }
+
+  private getExact(id: string): number | null {
     const direct = this.map.get(`${id}|X`);
     if (direct != null) return direct;
     const m = /^(.*)_([XYZ])$/.exec(id);
@@ -67,6 +77,11 @@ function firstNumber(raw: unknown): number | null {
     }
   }
   return null;
+}
+
+/** Adds the "Foot_Contact" spelling of every *Footstrike* variable (for SQL filters on metric names). */
+export function withFootContactAliases(names: string[]): string[] {
+  return [...new Set(names.flatMap((n) => (n.includes("Footstrike") ? [n, n.replace("Footstrike", "Foot_Contact")] : [n])))];
 }
 
 export interface PitchTrial {

@@ -338,5 +338,12 @@ export async function commitTrackman(
     saved,
     JSON.stringify({ inserted, updated, skippedPitchers, athletes }),
   );
+  // Grade the new pitches with xArsenal in the background; the upload doesn't wait on the Worker.
+  if (athletes.length) {
+    void import("../xarsenal/pitchGrades")
+      .then(({ gradeTrackmanPitches }) => gradeTrackmanPitches({ athleteUuids: athletes.map((a) => a.athleteUuid) }))
+      .then((r) => r.error && console.error("[xarsenal] per-pitch grading after upload:", r.error))
+      .catch((err) => console.error("[xarsenal] per-pitch grading after upload:", err));
+  }
   return { uploadId, saved, inserted, updated, skippedPitchers, athletes };
 }

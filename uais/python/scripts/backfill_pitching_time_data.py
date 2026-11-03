@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS public.f_pitching_time_data (
   owner_filename TEXT,
   handedness VARCHAR(20),
   trial_index INTEGER NOT NULL,
+  pitch_category TEXT NOT NULL DEFAULT 'fastball',
   velocity_mph NUMERIC,
   score NUMERIC,
   age_at_collection NUMERIC,
@@ -85,7 +86,7 @@ CREATE TABLE IF NOT EXISTS public.f_pitching_time_data (
 CREATE_INDEX_SQLS = [
     """
     CREATE UNIQUE INDEX IF NOT EXISTS idx_f_pitching_time_data_unique
-      ON public.f_pitching_time_data(athlete_uuid, session_date, trial_index)
+      ON public.f_pitching_time_data(athlete_uuid, session_date, pitch_category, trial_index)
     """,
     """
     CREATE INDEX IF NOT EXISTS idx_f_pitching_time_data_owner
@@ -110,7 +111,7 @@ VALUES
    %s, %s, %s, %s,
    %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb,
    %s, %s)
-ON CONFLICT (athlete_uuid, session_date, trial_index) DO UPDATE SET
+ON CONFLICT (athlete_uuid, session_date, pitch_category, trial_index) DO UPDATE SET
   name = COALESCE(EXCLUDED.name, f_pitching_time_data.name),
   owner_filename = EXCLUDED.owner_filename,
   handedness = COALESCE(EXCLUDED.handedness, f_pitching_time_data.handedness),

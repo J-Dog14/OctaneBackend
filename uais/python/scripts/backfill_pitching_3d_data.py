@@ -60,6 +60,7 @@ FIND_MISSING = """
     LEFT JOIN public.f_pitching_time_data td
         ON  pt.athlete_uuid = td.athlete_uuid
         AND pt.session_date = td.session_date
+        AND pt.pitch_category = td.pitch_category
         AND pt.trial_index  = td.trial_index
     WHERE td.id IS NULL
       AND pt.session_xml_path IS NOT NULL
@@ -79,7 +80,7 @@ UPSERT_TIME_DATA = """
          %s, %s, %s, %s,
          %s, %s, %s, %s,
          %s, %s)
-    ON CONFLICT (athlete_uuid, session_date, trial_index) DO UPDATE SET
+    ON CONFLICT (athlete_uuid, session_date, pitch_category, trial_index) DO UPDATE SET
         name                  = COALESCE(EXCLUDED.name,              f_pitching_time_data.name),
         owner_filename        = EXCLUDED.owner_filename,
         handedness            = COALESCE(EXCLUDED.handedness,        f_pitching_time_data.handedness),
@@ -104,7 +105,7 @@ UPSERT_MARKER_DATA = """
         (athlete_uuid, session_date, source_system, source_athlete_id,
          owner_filename, trial_index, label_names, data)
     VALUES (%s, %s, %s, %s, %s, %s, %s::jsonb, %s::jsonb)
-    ON CONFLICT (athlete_uuid, session_date, trial_index) DO UPDATE SET
+    ON CONFLICT (athlete_uuid, session_date, pitch_category, trial_index) DO UPDATE SET
         label_names = EXCLUDED.label_names,
         data        = EXCLUDED.data,
         created_at  = NOW()
@@ -115,7 +116,7 @@ UPSERT_SEG_POS = """
         (athlete_uuid, session_date, source_system, source_athlete_id,
          owner_filename, trial_index, segment_names, data)
     VALUES (%s, %s, %s, %s, %s, %s, %s::jsonb, %s::jsonb)
-    ON CONFLICT (athlete_uuid, session_date, trial_index) DO UPDATE SET
+    ON CONFLICT (athlete_uuid, session_date, pitch_category, trial_index) DO UPDATE SET
         segment_names = EXCLUDED.segment_names,
         data          = EXCLUDED.data,
         created_at    = NOW()
@@ -126,7 +127,7 @@ UPSERT_SEG_ROT = """
         (athlete_uuid, session_date, source_system, source_athlete_id,
          owner_filename, trial_index, segment_names, data)
     VALUES (%s, %s, %s, %s, %s, %s, %s::jsonb, %s::jsonb)
-    ON CONFLICT (athlete_uuid, session_date, trial_index) DO UPDATE SET
+    ON CONFLICT (athlete_uuid, session_date, pitch_category, trial_index) DO UPDATE SET
         segment_names = EXCLUDED.segment_names,
         data          = EXCLUDED.data,
         created_at    = NOW()
@@ -137,7 +138,7 @@ UPSERT_FORCE_DATA = """
         (athlete_uuid, session_date, source_system, source_athlete_id,
          owner_filename, trial_index, data)
     VALUES (%s, %s, %s, %s, %s, %s, %s::jsonb)
-    ON CONFLICT (athlete_uuid, session_date, trial_index) DO UPDATE SET
+    ON CONFLICT (athlete_uuid, session_date, pitch_category, trial_index) DO UPDATE SET
         data       = EXCLUDED.data,
         created_at = NOW()
 """

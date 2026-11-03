@@ -516,11 +516,22 @@ def pbi(page):
     return page.frame_locator(PBI_FRAME).first
 
 
-def wait_report(page) -> None:
-    page.goto(PITCHING_REPORT)
-    page.wait_for_selector(PBI_FRAME, timeout=60_000)
-    pbi(page).get_by_role("combobox", name="pitcher_full_name").wait_for(timeout=90_000)
-    page.wait_for_timeout(2000)
+def wait_report(page, tries: int = 3) -> None:
+    """Open the Portable pitching report and wait for Power BI to render its slicers.
+    Power BI is sometimes slow to start (or the PC has just woken and the network isn't
+    back yet), so a timeout reloads and tries again before giving up."""
+    for attempt in range(1, tries + 1):
+        try:
+            page.goto(PITCHING_REPORT)
+            page.wait_for_selector(PBI_FRAME, timeout=60_000)
+            pbi(page).get_by_role("combobox", name="pitcher_full_name").wait_for(timeout=90_000)
+            page.wait_for_timeout(2000)
+            return
+        except PWTimeout:
+            if attempt == tries:
+                raise
+            log(f"  pitching report didn't load (try {attempt}/{tries}); waiting 60 s and reloading")
+            page.wait_for_timeout(60_000)
 
 
 HTML_OPTION = "div[role='option'], span[role='option'], li[role='option'], a[role='option']"
@@ -1476,9 +1487,23 @@ def main() -> int:
         cap = ApiCapture(out / "raw" if (args.save_raw or args.probe) else None)
         page.on("response", cap.on_response)
 
-        page.goto(BASE)
-        page.wait_for_load_state("networkidle")
-        if "login" in page.url.lower() or "signin" in page.url.lower():
+        # Right after the PC wakes, the network (and the portal's silent token refresh) may not
+        # be ready, which can land on the login page even though the saved sign-in is fine.
+        # Only call it expired when it's still the login page after a few minutes of retries.
+        signed_in = False
+        for attempt in range(1, 5):
+            try:
+                page.goto(BASE)
+                page.wait_for_load_state("networkidle")
+                signed_in = not ("login" in page.url.lower() or "signin" in page.url.lower())
+            except Exception as e:  # noqa: BLE001 - offline / DNS / timeout right after wake
+                log(f"  portal didn't load (try {attempt}/4): {str(e).splitlines()[0][:160]}")
+            if signed_in:
+                break
+            if attempt < 4:
+                log(f"  not on the portal yet (try {attempt}/4, at {page.url.split('?')[0][:80]}); retrying in 45 s")
+                page.wait_for_timeout(45_000)
+        if not signed_in:
             log("Not signed in (the saved TrackMan sign-in expired). Run trackman_pull.py --login once, then re-run.")
             ctx.close()
             return 2

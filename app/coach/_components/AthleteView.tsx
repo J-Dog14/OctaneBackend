@@ -22,6 +22,7 @@ import { applyComparisonToAll, COMPARISON_LABELS, comparisonParam, hasComparison
 
 const CompareBody = dynamic(() => import("./CompareView").then((m) => m.CompareBody), { loading: () => <Loader size="sm" /> });
 const PitchingTab = dynamic(() => import("../_tabs/PitchingTab").then((m) => m.PitchingTab), { loading: () => <Loader size="sm" /> });
+const PitchSyncView = dynamic(() => import("./PitchSyncView").then((m) => m.PitchSyncView), { loading: () => <Loader size="sm" /> });
 const AthleticScreenTab = dynamic(() => import("../_tabs/AssessmentsTab").then((m) => m.AthleticScreenTab), { loading: () => <Loader size="sm" /> });
 const CurveballTab = dynamic(() => import("../_tabs/AssessmentsTab").then((m) => m.CurveballTab), { loading: () => <Loader size="sm" /> });
 const MobilityTab = dynamic(() => import("../_tabs/MobilityTab").then((m) => m.MobilityTab), { loading: () => <Loader size="sm" /> });
@@ -42,6 +43,8 @@ const TABS: Array<{ id: CoachTabId; label: string }> = [
   // Video Hub clips for this athlete (always shown so the first clip can be added here).
   { id: "videos", label: "Videos" },
   { id: "pitching", label: "Pitching" },
+  // 3D pitching trials paired with their TrackMan pitches (shown once a capture has been paired).
+  { id: "tm3d", label: "TM + 3D" },
   { id: "biomechanics", label: "Biomechanics" },
   { id: "hitting", label: "Hitting" },
   { id: "assessments", label: "Athletic Screen" },
@@ -129,7 +132,7 @@ function Header({
             {vs.map((uuid, i) => (
               <CompareChip key={uuid} uuid={uuid} index={i + 1} scope={scope} onRemove={() => onRemoveCompare(uuid)} />
             ))}
-            {vs.length < MAX_COMPARE &&
+            {vs.length < MAX_COMPARE && scope !== "tm3d" &&
               (adding ? (
                 <AthleteSearchSelect
                   key={scope}
@@ -302,6 +305,9 @@ function AthleteViewInner({ athleteUuid }: { athleteUuid: string }) {
           </Tabs.Panel>
           <Tabs.Panel value="pitching">
             <PitchingTab athleteUuid={athleteUuid} />
+          </Tabs.Panel>
+          <Tabs.Panel value="tm3d">
+            <PitchSyncView athleteUuid={athleteUuid} />
           </Tabs.Panel>
           <Tabs.Panel value="biomechanics">
             <BiomechanicsTab athleteUuid={athleteUuid} summary={summary} />

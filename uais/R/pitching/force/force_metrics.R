@@ -8,26 +8,74 @@
 
 # ---- Butterworth filter ----
 
-# Apply zero-lag 4th-order Butterworth low-pass filter.
-# Falls back to unfiltered if `signal` package is unavailable.
-# Returns filtered vector (same length as input) and a logical indicating
-# whether filtering was applied.
+# Zero-lag 4th-order Butterworth low-pass, in base R (no 'signal' package).
+#
+# Until processor 1.1.0 this called signal::butter/filtfilt, but 'signal' was never installed
+# (not in install_packages.R / renv), so every trial was stored UNFILTERED with the
+# 'no_filter_applied' flag - peaks and especially RFD / time-to-peak came from raw force.
+# This implementation matches scipy.signal.butter(4, Wn) + filtfilt(b, a, x) (odd padding,
+# padlen = 3 * max(len(a), len(b)), lfilter_zi initial conditions) to ~1e-13 - the same filter the
+# Python force pipelines (athletic screen / readiness v2) use.
+.fm_bw_poly <- function(roots) {
+  co <- complex(real = 1)
+  for (r in roots) co <- c(co, 0) - c(0, co * r)
+  Re(co)
+}
+
+butter_lowpass_coefs <- function(order, Wn) {
+  stopifnot(Wn > 0, Wn < 1)
+  k <- seq_len(order)
+  p_proto <- exp(1i * pi * (2 * k + order - 1) / (2 * order))   # analog prototype poles
+  fs2 <- 4                                                         # 2 * fs, normalized fs = 2
+  warped <- fs2 * tan(pi * Wn / 2)                                 # pre-warp
+  p <- warped * p_proto
+  pd <- (fs2 + p) / (fs2 - p)                                      # bilinear transform
+  kd <- Re(warped^order / prod(fs2 - p))
+  list(b = kd * .fm_bw_poly(rep(-1, order)), a = .fm_bw_poly(pd))
+}
+
+.fm_lfilter <- function(b, a, x, zi) {
+  b <- b / a[1]; a <- a / a[1]
+  n <- length(a); z <- zi; y <- numeric(length(x))
+  for (i in seq_along(x)) {
+    yi <- b[1] * x[i] + z[1]
+    if (n > 2) for (j in 1:(n - 2)) z[j] <- b[j + 1] * x[i] + z[j + 1] - a[j + 1] * yi
+    z[n - 1] <- b[n] * x[i] - a[n] * yi
+    y[i] <- yi
+  }
+  y
+}
+
+.fm_lfilter_zi <- function(b, a) {
+  b <- b / a[1]; a <- a / a[1]
+  n <- length(a)
+  comp <- matrix(0, n - 1, n - 1)
+  comp[1, ] <- -a[-1]
+  if (n > 2) comp[cbind(2:(n - 1), 1:(n - 2))] <- 1
+  solve(diag(n - 1) - t(comp), b[-1] - a[-1] * b[1])
+}
+
+filtfilt_odd <- function(b, a, x) {
+  padlen <- 3 * max(length(a), length(b))
+  m <- length(x)
+  if (m <= padlen) return(NULL)
+  ext <- c(2 * x[1] - x[(padlen + 1):2], x, 2 * x[m] - x[(m - 1):(m - padlen)])
+  zi <- .fm_lfilter_zi(b, a)
+  y <- .fm_lfilter(b, a, ext, zi * ext[1])
+  y <- rev(.fm_lfilter(b, a, rev(y), zi * y[length(y)]))
+  y[(padlen + 1):(padlen + m)]
+}
+
+# Returns list(filtered = vector, applied = logical). Not applied (flagged by the caller) only when
+# the cutoff is at/above Nyquist, the signal has gaps (NA), or it is too short to pad.
 apply_butter_filter <- function(F_vec, dt, cutoff_hz = 50) {
   fs <- 1 / dt
   nyq <- fs / 2
-  if (cutoff_hz >= nyq) return(list(filtered = F_vec, applied = FALSE))
-
-  if (!requireNamespace("signal", quietly = TRUE)) {
-    return(list(filtered = F_vec, applied = FALSE))
-  }
-  tryCatch({
-    W  <- cutoff_hz / nyq
-    bf <- signal::butter(4, W, type = "low")
-    fv <- as.numeric(signal::filtfilt(bf, F_vec))
-    list(filtered = fv, applied = TRUE)
-  }, error = function(e) {
-    list(filtered = F_vec, applied = FALSE)
-  })
+  if (cutoff_hz >= nyq || any(!is.finite(F_vec))) return(list(filtered = F_vec, applied = FALSE))
+  cf <- butter_lowpass_coefs(4, cutoff_hz / nyq)
+  fv <- tryCatch(filtfilt_odd(cf$b, cf$a, as.numeric(F_vec)), error = function(e) NULL)
+  if (is.null(fv)) return(list(filtered = F_vec, applied = FALSE))
+  list(filtered = fv, applied = TRUE)
 }
 
 # ---- Trapezoidal integral ----

@@ -28,5 +28,16 @@ echo %date% %time% - TrackMan %ARGS% started >> "%CONSOLE%"
 "%PY%" -u "%ROOT%\uais\python\trackman\run_trackman.py" %ARGS% >> "%CONSOLE%" 2>&1
 set "RC=%ERRORLEVEL%"
 echo %date% %time% - TrackMan %ARGS% finished, exit code %RC% >> "%CONSOLE%"
+REM Pair 3D pitching trials with TrackMan pitches for sessions not paired yet (either side may arrive first;
+REM a session is picked up the first night both exist). Doesn't change the exit code.
+echo %date% %time% - 3D/TrackMan pairing started >> "%CONSOLE%"
+pushd "%ROOT%\uais"
+"%PY%" -u -m python.trackman.match_3d --all --new --write >> "%CONSOLE%" 2>&1
+echo %date% %time% - 3D/TrackMan pairing finished, exit code %ERRORLEVEL% >> "%CONSOLE%"
+popd
+REM xArsenal grade for every new TrackMan pitch with a full read (doesn't change the exit code).
+echo %date% %time% - xArsenal pitch grading started >> "%CONSOLE%"
+call npm.cmd run pi:grade >> "%CONSOLE%" 2>&1
+echo %date% %time% - xArsenal pitch grading finished, exit code %ERRORLEVEL% >> "%CONSOLE%"
 popd
 exit /b %RC%

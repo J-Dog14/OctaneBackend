@@ -1,6 +1,6 @@
 import { requireCoach } from "@/lib/coach/access";
 import { internalError, success } from "@/lib/responses";
-import { populationStatus } from "@/lib/percentiles/populations";
+import { cachedPopulationStatus } from "@/lib/percentiles/populations";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +9,7 @@ export async function GET() {
   const denied = await requireCoach();
   if (denied) return denied;
   try {
-    const response = success(await populationStatus());
+    const response = success(await cachedPopulationStatus());
     response.headers.set("Cache-Control", "private, no-store");
     return response;
   } catch {

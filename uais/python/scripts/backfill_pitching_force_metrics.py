@@ -51,6 +51,7 @@ _FIND_SELECT = """
         fd.source_athlete_id,
         fd.owner_filename,
         fd.trial_index,
+        fd.pitch_category,
         td.frame_rate,
         td.start_time,
         td.handedness,
@@ -59,6 +60,7 @@ _FIND_SELECT = """
     LEFT JOIN public.f_pitching_time_data td
         ON  fd.athlete_uuid = td.athlete_uuid
         AND fd.session_date = td.session_date
+        AND fd.pitch_category = td.pitch_category
         AND fd.trial_index  = td.trial_index
 """
 
@@ -66,16 +68,17 @@ FIND_MISSING = _FIND_SELECT + """
     LEFT JOIN public.f_pitching_force_metrics fm
         ON  fd.athlete_uuid = fm.athlete_uuid
         AND fd.session_date = fm.session_date
+        AND fd.pitch_category = fm.pitch_category
         AND fd.trial_index  = fm.trial_index
     WHERE fm.id IS NULL
 """
 
 FIND_ALL = _FIND_SELECT + "WHERE 1=1"
 
-FETCH_FORCE   = "SELECT data FROM public.f_pitching_force_data WHERE athlete_uuid=%s AND session_date=%s AND trial_index=%s"
-FETCH_MARKERS = "SELECT data, label_names FROM public.f_pitching_marker_data WHERE athlete_uuid=%s AND session_date=%s AND trial_index=%s"
-FETCH_SEG_ROT = "SELECT data, segment_names FROM public.f_pitching_segment_rot_data WHERE athlete_uuid=%s AND session_date=%s AND trial_index=%s"
-FETCH_TIMING  = "SELECT metrics FROM public.f_pitching_trials WHERE athlete_uuid=%s AND session_date=%s AND trial_index=%s LIMIT 1"
+FETCH_FORCE   = "SELECT data FROM public.f_pitching_force_data WHERE athlete_uuid=%s AND session_date=%s AND trial_index=%s AND pitch_category=%s"
+FETCH_MARKERS = "SELECT data, label_names FROM public.f_pitching_marker_data WHERE athlete_uuid=%s AND session_date=%s AND trial_index=%s AND pitch_category=%s"
+FETCH_SEG_ROT = "SELECT data, segment_names FROM public.f_pitching_segment_rot_data WHERE athlete_uuid=%s AND session_date=%s AND trial_index=%s AND pitch_category=%s"
+FETCH_TIMING  = "SELECT metrics FROM public.f_pitching_trials WHERE athlete_uuid=%s AND session_date=%s AND trial_index=%s AND pitch_category=%s LIMIT 1"
 
 ENSURE_TABLE = """
 CREATE TABLE IF NOT EXISTS public.f_pitching_force_metrics (
@@ -86,6 +89,7 @@ CREATE TABLE IF NOT EXISTS public.f_pitching_force_metrics (
   source_athlete_id               VARCHAR(100),
   owner_filename                  TEXT,
   trial_index                     INTEGER NOT NULL,
+  pitch_category                  TEXT NOT NULL DEFAULT 'fastball',
   handedness                      VARCHAR(20),
   body_weight_kg                  NUMERIC,
   body_weight_n                   NUMERIC,
@@ -163,7 +167,7 @@ CREATE TABLE IF NOT EXISTS public.f_pitching_force_metrics (
   CONSTRAINT f_pitching_force_metrics_fkey
     FOREIGN KEY (athlete_uuid) REFERENCES analytics.d_athletes(athlete_uuid) ON DELETE CASCADE,
   CONSTRAINT f_pitching_force_metrics_unique
-    UNIQUE (athlete_uuid, session_date, trial_index)
+    UNIQUE (athlete_uuid, session_date, pitch_category, trial_index)
 )
 """
 
@@ -213,7 +217,7 @@ UPSERT_METRICS = """
         %s,%s,%s,%s,
         %s,%s::jsonb,%s
     )
-    ON CONFLICT (athlete_uuid, session_date, trial_index) DO UPDATE SET
+    ON CONFLICT (athlete_uuid, session_date, pitch_category, trial_index) DO UPDATE SET
         source_athlete_id = EXCLUDED.source_athlete_id,
         owner_filename = EXCLUDED.owner_filename,
         handedness = EXCLUDED.handedness,
@@ -806,6 +810,7 @@ def process_trial(conn, row, cols):
     uuid      = c("athlete_uuid")
     date_val  = c("session_date")
     trial_i   = c("trial_index")
+    cat       = c("pitch_category") or "fastball"
     src       = c("source_system") or "pitching"
     sa_id     = c("source_athlete_id")
     fn_str    = c("owner_filename")
@@ -828,7 +833,7 @@ def process_trial(conn, row, cols):
 
     # Fetch force data
     with conn.cursor() as cur:
-        cur.execute(FETCH_FORCE, (uuid, date_val, trial_i))
+        cur.execute(FETCH_FORCE, (uuid, date_val, trial_i, cat))
         fd_row = cur.fetchone()
     if fd_row is None:
         raise ValueError("No force data found in f_pitching_force_data")
@@ -838,7 +843,7 @@ def process_trial(conn, row, cols):
 
     # Fetch marker data (optional)
     with conn.cursor() as cur:
-        cur.execute(FETCH_MARKERS, (uuid, date_val, trial_i))
+        cur.execute(FETCH_MARKERS, (uuid, date_val, trial_i, cat))
         mk_row = cur.fetchone()
     marker_data_list  = _parse_json(mk_row[0]) if mk_row else None
     label_names_list  = _parse_json(mk_row[1]) if mk_row else None
@@ -847,7 +852,7 @@ def process_trial(conn, row, cols):
 
     # Fetch segment rotation data (optional)
     with conn.cursor() as cur:
-        cur.execute(FETCH_SEG_ROT, (uuid, date_val, trial_i))
+        cur.execute(FETCH_SEG_ROT, (uuid, date_val, trial_i, cat))
         sr_row = cur.fetchone()
     seg_rot_list   = _parse_json(sr_row[0]) if sr_row else None
     seg_names_list = _parse_json(sr_row[1]) if sr_row else None
@@ -858,7 +863,7 @@ def process_trial(conn, row, cols):
     # TIMING.FootstrikeTime.X and TIMING.ReleaseTime.X are in seconds from the
     # start of the CROPPED trial (frame 0 = t=0 in QTM trial coordinates).
     with conn.cursor() as cur:
-        cur.execute(FETCH_TIMING, (uuid, date_val, trial_i))
+        cur.execute(FETCH_TIMING, (uuid, date_val, trial_i, cat))
         tm_row = cur.fetchone()
     trial_metrics  = _parse_json(tm_row[0]) if tm_row and tm_row[0] else {}
     footstrike_s   = _get_timing_s(trial_metrics, "TIMING.FootstrikeTime.X")

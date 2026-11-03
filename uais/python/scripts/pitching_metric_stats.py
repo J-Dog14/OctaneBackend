@@ -81,6 +81,7 @@ def main():
             SELECT id, metrics, weight
             FROM public.f_pitching_trials
             WHERE metrics IS NOT NULL AND jsonb_typeof(metrics) = 'object'
+              AND pitch_category = 'fastball'
             """
         )
         rows = cur.fetchall()

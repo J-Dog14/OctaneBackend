@@ -15,6 +15,8 @@ const state = shared.coachPopulations ??= {
   definitions: new Map(),
   reads: createAsyncTtlCache({ ttlMs: 10_000, maxEntries: 64, maxBytes: 64 * 1024 * 1024 }),
 };
+// Every open coach tab polls status; share one query across them.
+const statusCache = createAsyncTtlCache({ ttlMs: 10_000, maxEntries: 1, maxBytes: 64 * 1024 });
 
 /** Register expensive work for the worker; the returned reader NEVER builds it. */
 export function definePopulation<T>(key: string, build: () => Promise<T>, empty: () => T): () => Promise<T> {
@@ -39,6 +41,11 @@ export function invalidatePopulationRead(key: string) {
 
 export function clearPopulationReads() {
   state.reads.clear();
+}
+
+/** Cached status for the polling endpoint (the worker reads it uncached). */
+export function cachedPopulationStatus() {
+  return statusCache.getOrLoad("status", populationStatus);
 }
 
 export async function populationStatus() {

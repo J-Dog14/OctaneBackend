@@ -1,0 +1,298 @@
+/**
+ * "Mechanics + Flight": pitching 3D trials paired with their TrackMan pitches
+ * (pitch_intel.biomech_trackman_links, written by uais/python/trackman/match_3d.py).
+ *
+ * One row per 3D trial in a capture session: its pitch category + trial number,
+ * the TrackMan pitch it was paired with (pitch number = order thrown), the ball
+ * flight from TrackMan and the delivery/arm metrics from the V3D export.
+ * Coach hub only; every pitch category is included and labelled.
+ */
+
+import { prisma } from "@/lib/db/prisma";
+import { isPitchCode, type PitchCode } from "@/lib/pitch-intel/pitch-types";
+import { TrialLookup } from "./biomech/extract";
+import { PITCH_CATEGORIES, type PitchCategory } from "./biomech/pitchCategory";
+
+// ---------------------------------------------------------------------------
+// Metric catalogues (ids are what the UI selects on; keep them stable)
+// ---------------------------------------------------------------------------
+
+export type MetricDef = { id: string; label: string; unit: string; group: string; digits: number; help?: string };
+
+/** Ball flight from TrackMan. HB is shown arm side + (mirrored for lefties). */
+export const FLIGHT_METRICS: MetricDef[] = [
+  { id: "velo", label: "Velo", unit: "mph", group: "Release", digits: 1 },
+  { id: "spin", label: "Spin", unit: "rpm", group: "Release", digits: 0 },
+  { id: "ivb", label: "IVB", unit: "in", group: "Movement", digits: 1 },
+  { id: "hbArm", label: "HB (arm side +)", unit: "in", group: "Movement", digits: 1 },
+  { id: "spinAxis", label: "Spin axis", unit: "°", group: "Spin", digits: 0 },
+  { id: "spinEff", label: "Spin efficiency", unit: "%", group: "Spin", digits: 0 },
+  { id: "gyro", label: "Gyro", unit: "°", group: "Spin", digits: 0 },
+  { id: "relHeight", label: "Release height", unit: "ft", group: "Release", digits: 2 },
+  { id: "relSideArm", label: "Release side (arm side +)", unit: "ft", group: "Release", digits: 2 },
+  { id: "extension", label: "Extension", unit: "ft", group: "Release", digits: 1 },
+  { id: "vaa", label: "VAA", unit: "°", group: "Approach", digits: 1 },
+  { id: "haa", label: "HAA", unit: "°", group: "Approach", digits: 1 },
+];
+
+/** Flight metrics that need TrackMan's full read (velo-only pitches don't have them). */
+export const MOVEMENT_IDS = new Set(["ivb", "hbArm", "spinAxis", "spinEff", "gyro", "vaa", "haa"]);
+
+type MechDef = MetricDef & { read: (t: TrialLookup) => number | null };
+
+const diff = (a: number | null, b: number | null) => (a == null || b == null ? null : a - b);
+
+/**
+ * Delivery and arm metrics from the V3D export (same ids the 8-cylinder report reads).
+ * Forearm pro/sup is Visual3D's elbow joint angle, Z component (X = flexion); the sign
+ * follows V3D's convention for the throwing arm, so read the change across events.
+ */
+const MECH: MechDef[] = [
+  { id: "mer", label: "Max layback (MER)", unit: "°", group: "Arm", digits: 0, read: (t) => t.get("Pitching_Shoulder_Angle@Max_Shoulder_Rot_Z") },
+  { id: "shoulderRotRelease", label: "Shoulder rotation @ release", unit: "°", group: "Arm", digits: 0, read: (t) => t.get("Pitching_Shoulder_Angle@Release_Z") },
+  { id: "hzAbdRelease", label: "Horizontal abduction @ release", unit: "°", group: "Arm", digits: 0, read: (t) => t.get("Pitching_Shoulder_Angle@Release_X") },
+  { id: "elbowFlexRelease", label: "Elbow flexion @ release", unit: "°", group: "Arm", digits: 0, read: (t) => t.get("Pitching_Elbow_Angle@Release_X") },
+  { id: "proSupMer", label: "Forearm pro/sup @ MER", unit: "°", group: "Forearm", digits: 0, read: (t) => t.get("Pitching_Elbow_Angle@Max_Shoulder_Rot_Z"), help: "Visual3D elbow angle, Z component" },
+  { id: "proSupRelease", label: "Forearm pro/sup @ release", unit: "°", group: "Forearm", digits: 0, read: (t) => t.get("Pitching_Elbow_Angle@Release_Z"), help: "Visual3D elbow angle, Z component" },
+  { id: "proSupAfter", label: "Forearm pro/sup +100 ms", unit: "°", group: "Forearm", digits: 0, read: (t) => t.get("Pitching_Elbow_Angle@Release100msAfter_Z"), help: "Visual3D elbow angle, Z component, 100 ms after release" },
+  {
+    id: "proSupMerToRelease", label: "Pro/sup change MER → release", unit: "°", group: "Forearm", digits: 0,
+    read: (t) => diff(t.get("Pitching_Elbow_Angle@Release_Z"), t.get("Pitching_Elbow_Angle@Max_Shoulder_Rot_Z")),
+    help: "Release minus MER, Visual3D elbow Z",
+  },
+  {
+    id: "proSupReleaseToAfter", label: "Pro/sup change release → +100 ms", unit: "°", group: "Forearm", digits: 0,
+    read: (t) => diff(t.get("Pitching_Elbow_Angle@Release100msAfter_Z"), t.get("Pitching_Elbow_Angle@Release_Z")),
+  },
+  {
+    id: "pronationOffsetMs", label: "Peak pro/sup velocity vs release", unit: "ms", group: "Forearm", digits: 0,
+    read: (t) => {
+      const d = diff(t.get("Max_Forearm_PronSup_Ang_VelTime"), t.get("ReleaseTime"));
+      return d == null ? null : d * 1000;
+    },
+    help: "+ = after ball release",
+  },
+  { id: "wristFlexRelease", label: "Wrist flex/ext @ release", unit: "°", group: "Forearm", digits: 0, read: (t) => t.get("Pitching_Hand_Angle@Release_X") },
+  { id: "wristDevRelease", label: "Wrist deviation @ release", unit: "°", group: "Forearm", digits: 0, read: (t) => t.get("Pitching_Hand_Angle@Release_Y") },
+  { id: "handPeak", label: "Peak hand ang vel", unit: "°/s", group: "Speed", digits: 0, read: (t) => t.get("Pitching_Hand_Ang_Vel_max") },
+  { id: "elbowExtPeak", label: "Peak elbow ext vel", unit: "°/s", group: "Speed", digits: 0, read: (t) => t.get("Pitching_Elbow_Ang_Vel_max") },
+  { id: "humerusPeak", label: "Peak humerus ang vel", unit: "°/s", group: "Speed", digits: 0, read: (t) => t.get("Pitching_Humerus_Ang_Vel_max") },
+  { id: "thoraxPeak", label: "Peak thorax ang vel", unit: "°/s", group: "Speed", digits: 0, read: (t) => t.get("Thorax_Ang_Vel_max") },
+  { id: "hssFs", label: "Hip–shoulder sep @ footstrike", unit: "°", group: "Body", digits: 0, read: (t) => t.get("Trunk Rot wrt Pelvis Rot@Footstrike") },
+  { id: "trunkFlexRelease", label: "Trunk forward flexion @ release", unit: "°", group: "Body", digits: 0, read: (t) => t.get("Trunk_Angle@Release_X") },
+  { id: "trunkTiltRelease", label: "Trunk lateral tilt @ release", unit: "°", group: "Body", digits: 0, read: (t) => t.get("Trunk_Angle@Release_Y") },
+  { id: "leadKneeRelease", label: "Lead knee @ release", unit: "°", group: "Body", digits: 0, read: (t) => t.get("Lead_Knee_Angle@Release_X") },
+  { id: "stridePct", label: "Stride (% height)", unit: "%", group: "Body", digits: 0, read: (t) => t.get("STRIDE_LENGTH_MEAN_PERCENT") },
+];
+
+export const MECH_METRICS: MetricDef[] = MECH.map(({ read: _read, ...m }) => m);
+
+/** Variable names (folder/component stripped) the mech metrics read — keeps the metrics JSON small. */
+const MECH_VARIABLES = [
+  "Pitching_Shoulder_Angle@Max_Shoulder_Rot", "Pitching_Shoulder_Angle@Release", "Pitching_Elbow_Angle@Release",
+  "Pitching_Elbow_Angle@Max_Shoulder_Rot", "Pitching_Elbow_Angle@Release100msAfter", "Max_Forearm_PronSup_Ang_VelTime",
+  "ReleaseTime", "Pitching_Hand_Angle@Release", "Pitching_Hand_Ang_Vel_max", "Pitching_Elbow_Ang_Vel_max",
+  "Pitching_Humerus_Ang_Vel_max", "Thorax_Ang_Vel_max", "Trunk Rot wrt Pelvis Rot@Footstrike", "Trunk_Angle@Release",
+  "Lead_Knee_Angle@Release", "STRIDE_LENGTH_MEAN_PERCENT",
+];
+
+// ---------------------------------------------------------------------------
+// Shapes
+// ---------------------------------------------------------------------------
+
+export type LinkConfidence = "exact" | "probable" | "review" | "manual";
+
+export interface SyncPitch {
+  category: PitchCategory;
+  trialIndex: number;
+  ownerFilename: string | null;
+  /** Order the 3D trials were captured in (1-based, all categories). */
+  captureOrder: number;
+  captureTime: string | null;
+  velo3d: number | null;
+  /** Null when this 3D trial has no TrackMan pitch. */
+  tm: {
+    pitchUid: string;
+    /** Order thrown among the player's live TrackMan pitches in the session. */
+    pitchNo: number | null;
+    code: PitchCode;
+    tilt: string | null;
+    hasMovement: boolean;
+    confidence: LinkConfidence;
+    residualS: number | null;
+    notes: string | null;
+  } | null;
+  flight: Record<string, number | null>;
+  mech: Record<string, number | null>;
+}
+
+export interface PitchSyncData {
+  sessions: string[];
+  sessionDate: string;
+  throws: "L" | "R" | null;
+  clockOffsetS: number | null;
+  /** Live TrackMan pitches that day (paired or not). */
+  tmPitchCount: number;
+  pitches: SyncPitch[];
+  flightMetrics: MetricDef[];
+  mechMetrics: MetricDef[];
+}
+
+// ---------------------------------------------------------------------------
+// Queries
+// ---------------------------------------------------------------------------
+
+/** Capture dates with at least one 3D ↔ TrackMan pair, newest first. Empty if the link table isn't installed. */
+export async function listPitchSyncSessions(athleteUuid: string): Promise<string[]> {
+  try {
+    const rows = await prisma.$queryRawUnsafe<Array<{ d: string }>>(
+      `SELECT DISTINCT session_date::text AS d FROM pitch_intel.biomech_trackman_links WHERE athlete_uuid = $1 ORDER BY d DESC`,
+      athleteUuid,
+    );
+    return rows.map((r) => r.d);
+  } catch (err) {
+    if (/does not exist/.test(String(err))) return [];
+    throw err;
+  }
+}
+
+type Row = {
+  pitch_category: string;
+  trial_index: number;
+  owner_filename: string | null;
+  capture_time: string | null;
+  velo3d: number | null;
+  m: Record<string, unknown> | null;
+  pitch_uid: string | null;
+  confidence: string | null;
+  residual_s: number | null;
+  clock_offset_s: number | null;
+  notes: string | null;
+  pitch_no: number | null;
+  pitch_type: string | null;
+  pitcher_throws: string | null;
+  rel_speed: number | null;
+  spin_rate: number | null;
+  spin_axis: number | null;
+  tilt: string | null;
+  ivb: number | null;
+  hb: number | null;
+  rel_height: number | null;
+  rel_side: number | null;
+  extension: number | null;
+  vaa: number | null;
+  haa: number | null;
+  spin_efficiency: number | null;
+  gyro: number | null;
+};
+
+const num = (v: unknown): number | null => {
+  if (v == null) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+
+/** Null when the athlete has no paired session (or none on `date`). */
+export async function buildPitchSync(athleteUuid: string, date?: string | null): Promise<PitchSyncData | null> {
+  const sessions = await listPitchSyncSessions(athleteUuid);
+  if (!sessions.length) return null;
+  const sessionDate = date && sessions.includes(date) ? date : sessions[0]!;
+
+  const [rows, tmCount, athleteThrows] = await Promise.all([
+    prisma.$queryRawUnsafe<Row[]>(
+      `SELECT t.pitch_category, t.trial_index, t.owner_filename, to_char(t.capture_time, 'YYYY-MM-DD"T"HH24:MI:SS') AS capture_time,
+              t.velocity_mph::float8 AS velo3d,
+              (SELECT jsonb_object_agg(e.key, e.value) FROM jsonb_each(t.metrics::jsonb) e
+                WHERE split_part(e.key, '.', 2) = ANY($3::text[])) AS m,
+              l.pitch_uid, l.confidence, l.residual_s, l.clock_offset_s, l.notes,
+              p.pitch_no, p.pitch_type, p.pitcher_throws, p.rel_speed::float8 AS rel_speed, p.spin_rate::float8 AS spin_rate,
+              p.spin_axis::float8 AS spin_axis, COALESCE(p.tilt, p.measured_tilt) AS tilt, p.ivb::float8 AS ivb, p.hb::float8 AS hb,
+              p.rel_height::float8 AS rel_height, p.rel_side::float8 AS rel_side, p.extension::float8 AS extension,
+              p.vaa::float8 AS vaa, p.haa::float8 AS haa, p.spin_efficiency::float8 AS spin_efficiency, p.gyro::float8 AS gyro
+         FROM public.f_pitching_trials t
+         LEFT JOIN pitch_intel.biomech_trackman_links l
+                ON l.athlete_uuid = t.athlete_uuid AND l.session_date = t.session_date
+               AND l.pitch_category = t.pitch_category AND l.trial_index = t.trial_index
+         LEFT JOIN pitch_intel.trackman_pitches p ON p.pitch_uid = l.pitch_uid
+        WHERE t.athlete_uuid = $1 AND t.session_date = $2::date
+        ORDER BY t.capture_time NULLS LAST, t.pitch_category, t.trial_index`,
+      athleteUuid,
+      sessionDate,
+      MECH_VARIABLES,
+    ),
+    prisma.$queryRawUnsafe<Array<{ n: number }>>(
+      `SELECT count(*)::int AS n FROM pitch_intel.trackman_pitches WHERE athlete_uuid = $1 AND session_date = $2::date AND session_type = 'bullpen'`,
+      athleteUuid,
+      sessionDate,
+    ),
+    prisma.$queryRawUnsafe<Array<{ throws: string | null }>>(
+      `SELECT throws FROM pitch_intel.athlete_source_links WHERE athlete_uuid = $1 AND throws IS NOT NULL ORDER BY (source = 'trackman') DESC LIMIT 1`,
+      athleteUuid,
+    ).catch(() => [] as Array<{ throws: string | null }>),
+  ]);
+
+  const handRaw = (rows.find((r) => r.pitcher_throws)?.pitcher_throws ?? athleteThrows[0]?.throws ?? "").toUpperCase();
+  const throws: "L" | "R" | null = handRaw.startsWith("L") ? "L" : handRaw.startsWith("R") ? "R" : null;
+  // TrackMan reports HB and release side from the pitcher's view (+ = pitcher's right); flip lefties so arm side is +.
+  const arm = throws === "L" ? -1 : 1;
+
+  const pitches: SyncPitch[] = rows.map((r, i) => {
+    const lookup = new TrialLookup(r.m ?? {});
+    const mech: Record<string, number | null> = {};
+    for (const d of MECH) mech[d.id] = d.read(lookup);
+    const category = (PITCH_CATEGORIES as string[]).includes(r.pitch_category) ? (r.pitch_category as PitchCategory) : "pitch";
+    const linked = r.pitch_uid != null;
+    const hb = num(r.hb);
+    const relSide = num(r.rel_side);
+    const spinEff = num(r.spin_efficiency);
+    return {
+      category,
+      trialIndex: r.trial_index,
+      ownerFilename: r.owner_filename,
+      captureOrder: i + 1,
+      captureTime: r.capture_time,
+      velo3d: num(r.velo3d),
+      tm: linked
+        ? {
+            pitchUid: r.pitch_uid!,
+            pitchNo: num(r.pitch_no),
+            code: isPitchCode(r.pitch_type) ? r.pitch_type : "OTHER",
+            tilt: r.tilt,
+            hasMovement: num(r.ivb) != null && hb != null,
+            confidence: (r.confidence ?? "review") as LinkConfidence,
+            residualS: num(r.residual_s),
+            notes: r.notes,
+          }
+        : null,
+      flight: linked
+        ? {
+            velo: num(r.rel_speed),
+            spin: num(r.spin_rate),
+            ivb: num(r.ivb),
+            hbArm: hb == null ? null : hb * arm,
+            spinAxis: num(r.spin_axis),
+            // stored as percent; tolerate a 0-1 fraction
+            spinEff: spinEff == null ? null : spinEff <= 1 ? spinEff * 100 : spinEff,
+            gyro: num(r.gyro),
+            relHeight: num(r.rel_height),
+            relSideArm: relSide == null ? null : relSide * arm,
+            extension: num(r.extension),
+            vaa: num(r.vaa),
+            haa: num(r.haa),
+          }
+        : ({} as Record<string, number | null>),
+      mech,
+    };
+  });
+
+  return {
+    sessions,
+    sessionDate,
+    throws,
+    clockOffsetS: num(rows.find((r) => r.clock_offset_s != null)?.clock_offset_s),
+    tmPitchCount: tmCount[0]?.n ?? 0,
+    pitches,
+    flightMetrics: FLIGHT_METRICS,
+    mechMetrics: MECH_METRICS,
+  };
+}

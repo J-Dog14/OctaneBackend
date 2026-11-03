@@ -406,3 +406,52 @@ ALTER TABLE pitch_intel.uploads ADD CONSTRAINT uploads_kind_check CHECK (kind IN
 ALTER TABLE pitch_intel.trackman_players ADD COLUMN IF NOT EXISTS portal_id TEXT;
 ALTER TABLE pitch_intel.trackman_players ADD COLUMN IF NOT EXISTS foreign_ids TEXT[] NOT NULL DEFAULT '{}';
 ALTER TABLE pitch_intel.trackman_players ADD COLUMN IF NOT EXISTS bats TEXT;
+
+-- 3D <-> TrackMan pitch links (2026-11-02). One row per pitching 3D trial that was
+-- paired with a TrackMan pitch by uais/python/trackman/match_3d.py.
+-- The 3D side is keyed like every f_pitching_* table (athlete_uuid, session_date, pitch_category, trial_index);
+-- owner_filename is kept so a link can be checked against the capture by name.
+-- Auto links are replaced on every run; 'manual' links (set or confirmed by a person) are kept.
+CREATE TABLE IF NOT EXISTS pitch_intel.biomech_trackman_links (
+    id              BIGSERIAL PRIMARY KEY,
+    athlete_uuid    VARCHAR(36) NOT NULL REFERENCES analytics.d_athletes (athlete_uuid) ON UPDATE CASCADE ON DELETE CASCADE,
+    session_date    DATE        NOT NULL,
+    trial_index     INTEGER     NOT NULL,
+    owner_filename  TEXT,
+    pitch_category  TEXT        NOT NULL DEFAULT 'fastball', -- 3D side; trial numbers count within a category
+    pitch_uid       TEXT        NOT NULL REFERENCES pitch_intel.trackman_pitches (pitch_uid) ON DELETE CASCADE,
+    tm_pitch_type   TEXT,                    -- TrackMan side (FF, SI, FC, ST, CH, ...)
+    capture_time    TIMESTAMP,               -- 3D, QTM PC clock
+    pitch_time      TIMESTAMP,               -- TrackMan, local
+    clock_offset_s  DOUBLE PRECISION,        -- session offset: TrackMan clock - QTM clock
+    residual_s      DOUBLE PRECISION,        -- this pair's time error after the offset
+    velo_3d         DOUBLE PRECISION,
+    velo_tm         DOUBLE PRECISION,
+    confidence      TEXT        NOT NULL CHECK (confidence IN ('exact', 'probable', 'review', 'manual')),
+    notes           TEXT,
+    matched_by      TEXT        NOT NULL DEFAULT 'auto',
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT biomech_trackman_links_trial_key UNIQUE (athlete_uuid, session_date, pitch_category, trial_index),
+    UNIQUE (pitch_uid)
+);
+CREATE INDEX IF NOT EXISTS idx_btl_athlete_date ON pitch_intel.biomech_trackman_links (athlete_uuid, session_date);
+
+-- xArsenal v3 + 8-Stuff+ per TrackMan pitch (lib/pitch-intel/xarsenal/pitchGrades.ts, npm run pi:grade).
+-- Only pitches with a full read (velo, spin, IVB, HB, extension, VAA, release height and side) are graded.
+-- inputs_hash = what was sent to the Worker; a pitch is re-graded only when it changes.
+-- score is NULL when the Worker returned no grade for that pitch.
+CREATE TABLE IF NOT EXISTS pitch_intel.trackman_pitch_grades (
+    pitch_uid        TEXT PRIMARY KEY REFERENCES pitch_intel.trackman_pitches (pitch_uid) ON UPDATE CASCADE ON DELETE CASCADE,
+    inputs_hash      TEXT        NOT NULL,
+    hand             CHAR(1),
+    level            TEXT,
+    score            INTEGER,             -- xArsenal 20-80
+    label            TEXT,
+    subtype          TEXT,
+    subtype_mix      JSONB,
+    stuff_plus       DOUBLE PRECISION,    -- 8-Stuff+ (100 = average MLB pitch)
+    stuff_plus_type  DOUBLE PRECISION,    -- 8-Stuff+ vs its own pitch type
+    levers           JSONB,
+    graded_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

@@ -11,7 +11,7 @@ FORCE_FILTER_HZ        <- 50      # Butterworth cutoff
 FORCE_SYNC_THRESHOLD_MS <- 20     # peaks_synced_flag threshold
 FORCE_INTO_BALL_PCT    <- 0.75    # FC→BR fraction for "into ball" window
 FORCE_MER_EULER_IDX    <- 3L      # 1-based; rotZ of arm segment
-PROCESSOR_VERSION      <- "1.0.0"
+PROCESSOR_VERSION      <- "1.2.1"   # 1.2.1: MER from the V3D Max_Shoulder_Rot label; 1.2.0: FC/BR from V3D EVENT_LABEL times (f_pitching_trials.events); 1.1.0: Butterworth filter actually applied
 
 # ---- Source component modules ----
 # Resolve our own directory robustly (works when sourced from any working dir)
@@ -87,6 +87,7 @@ rm(.fp_dir, .fp_sub, .fp_path)
 # @param start_time    Numeric (fallback if not in JSON)
 # @param source_athlete_id character or NA
 # @param owner_filename character or NA
+# @param pitch_category fastball | breaking_ball | off_speed | pitch (trial numbers count within a category)
 # @return Invisibly returns the metrics list (primarily for testing).
 process_force_metrics_for_trial <- function(con,
                                             athlete_uuid,
@@ -99,7 +100,8 @@ process_force_metrics_for_trial <- function(con,
                                             frame_rate      = NULL,
                                             start_time      = NULL,
                                             source_athlete_id = NA,
-                                            owner_filename  = NA) {
+                                            owner_filename  = NA,
+                                            pitch_category  = "fastball") {
 
   # Ensure table exists (idempotent)
   ensure_force_metrics_table(con)
@@ -177,11 +179,12 @@ process_force_metrics_for_trial <- function(con,
   # ---- Fetch QTM timing events from f_pitching_trials.metrics ----
   timing_row <- tryCatch(
     DBI::dbGetQuery(con,
-      "SELECT metrics FROM public.f_pitching_trials
-       WHERE athlete_uuid=$1 AND session_date=$2 AND trial_index=$3 LIMIT 1",
+      "SELECT t.metrics, (to_jsonb(t) -> 'events')::text AS events FROM public.f_pitching_trials t
+       WHERE athlete_uuid=$1 AND session_date=$2 AND trial_index=$3 AND pitch_category=$4 LIMIT 1",
       params = list(as.character(athlete_uuid),
                     as.character(session_date),
-                    as.integer(trial_index))
+                    as.integer(trial_index),
+                    as.character(pitch_category))
     ),
     error = function(e) NULL
   )
@@ -197,6 +200,29 @@ process_force_metrics_for_trial <- function(con,
   footstrike_s <- .get_timing(raw_metrics, "TIMING.FootstrikeTime.X")
   release_s    <- .get_timing(raw_metrics, "TIMING.ReleaseTime.X")
 
+  # Prefer V3D's EVENT_LABEL times (f_pitching_trials.events): seconds from the start of the capture,
+  # i.e. frame / frame rate. TIMING.*Time values are measured from V3D's SETUP event instead, so on
+  # their own they land FC/BR early by however far into the capture SETUP sits (0-0.5+ s seen).
+  raw_events <- if (!is.null(timing_row) && nrow(timing_row) > 0 && "events" %in% names(timing_row)) timing_row$events[1] else NA
+  .get_event <- function(events_json, keys) {
+    if (is.null(events_json) || is.na(events_json) || !nzchar(events_json)) return(NULL)
+    ev <- tryCatch(jsonlite::fromJSON(events_json), error = function(e) NULL)
+    for (k in keys) {
+      v <- ev[[k]]
+      if (!is.null(v) && length(v) && !is.na(suppressWarnings(as.numeric(v[[1]])))) return(as.numeric(v[[1]]))
+    }
+    NULL
+  }
+  ev_fc <- .get_event(raw_events, c("Footstrike", "Foot_Contact"))
+  ev_br <- .get_event(raw_events, "Release")
+  ev_mer <- .get_event(raw_events, "Max_Shoulder_Rot")
+  if (!is.null(ev_fc) && !is.null(ev_br)) {
+    footstrike_s <- ev_fc
+    release_s    <- ev_br
+  } else {
+    qa_flags <- unique(c(qa_flags, "events_missing_timing_from_setup"))
+  }
+
   # ---- Event detection ----
   events <- tryCatch(
     detect_events(json_data, lead_mat_f, handedness, dt, footstrike_s, release_s),
@@ -211,6 +237,17 @@ process_force_metrics_for_trial <- function(con,
   fc  <- events$fc_frame
   br  <- events$br_frame
   mer <- events$mer_frame
+  # MER: use the hand-placed V3D Max_Shoulder_Rot label when it's stored (same frame base as FC/BR).
+  # The segment-rotation search in detect_events() is only the fallback: it disagreed with the labels
+  # on many trials (MER a few frames after FC, or equal to it).
+  if (!is.null(ev_mer) && !is.null(fc) && !is.null(br)) {
+    mer_ev <- as.integer(round(ev_mer / dt))
+    if (mer_ev >= fc && mer_ev <= br) {
+      mer <- mer_ev
+    } else {
+      qa_flags <- unique(c(qa_flags, "mer_event_outside_fc_br"))
+    }
+  }
   ic  <- events$initial_contact_frame
   foot_loading_ms <- events$foot_loading_time_ms
 
@@ -251,6 +288,7 @@ process_force_metrics_for_trial <- function(con,
       source_athlete_id = if (is.na(source_athlete_id)) NA_character_ else as.character(source_athlete_id),
       owner_filename    = if (is.na(owner_filename))    NA_character_ else as.character(owner_filename),
       trial_index       = as.integer(trial_index),
+      pitch_category    = as.character(pitch_category),
       handedness        = if (is.na(handedness))        NA_character_ else as.character(handedness),
       body_weight_kg    = bw$kg,
       body_weight_n     = BW_n,
@@ -306,6 +344,43 @@ process_force_metrics_for_trial <- function(con,
 # Connects its own DB connection and closes when done.
 #
 # @param root_dir  Path to folder containing -3d-data.json files
+# ---- Rebuild a trial's 3d-data JSON from the warehouse ----
+#
+# Ingest stores each trial's per-frame plate forces (f_pitching_force_data.data = frames[[i]]$force),
+# segment rotations (f_pitching_segment_rot_data) and timing (f_pitching_time_data). That is everything
+# process_force_metrics_for_trial() reads from the JSON, so a reprocess does not need the original
+# -3d-data.json files on disk.
+force_json_from_parts <- function(force_txt, frame_rate, start_time = 0,
+                                  seg_names_txt = NA, seg_rot_txt = NA) {
+  force <- jsonlite::parse_json(force_txt, simplifyVector = FALSE)
+  rot   <- if (!is.na(seg_rot_txt) && nzchar(seg_rot_txt)) jsonlite::parse_json(seg_rot_txt, simplifyVector = FALSE) else NULL
+  segs  <- if (!is.na(seg_names_txt) && nzchar(seg_names_txt)) unlist(jsonlite::parse_json(seg_names_txt)) else character(0)
+  frames <- lapply(seq_along(force), function(i) {
+    list(force = force[[i]],
+         segmentRot = if (!is.null(rot) && i <= length(rot)) rot[[i]] else NULL)
+  })
+  list(frameRate = as.numeric(frame_rate %||% 300), startTime = as.numeric(start_time %||% 0),
+       frames = frames, segments = lapply(segs, function(n) list(name = n)))
+}
+
+force_json_from_db <- function(con, athlete_uuid, session_date, trial_index, pitch_category = "fastball") {
+  p <- list(as.character(athlete_uuid), as.character(session_date), as.integer(trial_index), as.character(pitch_category))
+  fd <- DBI::dbGetQuery(con, "SELECT data::text AS d FROM public.f_pitching_force_data
+                               WHERE athlete_uuid=$1 AND session_date=$2 AND trial_index=$3 AND pitch_category=$4", params = p)
+  if (nrow(fd) == 0 || is.na(fd$d[1])) return(NULL)
+  td <- DBI::dbGetQuery(con, "SELECT frame_rate, start_time FROM public.f_pitching_time_data
+                               WHERE athlete_uuid=$1 AND session_date=$2 AND trial_index=$3 AND pitch_category=$4", params = p)
+  sr <- tryCatch(DBI::dbGetQuery(con, "SELECT segment_names::text AS n, data::text AS d
+                               FROM public.f_pitching_segment_rot_data
+                               WHERE athlete_uuid=$1 AND session_date=$2 AND trial_index=$3 AND pitch_category=$4", params = p),
+                 error = function(e) data.frame())
+  force_json_from_parts(fd$d[1],
+                        frame_rate = if (nrow(td)) td$frame_rate[1] else NULL,
+                        start_time = if (nrow(td)) td$start_time[1] else 0,
+                        seg_names_txt = if (nrow(sr)) sr$n[1] else NA,
+                        seg_rot_txt   = if (nrow(sr)) sr$d[1] else NA)
+}
+
 process_force_metrics_for_session <- function(root_dir) {
   if (!requireNamespace("DBI", quietly = TRUE)) stop("DBI package required")
 

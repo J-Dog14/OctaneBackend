@@ -194,3 +194,37 @@ counted those empty results as "pulled"; it now reports pulled vs. no pitches se
 Each run now reads the report's first/last date once and skips older sessions in seconds
 (not marked done). Keep the nightly task on so nothing ages out before it's pulled; anything
 older needs another source (per-session CSV export or TrackMan's data API).
+
+## 3D ↔ TrackMan pairing (`match_3d.py`, 2026-11-02)
+
+Pairs pitching 3D trials (`f_pitching_trials`) with TrackMan bullpen pitches for the same athlete and date, and stores the pairs in `pitch_intel.biomech_trackman_links`.
+
+**How it pairs:**
+- **Type:** the trial's category (fastball / breaking ball / off speed / pitch) must fit the TrackMan type. Cutters count as breaking balls (that is how 8ctane files them in QTM); a cutter against a fastball trial is only a weak fit.
+- **Velo:** the 3D velo is typed from TrackMan, so it should match to 0.1.
+- **Time:** `capture_time` is checked against TrackMan's pitch time, after a per-session clock offset. The offset is estimated from the pitches whose velos match exactly.
+
+Pairs keep both sides in time order. Each pair gets a confidence: `exact`, `probable` or `review`. Links you set yourself are `manual` and are never replaced by a re-run.
+
+```
+cd uais
+python -m python.trackman.match_3d --athlete "Garrett Cleavinger"             # dry run, prints the pairing
+python -m python.trackman.match_3d --athlete <uuid> --date 2026-10-30 --write
+python -m python.trackman.match_3d --all --write
+python -m python.trackman.match_3d --confirm <uuid> <date> <category> <trial_index> <pitch_uid>
+python -m python.trackman.match_3d --unlink  <uuid> <date> <category> <trial_index>
+python -m unittest python.trackman.tests.test_match_3d -v
+```
+
+**Before the first run:**
+1. `npm run pi:setup` creates the link table.
+2. `npm run pitchtype:setup` adds `capture_time` and `pitch_category`.
+3. Re-ingest the 3D session so `capture_time` is filled.
+
+**Trial numbers (2026-11-03):** trial numbers count within each pitch category (fastball 0..n, breaking_ball 0..n, off_speed 0..n, pitch 0..n). A trial is identified by its category plus its number. The report's **TM#** column is the TrackMan pitch number: the order that pitch was thrown among the player's live pitches in the session.
+
+The view `public.v_pitching_trial_order` lists each 3D trial with:
+- `capture_order`: the order it was captured in QTM
+- `tm_pitch_no`: the TrackMan pitch number, when the trial is paired
+- `link_confidence`: the confidence of the pairing
+

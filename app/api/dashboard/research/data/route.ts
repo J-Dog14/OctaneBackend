@@ -26,7 +26,7 @@ export type ResearchDataResponse = {
 
 /** Maps table key → actual SQL table name */
 const SQL_TABLE: Record<string, string> = {
-  pitching:                "f_pitching_trials",
+  pitching:                "v_pitching_trials_fastball", // fastball trials only (see pitch_category migration)
   hitting:                 "f_hitting_trials",
   ...ATHLETIC_SCREEN_V2_SQL_TABLE,            // Athletic Screen v2 (CMJ / DJ / PPU / SLV)
   athletic_screen_nmt:     "f_athletic_screen_nmt",

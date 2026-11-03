@@ -96,6 +96,7 @@ missing <- tryCatch(
     LEFT JOIN public.f_pitching_time_data td
       ON  pt.athlete_uuid = td.athlete_uuid
       AND pt.session_date = td.session_date
+      AND pt.pitch_category = td.pitch_category
       AND pt.trial_index  = td.trial_index
     WHERE td.id IS NULL
       AND pt.session_xml_path IS NOT NULL
@@ -231,7 +232,7 @@ for (i in seq_len(n_total)) {
         ", .sql_lit(con, row$session_xml_path), ",
         ", .sql_lit(con, row$session_data_xml_path), "
       )
-      ON CONFLICT (athlete_uuid, session_date, trial_index) DO UPDATE SET
+      ON CONFLICT (athlete_uuid, session_date, pitch_category, trial_index) DO UPDATE SET
         name                  = COALESCE(EXCLUDED.name, f_pitching_time_data.name),
         owner_filename        = EXCLUDED.owner_filename,
         handedness            = COALESCE(EXCLUDED.handedness, f_pitching_time_data.handedness),
@@ -286,7 +287,7 @@ for (i in seq_len(n_total)) {
            ", .sql_lit(con, label_json), "::jsonb,
            ", .sql_lit(con, marker_json), "::jsonb
          )
-         ON CONFLICT (athlete_uuid, session_date, trial_index) DO UPDATE SET
+         ON CONFLICT (athlete_uuid, session_date, pitch_category, trial_index) DO UPDATE SET
            label_names = EXCLUDED.label_names, data = EXCLUDED.data, created_at = NOW()
       ")); "OK"
     }, error = function(e) {
@@ -310,7 +311,7 @@ for (i in seq_len(n_total)) {
            ", .sql_lit(con, seg_name_json), "::jsonb,
            ", .sql_lit(con, seg_pos_json), "::jsonb
          )
-         ON CONFLICT (athlete_uuid, session_date, trial_index) DO UPDATE SET
+         ON CONFLICT (athlete_uuid, session_date, pitch_category, trial_index) DO UPDATE SET
            segment_names = EXCLUDED.segment_names, data = EXCLUDED.data, created_at = NOW()
       ")); "OK"
     }, error = function(e) {
@@ -334,7 +335,7 @@ for (i in seq_len(n_total)) {
            ", .sql_lit(con, seg_name_json), "::jsonb,
            ", .sql_lit(con, seg_rot_json), "::jsonb
          )
-         ON CONFLICT (athlete_uuid, session_date, trial_index) DO UPDATE SET
+         ON CONFLICT (athlete_uuid, session_date, pitch_category, trial_index) DO UPDATE SET
            segment_names = EXCLUDED.segment_names, data = EXCLUDED.data, created_at = NOW()
       ")); "OK"
     }, error = function(e) {
@@ -358,7 +359,7 @@ for (i in seq_len(n_total)) {
              ", .sql_lit(con, trial_idx), ",
              ", .sql_lit(con, force_json), "::jsonb
            )
-           ON CONFLICT (athlete_uuid, session_date, trial_index) DO UPDATE SET
+           ON CONFLICT (athlete_uuid, session_date, pitch_category, trial_index) DO UPDATE SET
              data = EXCLUDED.data, created_at = NOW()
         ")); "OK"
       }, error = function(e) {

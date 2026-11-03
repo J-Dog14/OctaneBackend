@@ -190,7 +190,7 @@ def run(
             t.metrics,
             t.created_at
         FROM public.f_pitching_trials t
-        WHERE 1=1
+        WHERE t.pitch_category = 'fastball'
         {where_sql}
         ORDER BY t.session_date, t.athlete_uuid, t.trial_index
         {limit_sql}

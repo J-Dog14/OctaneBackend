@@ -615,6 +615,78 @@ extract_session_date_mappings <- function(path) {
   out
 }
 
+# ---------- Pitch category (2026-11-02) ----------
+# Captures can include non-fastball trials. QTM names each measurement by type:
+#   "Fastball ..." | "Breaking Ball ..." | "Off Speed ..." | "Pitch ..."
+# Every trial is stored and tagged; only fastballs feed f_kinematics_pitching,
+# the delivery score, Octane payloads and every report outside the coach hub.
+PITCH_CATEGORY_RANK <- c(fastball = 0L, breaking_ball = 1L, off_speed = 2L, pitch = 3L)
+
+#' @param owner_name owner value / measurement file name, e.g. "Breaking Ball LH 3.c3d"
+#' @return "fastball" | "breaking_ball" | "off_speed" | "pitch", or NA (not a pitch trial: skip)
+classify_pitch_category <- function(owner_name) {
+  n <- tolower(trimws(basename(as.character(owner_name))))
+  if (length(n) != 1 || is.na(n) || !nzchar(n) || grepl("static", n)) return(NA_character_)
+  if (grepl("fastball", n)) return("fastball")                       # legacy rule: anywhere in the name
+  if (grepl("^breaking[ _-]*ball", n)) return("breaking_ball")
+  if (grepl("^off[ _-]*speed", n)) return("off_speed")
+  if (grepl("^pitch([ _-]|[0-9]|\\.|$)", n)) return("pitch")
+  NA_character_
+}
+
+#' Per-measurement info from session.xml: QTM pitch type and capture time.
+#' Keyed like extract_session_date_mappings: "<normalized_dir>||<measurement variant>".
+#' capture_time = Measurement Creation_date + Creation_time ("YYYY-MM-DD HH:MM:SS",
+#' QTM PC local clock); this is what lines a trial up with TrackMan.
+extract_measurement_info <- function(path) {
+  doc <- tryCatch(read_xml_robust(path), error = function(e) NULL)
+  if (is.null(doc)) return(list())
+  root <- xml_root(doc)
+  if (!identical(xml_name(root), "Subject")) return(list())
+  dir_key <- normalizePath(dirname(path), winslash = "/", mustWork = FALSE)
+  if (is.na(dir_key) || !nzchar(dir_key)) return(list())
+
+  fld <- function(fields, name) {
+    if (inherits(fields, "xml_missing")) return(NA_character_)
+    nzchr(trimws(xml_text(xml_find_first(fields, paste0("./", name)))))
+  }
+  out <- list()
+  for (meas in xml_find_all(root, ".//Measurement")) {
+    fn <- xml_attr(meas, "Filename")
+    if (is.na(fn) || !nzchar(fn)) next
+    fields <- xml_find_first(meas, "./Fields")
+    ptype <- fld(fields, "Pitch_type")
+    psub <- fld(fields, "Pitch_subtype")
+    if (!is.na(psub) && tolower(psub) %in% c("unspecified", "none")) psub <- NA_character_
+    qtm_type <- if (is.na(ptype)) NA_character_ else if (is.na(psub)) ptype else paste0(ptype, " / ", psub)
+    d <- parse_creation_date_safe(fld(fields, "Creation_date"))
+    tm <- fld(fields, "Creation_time")
+    cap <- if (!is.na(d) && !is.na(tm) && grepl("^\\d{1,2}:\\d{2}(:\\d{2})?$", tm)) {
+      paste(format(d, "%Y-%m-%d"), if (nchar(tm) <= 5) paste0(tm, ":00") else tm)
+    } else NA_character_
+    info <- list(qtm_pitch_type = qtm_type, capture_time = cap)
+    variants <- unique(tolower(trimws(c(
+      fn, tools::file_path_sans_ext(fn),
+      sub("\\.qtm$", ".c3d", fn, ignore.case = TRUE),
+      tools::file_path_sans_ext(sub("\\.qtm$", ".c3d", fn, ignore.case = TRUE))
+    ))))
+    for (v in variants) out[[paste0(dir_key, "||", v)]] <- info
+  }
+  out
+}
+
+#' Look up extract_measurement_info() output for one owner in one directory.
+lookup_measurement_info <- function(mapping, dir_normalized, owner_name) {
+  empty <- list(qtm_pitch_type = NA_character_, capture_time = NA_character_)
+  if (is.na(dir_normalized) || !nzchar(dir_normalized)) return(empty)
+  base <- basename(owner_name)
+  for (cand in unique(tolower(trimws(c(owner_name, base, tools::file_path_sans_ext(base)))))) {
+    hit <- mapping[[paste0(dir_normalized, "||", cand)]]
+    if (!is.null(hit)) return(hit)
+  }
+  empty
+}
+
 # ============================================================
 # 8ctane Delivery Score — 1000 pts   (SCORE FORMULA v2)
 #   Velocity 500 | Mechanics 400 | Arm Health 100
@@ -833,6 +905,25 @@ delivery_score_from_metrics <- function(m, age = NA_real_) {
 #' @param doc       xml2 document (session_data.xml)
 #' @param owner_name owner value, e.g. "Fastball RH 2.c3d"
 #' @param weight_kg  body weight in kg (NA -> 180 lb default)
+#' V3D EVENT_LABEL times for one trial, as a named list of seconds from the start of the cropped
+#' capture (= marker/force frame index / frame rate), e.g. list(Release = 2.0733, Footstrike = 1.9633).
+#' Stored in f_pitching_trials.events. The TIMING.*Time metrics are NOT usable for this: V3D measures
+#' them from its SETUP event, which sits anywhere from 0 to 0.5+ s into the capture.
+extract_event_labels <- function(doc, owner_name) {
+  root <- xml2::xml_root(doc)
+  own <- xml2::xml_find_first(root, paste0("./owner[@value=\"", owner_name, "\"]"))
+  if (inherits(own, "xml_missing")) return(list())
+  out <- list()
+  for (nm in xml2::xml_find_all(own, "./type[@value='EVENT_LABEL']/folder/name")) {
+    comp <- xml2::xml_find_first(nm, "./component")
+    if (inherits(comp, "xml_missing")) next
+    v <- .parse_csv_nums(xml2::xml_attr(comp, "data") %||% xml2::xml_text(comp))
+    v <- v[!is.na(v)]
+    if (length(v)) out[[xml2::xml_attr(nm, "value")]] <- if (length(v) == 1) v[1] else v
+  }
+  out
+}
+
 extract_delivery_metrics <- function(doc, owner_name, weight_kg = NA_real_) {
   root <- xml2::xml_root(doc)
   if (!identical(xml2::xml_name(root), "v3d")) return(NULL)
@@ -1387,6 +1478,7 @@ process_all_files <- function(data_root = NULL) {
   owner_mapping <- list()  # Map owner names to athlete IDs
   velocity_mapping <- list()  # Map measurement filenames to velocity (MPH) from Comments field
   session_date_mapping <- list()  # Map "<dir>||<measurement>" -> session-level Creation_date
+  measurement_info_mapping <- list()  # Map "<dir>||<measurement>" -> QTM pitch type + capture time
   
   total_session_files <- length(session_files)
   log_progress("=", rep("=", 60), sep = "")
@@ -1519,6 +1611,12 @@ process_all_files <- function(data_root = NULL) {
         if (i <= 3) {
           log_progress("  [SESSION DATE] Extracted", length(session_date_map_from_file), "session-date mappings from", basename(sf))
         }
+      }
+
+      # Per-measurement QTM pitch type + capture time (TrackMan sync)
+      meas_info_from_file <- extract_measurement_info(sf)
+      for (key in names(meas_info_from_file)) {
+        measurement_info_mapping[[key]] <- meas_info_from_file[[key]]
       }
       
       log_progress("  [SUCCESS] Mapped athlete", athlete_info$name[1], "to UID:", athlete_info$uid[1])
@@ -1787,17 +1885,19 @@ process_all_files <- function(data_root = NULL) {
           next  # Skip this owner instead of using wrong UUID
         }
         
-        # Filter: Only process Fastball trials, skip Static and other trial types
-        # Check owner name (not folder name) for trial type
-        owner_name_lower <- tolower(owner_name)
-        is_static <- grepl("static", owner_name_lower)
-        is_fastball <- grepl("fastball", owner_name_lower)
-        
-        if (is_static) next
-        if (!is_fastball) next
+        # Pitch trials only (Fastball / Breaking Ball / Off Speed / Pitch); skip Static
+        # and anything else. Non-fastballs are stored and tagged, never mixed into
+        # fastball outputs (see classify_pitch_category).
+        pitch_category <- classify_pitch_category(owner_name)
+        if (is.na(pitch_category)) {
+          if (!grepl("static", tolower(owner_name))) {
+            log_progress("    [SKIPPED] Not a pitch trial (unknown measurement type):", owner_name)
+          }
+          next
+        }
 
         total_owners_matched <- total_owners_matched + 1
-        log_progress("    [MATCHED] Owner:", owner_name, "-> UID:", matched_uid)
+        log_progress("    [MATCHED] Owner:", owner_name, "-> UID:", matched_uid, "| category:", pitch_category)
 
         metric_data <- extract_metric_data(doc, owner_name)
 
@@ -1866,6 +1966,11 @@ process_all_files <- function(data_root = NULL) {
             }
           }
           metric_data$session_date <- session_date_for_owner
+
+          meas_info <- lookup_measurement_info(measurement_info_mapping, source_dir_normalized, owner_name)
+          metric_data$pitch_category <- pitch_category
+          metric_data$qtm_pitch_type <- meas_info$qtm_pitch_type
+          metric_data$capture_time <- meas_info$capture_time
           
           if (i <= 3 && !is.na(velocity_mph)) {
             log_progress("      [VELOCITY] Matched velocity for", owner_name, ":", velocity_mph, "MPH")
@@ -1885,12 +1990,17 @@ process_all_files <- function(data_root = NULL) {
           age_at_coll <- if (!is.null(best_match) && "age_at_collection" %in% names(best_match) &&
                              !is.na(best_match$age_at_collection[1]))
             as.numeric(best_match$age_at_collection[1]) else NA_real_
-          pitch_score <- calculate_pitching_score(doc, owner_name, velocity_mph, weight_kg, age_at_coll)
+          # The delivery score is fastball-referenced (velo bands, mechanics anchors).
+          pitch_score <- if (identical(pitch_category, "fastball"))
+            calculate_pitching_score(doc, owner_name, velocity_mph, weight_kg, age_at_coll) else NA_real_
           metric_data$score <- pitch_score
           
           if (i <= 3 && !is.na(pitch_score)) {
             log_progress("      [SCORE] Calculated score for", owner_name, ":", round(pitch_score, 2))
             cat("    [SCORE] Calculated:", round(pitch_score, 2), "for owner", owner_name, "\n")
+            flush.console()
+          } else if (i <= 3 && is.na(pitch_score) && !identical(pitch_category, "fastball")) {
+            cat("    [SCORE] Not scored (", pitch_category, "): the delivery score is fastball-only\n", sep = "")
             flush.console()
           } else if (i <= 3 && is.na(pitch_score)) {
             log_progress("      [WARNING] Could not calculate score for", owner_name, "- missing required variables")
@@ -1963,6 +2073,8 @@ process_all_files <- function(data_root = NULL) {
     padded_list <- list()
     for (idx in seq_along(metric_data_list)) {
       df <- metric_data_list[[idx]]
+      # f_kinematics_pitching (session-level, read by Octane payload fallbacks) stays fastball-only
+      if ("pitch_category" %in% names(df) && !identical(df$pitch_category[1], "fastball")) next
       if (idx %% 50 == 0) {
         log_progress("    Padding dataframe", idx, "of", length(metric_data_list))
       }
@@ -2068,6 +2180,20 @@ process_all_files <- function(data_root = NULL) {
         log_progress("  Building trial-level rows for f_pitching_trials...")
         default_date <- Sys.Date()
         trial_rows <- list()
+        # EVENT_LABEL times per trial (f_pitching_trials.events), one parse per session_data.xml.
+        .events_doc_cache <- new.env()
+        .trial_events_json <- function(xml_path, owner) {
+          if (is.na(xml_path) || !file.exists(xml_path)) return(NA_character_)
+          doc <- .events_doc_cache[[xml_path]]
+          if (is.null(doc)) {
+            doc <- tryCatch(read_xml_robust(xml_path), error = function(e) NULL)
+            if (is.null(doc)) return(NA_character_)
+            assign(xml_path, doc, envir = .events_doc_cache)
+          }
+          ev <- tryCatch(extract_event_labels(doc, owner), error = function(e) list())
+          if (!length(ev)) return(NA_character_)
+          as.character(jsonlite::toJSON(ev, auto_unbox = TRUE, digits = 8))
+        }
         for (idx in seq_along(metric_data_list)) {
           df <- metric_data_list[[idx]]
           if (nrow(df) == 0) next
@@ -2117,18 +2243,28 @@ process_all_files <- function(data_root = NULL) {
             weight = weight,
             metrics_json = metrics_json,
             session_xml_path = session_xml_path,
-            session_data_xml_path = session_data_xml_path
+            session_data_xml_path = session_data_xml_path,
+            pitch_category = if ("pitch_category" %in% names(df)) df$pitch_category[1] else "fastball",
+            qtm_pitch_type = if ("qtm_pitch_type" %in% names(df)) df$qtm_pitch_type[1] else NA_character_,
+            capture_time = if ("capture_time" %in% names(df)) df$capture_time[1] else NA_character_,
+            events_json = .trial_events_json(session_data_xml_path, owner_fname)
           )
         }
         if (length(trial_rows) > 0) {
           trials_df <- bind_rows(trial_rows) %>%
-            group_by(.data$athlete_uuid, .data$session_date) %>%
-            arrange(.data$idx) %>%
+            mutate(cat_rank = unname(PITCH_CATEGORY_RANK[.data$pitch_category])) %>%
+            # Trial numbers count within each pitch category, in session_data.xml order
+            # (fastball 0..n, breaking_ball 0..n, ...). The category is part of the key, so
+            # numbers repeat across categories and never shift when another category is added.
+            group_by(.data$athlete_uuid, .data$session_date, .data$pitch_category) %>%
+            arrange(.data$idx, .by_group = TRUE) %>%
             mutate(trial_index = row_number() - 1L) %>%
             ungroup() %>%
+            arrange(.data$athlete_uuid, .data$session_date, .data$cat_rank, .data$trial_index) %>%
             select(athlete_uuid, session_date, source_athlete_id, owner_filename, handedness, trial_index,
                    velocity_mph, score, age_at_collection, age_group, height, weight, metrics_json,
-                   session_xml_path, session_data_xml_path)
+                   session_xml_path, session_data_xml_path, pitch_category, qtm_pitch_type, capture_time, events_json)
+          log_progress("  Trials by category:", paste(names(table(trials_df$pitch_category)), table(trials_df$pitch_category), sep = "=", collapse = ", "))
           log_progress("  Built", nrow(trials_df), "trial rows for f_pitching_trials")
           # Ensure f_pitching_trials table exists
           trials_table_exists <- DBI::dbExistsTable(con, DBI::Id(schema = "public", table = "f_pitching_trials"))
@@ -2145,6 +2281,7 @@ process_all_files <- function(data_root = NULL) {
                 owner_filename TEXT,
                 handedness VARCHAR(20),
                 trial_index INTEGER NOT NULL,
+                pitch_category TEXT NOT NULL DEFAULT 'fastball',
                 velocity_mph NUMERIC,
                 score NUMERIC,
                 age_at_collection NUMERIC,
@@ -2161,7 +2298,7 @@ process_all_files <- function(data_root = NULL) {
             ")
             DBI::dbExecute(con, "
               CREATE UNIQUE INDEX IF NOT EXISTS idx_f_pitching_trials_unique
-                ON public.f_pitching_trials(athlete_uuid, session_date, trial_index)
+                ON public.f_pitching_trials(athlete_uuid, session_date, pitch_category, trial_index)
             ")
             DBI::dbExecute(con, "
               CREATE INDEX IF NOT EXISTS idx_f_pitching_trials_owner ON public.f_pitching_trials(owner_filename)
@@ -2206,6 +2343,30 @@ process_all_files <- function(data_root = NULL) {
               log_progress("  Added name to f_pitching_trials")
             }
           }
+          # Pitch category / TrackMan sync columns. Child-table columns + sync triggers
+          # come from prisma/migrations/20261102000000_pitch_category (npm run pitchtype:setup).
+          DBI::dbExecute(con, "
+            ALTER TABLE public.f_pitching_trials
+              ADD COLUMN IF NOT EXISTS pitch_category text NOT NULL DEFAULT 'fastball',
+              ADD COLUMN IF NOT EXISTS qtm_pitch_type text,
+              ADD COLUMN IF NOT EXISTS capture_time timestamp
+          ")
+          has_child_category <- tryCatch(nrow(DBI::dbGetQuery(con, "
+            SELECT 1 FROM information_schema.columns
+             WHERE table_schema = 'public' AND table_name = 'f_pitching_force_metrics' AND column_name = 'pitch_category'
+          ")) > 0, error = function(e) FALSE)
+          if (any(trials_df$pitch_category != "fastball") && !has_child_category) {
+            log_progress("  [WARNING] Non-fastball trials found but the pitch_category setup has not run on this database.")
+            log_progress("            Run 'npm run pitchtype:setup' so time/force/3D rows are tagged too.")
+          }
+          # Every per-trial table is keyed (athlete, date, pitch_category, trial_index) since
+          # 20261103000000_pitch_category_keys; without it the upserts below can't run.
+          has_category_keys <- tryCatch(nrow(DBI::dbGetQuery(con, "
+            SELECT 1 FROM pg_proc WHERE proname = 'pitching_set_category_from_owner'
+          ")) > 0, error = function(e) FALSE)
+          if (!has_category_keys) {
+            stop("This database still keys pitching trials without pitch_category. Run 'npm run pitchtype:keys' (after 'npm run pitchtype:setup'), then re-run.")
+          }
           # Safeguard 4 (Existing Athlete): prompt before overwriting existing session
           skip_this_session <- FALSE
           athlete_uuid_env <- trimws(Sys.getenv("ATHLETE_UUID", ""))
@@ -2222,8 +2383,18 @@ process_all_files <- function(data_root = NULL) {
                 cat("DUPLICATE_SESSION:", date_str, "\n", sep = "")
                 cat("It looks like you already ran this data for the following date: ", date_str, ". Reply 'yes' to continue or 'no' to abort.\n", sep = "")
                 flush.console()
-                response_raw <- tryCatch(readLines(stdin(), n = 1), error = function(e) "no")
-                response <- trimws(tolower(response_raw))
+                # file("stdin") is the process's real stdin (the app writes the modal's answer there).
+                # stdin() is R's *console* connection: under Rscript it hits EOF at once, returned
+                # character(0), and every duplicate run silently skipped before the answer arrived.
+                stdin_con <- file("stdin")
+                response_raw <- tryCatch(readLines(stdin_con, n = 1), error = function(e) character(0),
+                                         finally = close(stdin_con))
+                if (length(response_raw) == 0) {
+                  cat("  [WARNING] No answer received for the duplicate-session prompt (stdin closed); skipping this session.\n")
+                  flush.console()
+                  response_raw <- "no"
+                }
+                response <- trimws(tolower(response_raw[1]))
                 should_continue <- response %in% c("yes", "y")
                 if (!should_continue) {
                   skip_this_session <- TRUE
@@ -2285,12 +2456,20 @@ process_all_files <- function(data_root = NULL) {
             trials_df$name <- ifelse(is.na(trials_df$name), athlete_info$name[1], trials_df$name)
           }
           trials_df$source_system <- "pitching"
+          # f_pitching_trials.events arrives with prisma/migrations/20261104000000_pitching_events
+          # (npm run pitchtype:events). Until then the ingest runs as before, without events.
+          has_events_col <- tryCatch(nrow(DBI::dbGetQuery(con, "
+            SELECT 1 FROM information_schema.columns
+             WHERE table_schema = 'public' AND table_name = 'f_pitching_trials' AND column_name = 'events'")) > 0,
+            error = function(e) FALSE)
+          if (!has_events_col) log_progress("  [WARN] f_pitching_trials.events missing (run npm run pitchtype:events); V3D event times not stored")
           for (r in seq_len(nrow(trials_df))) {
             row <- trials_df[r, ]
             DBI::dbExecute(con, paste0("
               INSERT INTO public.f_pitching_trials
                 (athlete_uuid, name, session_date, source_system, source_athlete_id, owner_filename, handedness, trial_index,
-                 velocity_mph, score, age_at_collection, age_group, height, weight, metrics, session_xml_path, session_data_xml_path)
+                 velocity_mph, score, age_at_collection, age_group, height, weight, metrics, session_xml_path, session_data_xml_path,
+                 pitch_category, qtm_pitch_type, capture_time", if (has_events_col) ", events" else "", ")
               VALUES (
                 ", .sql_lit(con, row$athlete_uuid), ",
                 ", .sql_lit(con, if (is.na(row$name) || row$name == "") NULL else as.character(row$name)), ",
@@ -2308,10 +2487,17 @@ process_all_files <- function(data_root = NULL) {
                 ", .sql_lit(con, row$weight), ",
                 ", .sql_lit(con, row$metrics_json), "::jsonb,
                 ", .sql_lit(con, row$session_xml_path), ",
-                ", .sql_lit(con, row$session_data_xml_path), "
+                ", .sql_lit(con, row$session_data_xml_path), ",
+                ", .sql_lit(con, row$pitch_category), ",
+                ", .sql_lit(con, row$qtm_pitch_type), ",
+                ", .sql_lit(con, row$capture_time), "::timestamp",
+                if (has_events_col) paste0(", ", .sql_lit(con, if (is.na(row$events_json)) NULL else row$events_json), "::jsonb") else "", "
               )
-              ON CONFLICT (athlete_uuid, session_date, trial_index) DO UPDATE SET
+              ON CONFLICT (athlete_uuid, session_date, pitch_category, trial_index) DO UPDATE SET
                 name = COALESCE(EXCLUDED.name, f_pitching_trials.name),
+                pitch_category = EXCLUDED.pitch_category,
+                qtm_pitch_type = EXCLUDED.qtm_pitch_type,
+                capture_time = EXCLUDED.capture_time,
                 owner_filename = EXCLUDED.owner_filename,
                 handedness = COALESCE(EXCLUDED.handedness, f_pitching_trials.handedness),
                 source_athlete_id = COALESCE(EXCLUDED.source_athlete_id, f_pitching_trials.source_athlete_id),
@@ -2323,7 +2509,8 @@ process_all_files <- function(data_root = NULL) {
                 weight = COALESCE(EXCLUDED.weight, f_pitching_trials.weight),
                 metrics = EXCLUDED.metrics,
                 session_xml_path = EXCLUDED.session_xml_path,
-                session_data_xml_path = EXCLUDED.session_data_xml_path,
+                session_data_xml_path = EXCLUDED.session_data_xml_path,", if (has_events_col) "
+                events = COALESCE(EXCLUDED.events, f_pitching_trials.events)," else "", "
                 created_at = NOW()
             "))
           }
@@ -2395,6 +2582,7 @@ process_all_files <- function(data_root = NULL) {
                   owner_filename TEXT,
                   handedness VARCHAR(20),
                   trial_index INTEGER NOT NULL,
+                  pitch_category TEXT NOT NULL DEFAULT 'fastball',
                   velocity_mph NUMERIC,
                   score NUMERIC,
                   age_at_collection NUMERIC,
@@ -2414,7 +2602,7 @@ process_all_files <- function(data_root = NULL) {
               ")
               DBI::dbExecute(con, "
                 CREATE UNIQUE INDEX IF NOT EXISTS idx_f_pitching_time_data_unique
-                  ON public.f_pitching_time_data(athlete_uuid, session_date, trial_index)
+                  ON public.f_pitching_time_data(athlete_uuid, session_date, pitch_category, trial_index)
               ")
               DBI::dbExecute(con, "
                 CREATE INDEX IF NOT EXISTS idx_f_pitching_time_data_owner
@@ -2454,13 +2642,14 @@ process_all_files <- function(data_root = NULL) {
                 source_athlete_id VARCHAR(100),
                 owner_filename TEXT,
                 trial_index INTEGER NOT NULL,
+                pitch_category TEXT NOT NULL DEFAULT 'fastball',
                 label_names JSONB,
                 data JSONB,
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 CONSTRAINT f_pitching_marker_data_fkey
                   FOREIGN KEY (athlete_uuid) REFERENCES analytics.d_athletes(athlete_uuid) ON DELETE CASCADE,
                 CONSTRAINT f_pitching_marker_data_unique
-                  UNIQUE (athlete_uuid, session_date, trial_index)
+                  UNIQUE (athlete_uuid, session_date, pitch_category, trial_index)
               )
             ")
             DBI::dbExecute(con, "
@@ -2472,13 +2661,14 @@ process_all_files <- function(data_root = NULL) {
                 source_athlete_id VARCHAR(100),
                 owner_filename TEXT,
                 trial_index INTEGER NOT NULL,
+                pitch_category TEXT NOT NULL DEFAULT 'fastball',
                 segment_names JSONB,
                 data JSONB,
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 CONSTRAINT f_pitching_segment_pos_data_fkey
                   FOREIGN KEY (athlete_uuid) REFERENCES analytics.d_athletes(athlete_uuid) ON DELETE CASCADE,
                 CONSTRAINT f_pitching_segment_pos_data_unique
-                  UNIQUE (athlete_uuid, session_date, trial_index)
+                  UNIQUE (athlete_uuid, session_date, pitch_category, trial_index)
               )
             ")
             DBI::dbExecute(con, "
@@ -2490,13 +2680,14 @@ process_all_files <- function(data_root = NULL) {
                 source_athlete_id VARCHAR(100),
                 owner_filename TEXT,
                 trial_index INTEGER NOT NULL,
+                pitch_category TEXT NOT NULL DEFAULT 'fastball',
                 segment_names JSONB,
                 data JSONB,
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 CONSTRAINT f_pitching_segment_rot_data_fkey
                   FOREIGN KEY (athlete_uuid) REFERENCES analytics.d_athletes(athlete_uuid) ON DELETE CASCADE,
                 CONSTRAINT f_pitching_segment_rot_data_unique
-                  UNIQUE (athlete_uuid, session_date, trial_index)
+                  UNIQUE (athlete_uuid, session_date, pitch_category, trial_index)
               )
             ")
             DBI::dbExecute(con, "
@@ -2508,12 +2699,13 @@ process_all_files <- function(data_root = NULL) {
                 source_athlete_id VARCHAR(100),
                 owner_filename TEXT,
                 trial_index INTEGER NOT NULL,
+                pitch_category TEXT NOT NULL DEFAULT 'fastball',
                 data JSONB,
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 CONSTRAINT f_pitching_force_data_fkey
                   FOREIGN KEY (athlete_uuid) REFERENCES analytics.d_athletes(athlete_uuid) ON DELETE CASCADE,
                 CONSTRAINT f_pitching_force_data_unique
-                  UNIQUE (athlete_uuid, session_date, trial_index)
+                  UNIQUE (athlete_uuid, session_date, pitch_category, trial_index)
               )
             ")
             log_progress("  [SUCCESS] Ensured typed 3D tables exist")
@@ -2638,7 +2830,7 @@ process_all_files <- function(data_root = NULL) {
                   ", .sql_lit(con, row$session_xml_path), ",
                   ", .sql_lit(con, row$session_data_xml_path), "
                 )
-                ON CONFLICT (athlete_uuid, session_date, trial_index) DO UPDATE SET
+                ON CONFLICT (athlete_uuid, session_date, pitch_category, trial_index) DO UPDATE SET
                   name = COALESCE(EXCLUDED.name, f_pitching_time_data.name),
                   owner_filename = EXCLUDED.owner_filename,
                   handedness = COALESCE(EXCLUDED.handedness, f_pitching_time_data.handedness),
@@ -2703,7 +2895,7 @@ process_all_files <- function(data_root = NULL) {
                        ", .sql_lit(con, label_json), "::jsonb,
                        ", .sql_lit(con, marker_json), "::jsonb
                      )
-                     ON CONFLICT (athlete_uuid, session_date, trial_index) DO UPDATE SET
+                     ON CONFLICT (athlete_uuid, session_date, pitch_category, trial_index) DO UPDATE SET
                        label_names = EXCLUDED.label_names, data = EXCLUDED.data, created_at = NOW()
                   ")); "OK"
                 }, error = function(e) {
@@ -2727,7 +2919,7 @@ process_all_files <- function(data_root = NULL) {
                        ", .sql_lit(con, seg_name_json), "::jsonb,
                        ", .sql_lit(con, seg_pos_json), "::jsonb
                      )
-                     ON CONFLICT (athlete_uuid, session_date, trial_index) DO UPDATE SET
+                     ON CONFLICT (athlete_uuid, session_date, pitch_category, trial_index) DO UPDATE SET
                        segment_names = EXCLUDED.segment_names, data = EXCLUDED.data, created_at = NOW()
                   ")); "OK"
                 }, error = function(e) {
@@ -2751,7 +2943,7 @@ process_all_files <- function(data_root = NULL) {
                        ", .sql_lit(con, seg_name_json), "::jsonb,
                        ", .sql_lit(con, seg_rot_json), "::jsonb
                      )
-                     ON CONFLICT (athlete_uuid, session_date, trial_index) DO UPDATE SET
+                     ON CONFLICT (athlete_uuid, session_date, pitch_category, trial_index) DO UPDATE SET
                        segment_names = EXCLUDED.segment_names, data = EXCLUDED.data, created_at = NOW()
                   ")); "OK"
                 }, error = function(e) {
@@ -2775,7 +2967,7 @@ process_all_files <- function(data_root = NULL) {
                          ", .sql_lit(con, trial_idx), ",
                          ", .sql_lit(con, force_json), "::jsonb
                        )
-                       ON CONFLICT (athlete_uuid, session_date, trial_index) DO UPDATE SET
+                       ON CONFLICT (athlete_uuid, session_date, pitch_category, trial_index) DO UPDATE SET
                          data = EXCLUDED.data, created_at = NOW()
                     ")); "OK"
                   }, error = function(e) {
@@ -2798,7 +2990,8 @@ process_all_files <- function(data_root = NULL) {
                         frame_rate        = frame_rate_val,
                         start_time        = start_time_val,
                         source_athlete_id = sa_id,
-                        owner_filename    = fn_str
+                        owner_filename    = fn_str,
+                        pitch_category    = as.character(row$pitch_category %||% "fastball")
                       ); "OK"
                     }, error = function(e) {
                       log_progress("  [WARNING] force_metrics (", fn_str, "): ", conditionMessage(e))

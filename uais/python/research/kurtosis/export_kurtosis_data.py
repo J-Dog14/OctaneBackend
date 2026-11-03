@@ -63,8 +63,9 @@ def export_pitching(conn):
         FROM public.f_pitching_trials t
         LEFT JOIN public.f_pitching_force_metrics m
                ON m.athlete_uuid = t.athlete_uuid AND m.session_date = t.session_date
-              AND m.trial_index = t.trial_index
-        LEFT JOIN analytics.d_athletes a ON a.athlete_uuid = t.athlete_uuid""")
+              AND m.pitch_category = t.pitch_category AND m.trial_index = t.trial_index
+        LEFT JOIN analytics.d_athletes a ON a.athlete_uuid = t.athlete_uuid
+        WHERE t.pitch_category = 'fastball'""")
     df = df.drop(columns=[c for c in ["id", "qa_warnings_json"] if c in df.columns])
     df.to_csv(OUT / "pitching_trials.csv", index=False)
     print(f"  pitching_trials.csv  rows={len(df)}  with_force_metrics={df['fc_frame'].notna().sum()}")
@@ -77,8 +78,9 @@ def export_lead_shapes(conn, limit=None):
         FROM public.f_pitching_force_metrics m
         LEFT JOIN public.f_pitching_time_data td
                ON td.athlete_uuid = m.athlete_uuid AND td.session_date = m.session_date
-              AND td.trial_index = m.trial_index
+              AND td.pitch_category = m.pitch_category AND td.trial_index = m.trial_index
         WHERE m.fc_frame IS NOT NULL AND m.br_frame IS NOT NULL
+          AND m.pitch_category = 'fastball'
         ORDER BY m.session_date, m.athlete_uuid, m.trial_index""")
     if limit:
         keys = keys.head(limit)
@@ -87,7 +89,7 @@ def export_lead_shapes(conn, limit=None):
         try:
             with conn.cursor() as cur:
                 cur.execute("SELECT data FROM public.f_pitching_force_data "
-                            "WHERE athlete_uuid=%s AND session_date=%s AND trial_index=%s",
+                            "WHERE athlete_uuid=%s AND session_date=%s AND trial_index=%s AND pitch_category='fastball'",
                             (r.athlete_uuid, r.session_date, r.trial_index))
                 fd = cur.fetchone()
             data = _parse_json(fd[0]) if fd else None

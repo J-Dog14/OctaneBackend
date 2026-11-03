@@ -1,9 +1,12 @@
 # backfill_force_metrics.R
 #
-# Processes all trials that have force data in f_pitching_force_data but
-# no corresponding row in f_pitching_force_metrics.
+# Processes every trial that has force data in f_pitching_force_data and either has no row in
+# f_pitching_force_metrics yet, or was computed by an older force PROCESSOR_VERSION (so a processor
+# change - e.g. 1.1.0, the Butterworth filter actually being applied - recomputes everything once).
 #
-# Run standalone: Rscript backfill_force_metrics.R
+# Run standalone: Rscript backfill_force_metrics.R            # missing + outdated trials
+#                 Rscript backfill_force_metrics.R --all      # every trial, regardless of version
+#                 Rscript backfill_force_metrics.R --dry-run  # just count
 # Run from R:     source("backfill_force_metrics.R")
 
 suppressPackageStartupMessages({
@@ -47,14 +50,22 @@ on.exit(try(DBI::dbDisconnect(con), silent = TRUE))
 ensure_force_metrics_table(con)
 
 # ---- Find unprocessed trials ----
+.bf_args    <- commandArgs(trailingOnly = TRUE)
+.bf_all    <- "--all" %in% .bf_args
+.bf_dry    <- "--dry-run" %in% .bf_args
+where_sql    <- if (.bf_all) "TRUE" else "(fm.id IS NULL OR fm.processor_version IS DISTINCT FROM $1)"
+where_params <- if (.bf_all) list() else list(PROCESSOR_VERSION)
+cat("Force processor", PROCESSOR_VERSION, if (.bf_all) "(--all: every trial)" else "(missing + outdated trials)", "\n")
+
 unprocessed <- tryCatch(
-  DBI::dbGetQuery(con, "
+  DBI::dbGetQuery(con, paste0("
     SELECT
       fd.athlete_uuid,
       fd.session_date::text AS session_date,
       fd.source_athlete_id,
       fd.owner_filename,
       fd.trial_index,
+      fd.pitch_category,
       td.handedness,
       td.weight,
       td.frame_rate,
@@ -64,14 +75,16 @@ unprocessed <- tryCatch(
     LEFT JOIN public.f_pitching_force_metrics fm
       ON fd.athlete_uuid  = fm.athlete_uuid
      AND fd.session_date  = fm.session_date
+     AND fd.pitch_category = fm.pitch_category
      AND fd.trial_index   = fm.trial_index
     LEFT JOIN public.f_pitching_time_data td
       ON fd.athlete_uuid  = td.athlete_uuid
      AND fd.session_date  = td.session_date
+     AND fd.pitch_category = td.pitch_category
      AND fd.trial_index   = td.trial_index
-    WHERE fm.id IS NULL
-    ORDER BY fd.session_date DESC, fd.athlete_uuid, fd.trial_index
-  "),
+    WHERE ", where_sql, "
+    ORDER BY fd.session_date DESC, fd.athlete_uuid, fd.pitch_category, fd.trial_index
+  "), params = if (length(where_params)) where_params else NULL),
   error = function(e) {
     cat("ERROR querying unprocessed trials:", conditionMessage(e), "\n")
     NULL
@@ -84,6 +97,10 @@ if (is.null(unprocessed) || nrow(unprocessed) == 0) {
 }
 
 cat("Found", nrow(unprocessed), "unprocessed trial(s).\n\n")
+if (.bf_dry) {
+  cat("Dry run - nothing processed. Rerun without --dry-run.\n")
+  quit(save = "no", status = 0)
+}
 
 n_ok  <- 0L
 n_err <- 0L
@@ -91,18 +108,17 @@ n_err <- 0L
 for (i in seq_len(nrow(unprocessed))) {
   row <- unprocessed[i, ]
 
-  # Resolve JSON path from session_xml_path directory + owner_filename
+  # Trial data comes from the warehouse (force, segment rotations, timing); the original
+  # -3d-data.json next to session.xml is only a fallback.
+  json_data <- tryCatch(force_json_from_db(con, row$athlete_uuid, row$session_date, row$trial_index, row$pitch_category),
+                        error = function(e) NULL)
   json_path <- NULL
-  if (!is.na(row$session_xml_path) && !is.na(row$owner_filename)) {
-    candidate <- file.path(
-      dirname(row$session_xml_path),
-      paste0(row$owner_filename, "-3d-data.json")
-    )
+  if (is.null(json_data) && !is.na(row$session_xml_path) && !is.na(row$owner_filename)) {
+    candidate <- file.path(dirname(row$session_xml_path), paste0(row$owner_filename, "-3d-data.json"))
     if (file.exists(candidate)) json_path <- candidate
   }
-
-  if (is.null(json_path)) {
-    cat(sprintf("  [SKIP] %s / %s / trial %d — JSON file not found at expected path\n",
+  if (is.null(json_data) && is.null(json_path)) {
+    cat(sprintf("  [SKIP] %s / %s / trial %d - no force data in the warehouse and no JSON file\n",
                 row$athlete_uuid, row$session_date, row$trial_index))
     n_err <- n_err + 1L
     next
@@ -114,13 +130,15 @@ for (i in seq_len(nrow(unprocessed))) {
       athlete_uuid      = row$athlete_uuid,
       session_date      = row$session_date,
       trial_index       = as.integer(row$trial_index),
+      json_data         = json_data,
       json_path         = json_path,
       handedness        = row$handedness,
       weight_lbs        = row$weight,
       frame_rate        = row$frame_rate,
       start_time        = row$start_time,
       source_athlete_id = row$source_athlete_id,
-      owner_filename    = row$owner_filename
+      owner_filename    = row$owner_filename,
+      pitch_category    = row$pitch_category
     )
     n_ok <- n_ok + 1L
   }, error = function(e) {

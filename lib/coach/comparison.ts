@@ -3,7 +3,7 @@ import type { DomainId } from "@/lib/athlete-tracking/types";
 
 export type ComparisonScope = CoachTabId | "all";
 export const COMPARISON_LABELS: Record<ComparisonScope, string> = {
-  all: "All areas", overview: "Overview", pitching: "Pitching", biomechanics: "Biomechanics", hitting: "Hitting",
+  all: "All areas", overview: "Overview", pitching: "Pitching", tm3d: "TM + 3D", biomechanics: "Biomechanics", hitting: "Hitting",
   assessments: "Athletic Screen", mobility: "Mobility", prosup: "Pro/Sup",
   curveball: "Curveball", readiness: "Readiness", proteus: "Proteus", program: "Program Lift", throwing: "Program Throwing", programManagement: "Program Management", videos: "Videos",
 };
@@ -24,6 +24,8 @@ export function comparisonDomains(scope: ComparisonScope): DomainId[] {
 }
 export function hasComparisonData(summary: CoachAthleteSummary, scope: ComparisonScope): boolean {
   if (scope === "all" || scope === "overview") return true;
+  // TM + 3D is a single-athlete view (one capture's pitches); it has no side-by-side comparison.
+  if (scope === "tm3d") return false;
   if (scope === "pitching") return summary.sources.some((s) => ["savant", "trackman", "pitchReports"].includes(s.id) && s.sessions > 0);
   return summary.tabs[scope];
 }

@@ -41,6 +41,10 @@ export function DuplicateSessionModal({ modal, onResponse }: Props) {
           It looks like you already ran this data for the following date:{" "}
           <strong>{modal.date}</strong>. Are you sure you want to continue?
         </p>
+        <p className="text-muted" style={{ marginBottom: "1rem", fontSize: "0.9em" }}>
+          <strong>Yes</strong> updates the stored trials for this date in place (same athlete, date and trial number) and adds any
+          new ones. Nothing is duplicated. <strong>No</strong> skips this session.
+        </p>
         <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
           <button type="button" className="btn-primary" onClick={() => onResponse("yes")}>
             Yes

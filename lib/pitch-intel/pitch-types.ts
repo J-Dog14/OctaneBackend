@@ -15,17 +15,20 @@ export const PITCH_LABELS: Record<PitchCode, string> = {
   OTHER: "Other",
 };
 
-/** Same colors as Ryan's dashboard (PITCH_COLORS in athletes-v2.js), so pitches read the same everywhere. */
+/**
+ * TrackMan's pitch-type colors (sampled from the TrackMan portal legend, 2026-11-03), so pitches read
+ * the same in the coach suite as in TrackMan. TrackMan's knuckleball purple (#834FD4) has no code here.
+ */
 export const PITCH_COLORS: Record<PitchCode, string> = {
-  FF: "#378ADD",
-  SI: "#888780",
-  FC: "#534AB7",
-  SL: "#E24B4A",
-  ST: "#D85A30",
-  CU: "#1D9E75",
-  KC: "#1D9E75",
-  CH: "#BA7517",
-  FS: "#BA7517",
+  FF: "#861B1B", // fastball (4-seam): red
+  SI: "#E78C4C", // sinker: orange
+  FC: "#44300A", // cutter: brown
+  SL: "#D8B83D", // slider: yellow
+  ST: "#AF8F2E", // sweeper: gold
+  CU: "#5895F5", // curveball: light blue
+  KC: "#5895F5", // knuckle curve: TrackMan's curveball blue
+  CH: "#79A12F", // changeup: green
+  FS: "#34778A", // splitter: teal
   OTHER: "#555566",
 };
 

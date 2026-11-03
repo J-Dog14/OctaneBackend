@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import useSWR from "swr";
+import { useUserActive } from "@/hooks/useUserActive";
 import {
   Alert,
   Badge,
@@ -61,8 +62,9 @@ export function PitchIntelContent() {
   const [busy, setBusy] = useState<number | null>(null);
   const [message, setMessage] = useState<{ color: string; text: string } | null>(null);
 
-  const links = useSWR<{ links: LinkWithStatus[] }>("/api/dashboard/pitch-intel/links", fetcher, { refreshInterval: 15_000 });
-  const runs = useSWR<{ runs: PullRun[] }>("/api/dashboard/pitch-intel/runs?limit=30", fetcher, { refreshInterval: 10_000 });
+  const active = useUserActive();
+  const links = useSWR<{ links: LinkWithStatus[] }>("/api/dashboard/pitch-intel/links", fetcher, { refreshInterval: active ? 15_000 : 0 });
+  const runs = useSWR<{ runs: PullRun[] }>("/api/dashboard/pitch-intel/runs?limit=30", fetcher, { refreshInterval: active ? 10_000 : 0 });
 
   const refresh = () => {
     void links.mutate();

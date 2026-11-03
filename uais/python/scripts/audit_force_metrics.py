@@ -102,6 +102,7 @@ def section_coverage(conn, where, params, issues):
         LEFT JOIN public.f_pitching_force_metrics fm
             ON fd.athlete_uuid = fm.athlete_uuid
            AND fd.session_date = fm.session_date
+           AND fd.pitch_category = fm.pitch_category
            AND fd.trial_index  = fm.trial_index
         WHERE 1=1
     """ + ("AND " + where.replace("WHERE", "").strip() if where else ""), params)
@@ -111,6 +112,7 @@ def section_coverage(conn, where, params, issues):
         LEFT JOIN public.f_pitching_force_metrics fm
             ON fd.athlete_uuid = fm.athlete_uuid
            AND fd.session_date = fm.session_date
+           AND fd.pitch_category = fm.pitch_category
            AND fd.trial_index  = fm.trial_index
         WHERE fm.id IS NULL
     """)
@@ -362,6 +364,7 @@ def section_consistency(conn, where, params, total, issues):
         LEFT JOIN public.f_pitching_time_data td
             ON  td.athlete_uuid = fm.athlete_uuid
             AND td.session_date = fm.session_date
+            AND td.pitch_category = fm.pitch_category
             AND td.trial_index  = fm.trial_index
         {where}
         AND fm.fc_frame IS NOT NULL AND fm.fc_time_s IS NOT NULL

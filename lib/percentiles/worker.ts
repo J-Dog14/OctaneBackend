@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/db/prisma";
 import { populationDefinitions, invalidatePopulationRead, clearPopulationReads, populationStatus } from "./populations";
 import { clearCoachDataCache } from "@/lib/coach/cache";
+import { coachActiveWithin } from "@/lib/coach/activity";
 
 let loaded: Promise<unknown> | undefined;
 export function loadPopulationDefinitions() {
@@ -100,7 +101,13 @@ export async function runPopulationRefreshes({ maxJobs = 20, maxDurationMs = 240
   return result;
 }
 
-/** For the persistent Railway/Node server; scheduled endpoint also drains jobs. */
+/**
+ * For the persistent Railway/Node server; scheduled endpoint also drains jobs.
+ * Ticks every 5 s but only touches the database while a coach has used the
+ * portal in the last 10 minutes (see lib/coach/activity.ts). When nobody is
+ * around it issues no queries, so Neon can scale to zero; the first coach
+ * request wakes it and any snapshots marked dirty by imports rebuild then.
+ */
 export function startPopulationWorker() {
   const processState = globalThis as typeof globalThis & { coachPopulationWorker?: ReturnType<typeof setInterval> };
   if (processState.coachPopulationWorker) return;
@@ -108,7 +115,7 @@ export function startPopulationWorker() {
   let warned = false;
   let version: string | undefined;
   const tick = async () => {
-    if (running) return;
+    if (running || !coachActiveWithin()) return;
     running = true;
     try {
       await runPopulationRefreshes();
