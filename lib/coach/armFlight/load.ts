@@ -50,6 +50,8 @@ export interface ArmTrial {
     tilt: string | null;
     velo: number | null;
     spinRate: number | null;
+    /** TrackMan spin efficiency, as stored (percent or fraction). */
+    spinEff: number | null;
     ivb: number | null;
     hb: number | null;
     confidence: string;
@@ -95,6 +97,7 @@ type TrialRow = {
   tilt: string | null;
   rel_speed: number | null;
   spin_rate: number | null;
+  spin_efficiency: number | null;
   ivb: number | null;
   hb: number | null;
   rel_height: number | null;
@@ -198,7 +201,7 @@ export async function buildArmFlight(athleteUuid: string, date?: string | null):
             to_jsonb(t) -> 'events' AS events,
             td.frame_rate::float8 AS frame_rate, md.label_names,
             l.pitch_uid, l.confidence, p.pitch_no, p.pitch_type, p.pitcher_throws, COALESCE(p.tilt, p.measured_tilt) AS tilt,
-            p.rel_speed::float8 AS rel_speed, p.spin_rate::float8 AS spin_rate, p.ivb::float8 AS ivb, p.hb::float8 AS hb,
+            p.rel_speed::float8 AS rel_speed, p.spin_rate::float8 AS spin_rate, p.spin_efficiency::float8 AS spin_efficiency, p.ivb::float8 AS ivb, p.hb::float8 AS hb,
             p.rel_height::float8 AS rel_height, p.rel_side::float8 AS rel_side, p.extension::float8 AS extension,
             p.plate_loc_height::float8 AS plate_loc_height, p.plate_loc_side::float8 AS plate_loc_side
        FROM public.f_pitching_trials t
@@ -334,6 +337,7 @@ export async function buildArmFlight(athleteUuid: string, date?: string | null):
             tilt: r.tilt,
             velo: num(r.rel_speed),
             spinRate: num(r.spin_rate),
+            spinEff: num(r.spin_efficiency),
             ivb: num(r.ivb),
             hb: num(r.hb),
             confidence: r.confidence ?? "review",

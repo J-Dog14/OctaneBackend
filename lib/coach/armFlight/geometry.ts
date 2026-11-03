@@ -266,3 +266,55 @@ export function hitterCamera(batter: "R" | "L" | "C", target: V3): Camera {
   if (batter === "C") return { eye: [0, -6, 4.2], target, focal: 1 };
   return { eye: [batter === "R" ? -2.3 : 2.3, 0.7, 5.2], target, focal: 1 };
 }
+
+// ---------------------------------------------------------------------------
+// Spin
+// ---------------------------------------------------------------------------
+
+/** Unit vectors of a pinhole camera: r = screen right, u = screen up, f = viewing direction. */
+export function cameraBasis(cam: Camera): { r: V3; u: V3; f: V3 } {
+  const f = norm(sub(cam.target, cam.eye));
+  const r = norm(cross(f, [0, 0, 1]));
+  const u = cross(r, f);
+  return { r, u, f };
+}
+
+/** Rotate p about a unit axis by `ang` radians (right-hand rule, Rodrigues). */
+export function rotateAbout(p: V3, axis: V3, ang: number): V3 {
+  const c = Math.cos(ang);
+  const s = Math.sin(ang);
+  const k = axis;
+  const kxp = cross(k, p);
+  const kdp = dot(k, p);
+  return [p[0] * c + kxp[0] * s + k[0] * kdp * (1 - c), p[1] * c + kxp[1] * s + k[1] * kdp * (1 - c), p[2] * c + kxp[2] * s + k[2] * kdp * (1 - c)];
+}
+
+/**
+ * Spin axis (unit vector, field frame) implied by the flight itself, so it can't be off by a
+ * clock / viewpoint convention:
+ * - The Magnus push is the flight's acceleration minus gravity, minus the drag part along the
+ *   velocity. Magnus force ∝ ω × v, so the transverse (movement-making) spin axis is v̂ × â_magnus.
+ * - Spin efficiency then tips the axis toward the direction of travel (gyro spin): angle acos(eff).
+ *   TrackMan doesn't say which way the gyro part points; it's drawn pointing toward the plate.
+ * Rotation about the returned axis follows the right-hand rule. Null when the flight has no measurable bend.
+ */
+export function spinAxisFromFlight(path: FlightPath, spinEffPct: number | null): V3 | null {
+  if (path.length < 3) return null;
+  const [a, b, c] = [path[0]!, path[1]!, path[2]!];
+  const dt = (b[0] - a[0]) / 1000;
+  if (!(dt > 0)) return null;
+  const p0: V3 = [a[1], a[2], a[3]];
+  const p1: V3 = [b[1], b[2], b[3]];
+  const p2: V3 = [c[1], c[2], c[3]];
+  const v = norm(sub(p1, p0));
+  const acc: V3 = [(p2[0] - 2 * p1[0] + p0[0]) / (dt * dt), (p2[1] - 2 * p1[1] + p0[1]) / (dt * dt), (p2[2] - 2 * p1[2] + p0[2]) / (dt * dt)];
+  const magnus: V3 = [acc[0], acc[1], acc[2] + G_FT_S2];
+  const along = dot(magnus, v);
+  const perp: V3 = [magnus[0] - along * v[0], magnus[1] - along * v[1], magnus[2] - along * v[2]];
+  if (Math.hypot(perp[0], perp[1], perp[2]) < 0.5) return null; // < 0.5 ft/s²: no real bend to read
+  const transverse = norm(cross(v, perp));
+  const eff = spinEffPct == null ? null : spinEffPct <= 1 ? spinEffPct : spinEffPct / 100;
+  if (eff == null || !(eff > 0) || eff >= 1) return transverse;
+  const g = Math.acos(Math.min(1, eff));
+  return norm([transverse[0] * Math.cos(g) + v[0] * Math.sin(g), transverse[1] * Math.cos(g) + v[1] * Math.sin(g), transverse[2] * Math.cos(g) + v[2] * Math.sin(g)]);
+}

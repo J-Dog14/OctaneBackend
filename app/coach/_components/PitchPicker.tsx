@@ -1,9 +1,10 @@
 "use client";
 
 /**
- * Mechanics + Flight pitch picker: ◀ [highlighted pitch ▾] ▶.
+ * Pitch picker (TM + 3D and Pitching → Flight): ◀ [highlighted pitch ▾] ▶.
  * The arrows walk every pitch in throw order (across types). The box opens a checklist:
  * All, then each pitch type with its pitches; tick any mix to draw several at once.
+ * `PitchListPicker` takes plain items; `PitchPicker` adapts TM + 3D's SyncPitch rows to it.
  */
 
 import { useState } from "react";
@@ -15,6 +16,17 @@ import { groupLabel, groupOf, pitchVelo, trialKey } from "./pitchSyncNames";
 
 const colorOf = (p: SyncPitch) => (p.tm ? PITCH_COLORS[p.tm.code] : "#9aa4ab");
 
+export interface PickItem {
+  key: string;
+  /** Short name, e.g. "Sinker 4". */
+  name: string;
+  color: string;
+  /** Group id (pitch type) and its label in the checklist ("Sinkers"). */
+  group: string;
+  groupLabel: string;
+  velo: number | null;
+}
+
 function Dot({ color, size = 10 }: { color: string; size?: number }) {
   return <span style={{ display: "inline-block", width: size, height: size, borderRadius: size, background: color, boxShadow: "0 0 0 1px rgba(255,255,255,0.4)", flex: "none" }} />;
 }
@@ -22,10 +34,7 @@ function Dot({ color, size = 10 }: { color: string; size?: number }) {
 export function PitchPicker({
   pitches,
   names,
-  selected,
-  focusKey,
-  onPick,
-  onSelect,
+  ...rest
 }: {
   /** Throw order. */
   pitches: SyncPitch[];
@@ -35,22 +44,42 @@ export function PitchPicker({
   onPick: (key: string) => void;
   onSelect: (keys: string[]) => void;
 }) {
+  const items: PickItem[] = pitches.map((p) => {
+    const g = groupOf(p);
+    return { key: trialKey(p), name: names.get(trialKey(p)) ?? "", color: colorOf(p), group: g, groupLabel: groupLabel(g), velo: pitchVelo(p) };
+  });
+  return <PitchListPicker items={items} {...rest} />;
+}
+
+export function PitchListPicker({
+  items,
+  selected,
+  focusKey,
+  onPick,
+  onSelect,
+}: {
+  /** Throw order. */
+  items: PickItem[];
+  selected: string[];
+  focusKey: string | null;
+  onPick: (key: string) => void;
+  onSelect: (keys: string[]) => void;
+}) {
   const [open, setOpen] = useState(false);
-  const order = pitches.map(trialKey);
-  const focus = pitches.find((p) => trialKey(p) === focusKey) ?? pitches[0];
+  const order = items.map((p) => p.key);
+  const focus = items.find((p) => p.key === focusKey) ?? items[0];
   if (!focus) return null;
   const sel = new Set(selected);
 
-  const groups: Array<{ key: string; items: SyncPitch[] }> = [];
-  for (const p of pitches) {
-    const g = groupOf(p);
-    let entry = groups.find((x) => x.key === g);
-    if (!entry) groups.push((entry = { key: g, items: [] }));
+  const groups: Array<{ key: string; label: string; items: PickItem[] }> = [];
+  for (const p of items) {
+    let entry = groups.find((x) => x.key === p.group);
+    if (!entry) groups.push((entry = { key: p.group, label: p.groupLabel, items: [] }));
     entry.items.push(p);
   }
 
   const step = (dir: -1 | 1) => {
-    const i = order.indexOf(trialKey(focus));
+    const i = order.indexOf(focus.key);
     onPick(order[(i + dir + order.length) % order.length]!);
   };
   // Keep throw order in what we hand back.
@@ -68,9 +97,8 @@ export function PitchPicker({
     return { checked: n === keys.length, indeterminate: n > 0 && n < keys.length };
   };
   const all = state(order);
-  const v = pitchVelo(focus);
-  const extra = selected.length - (sel.has(trialKey(focus)) ? 1 : 0);
-
+  const v = focus.velo;
+  const extra = selected.length - (sel.has(focus.key) ? 1 : 0);
   return (
     <Group gap={6} wrap="nowrap">
       <ActionIcon variant="light" size="lg" aria-label="Previous pitch" onClick={() => step(-1)} disabled={order.length < 2}>
@@ -85,16 +113,16 @@ export function PitchPicker({
               minWidth: 250,
               padding: "6px 12px",
               borderRadius: 6,
-              border: `1px solid ${colorOf(focus)}`,
+              border: `1px solid ${focus.color}`,
               background: "rgba(255,255,255,0.03)",
               display: "flex",
               alignItems: "center",
               gap: 8,
             }}
           >
-            <Dot color={colorOf(focus)} />
+            <Dot color={focus.color} />
             <Text span fw={600} size="sm">
-              {names.get(trialKey(focus))}
+              {focus.name}
             </Text>
             {v != null && (
               <Text span size="sm" c="dimmed">
@@ -116,7 +144,7 @@ export function PitchPicker({
             <Stack gap={6}>
               <Checkbox size="xs" label={<Text size="sm" fw={600}>All ({order.length})</Text>} checked={all.checked} indeterminate={all.indeterminate} onChange={(e) => toggleMany(order, e.currentTarget.checked)} />
               {groups.map((g) => {
-                const keys = g.items.map(trialKey);
+                const keys = g.items.map((p) => p.key);
                 const st = state(keys);
                 return (
                   <Stack key={g.key} gap={4}>
@@ -124,8 +152,8 @@ export function PitchPicker({
                       size="xs"
                       label={
                         <Group gap={6} wrap="nowrap">
-                          <Dot color={colorOf(g.items[0]!)} size={9} />
-                          <Text size="sm" fw={600}>{groupLabel(g.key)}</Text>
+                          <Dot color={g.items[0]!.color} size={9} />
+                          <Text size="sm" fw={600}>{g.label}</Text>
                         </Group>
                       }
                       checked={st.checked}
@@ -133,9 +161,9 @@ export function PitchPicker({
                       onChange={(e) => toggleMany(keys, e.currentTarget.checked)}
                     />
                     {g.items.map((p) => {
-                      const k = trialKey(p);
-                      const pv = pitchVelo(p);
-                      const isMain = k === trialKey(focus);
+                      const k = p.key;
+                      const pv = p.velo;
+                      const isMain = k === focus.key;
                       return (
                         <Group key={k} gap={6} wrap="nowrap" justify="space-between" ml={22}>
                           <Checkbox
@@ -144,7 +172,7 @@ export function PitchPicker({
                             onChange={(e) => toggleMany([k], e.currentTarget.checked)}
                             label={
                               <Text size="sm" fw={isMain ? 700 : 400}>
-                                {names.get(k)}
+                                {p.name}
                                 {pv != null && <Text span size="xs" c="dimmed"> · {fmt(pv)} mph</Text>}
                               </Text>
                             }

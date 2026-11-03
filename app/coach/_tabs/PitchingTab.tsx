@@ -8,9 +8,10 @@ import { fmt, fmtDate, pitchingKey, swrOpts } from "../_components/fetcher";
 import { ArsenalBadge, ArsenalMoves, MovementPlot, PitchTypeTable, WHIFF_MIN_SWINGS } from "../_components/pitching";
 import { PitchReport } from "../_components/pitchReport";
 import { MetricTrends } from "../_components/metricTrends";
+import { PitchFlightView } from "../_components/PitchFlightView";
 import { SectionHead } from "./shared";
 
-type View = "report" | "arsenal" | "games" | "sessions" | "trends" | "dashboard";
+type View = "report" | "flight" | "arsenal" | "games" | "sessions" | "trends" | "dashboard";
 
 const REPORT_SOURCE: Record<string, string> = {
   trackman_summary: "Trackman summary",
@@ -202,7 +203,7 @@ export function PitchingTab({ athleteUuid }: { athleteUuid: string }) {
 
   const hasPitchByPitch = data.athlete.hasSavant || data.sessions.length > 0;
   const views = [
-    ...(hasPitchByPitch ? [{ value: "report", label: "Pitch report" }] : []),
+    ...(hasPitchByPitch ? [{ value: "report", label: "Pitch report" }, { value: "flight", label: "Flight" }] : []),
     { value: "arsenal", label: "Arsenal" },
     ...(data.games.length ? [{ value: "games", label: `Games (${data.games.length})` }] : []),
     ...(data.sessions.length || data.reports.length ? [{ value: "sessions", label: "Trackman & reports" }] : []),
@@ -239,6 +240,7 @@ export function PitchingTab({ athleteUuid }: { athleteUuid: string }) {
       {active === "games" && <GamesView d={data} />}
       {active === "sessions" && <SessionsView d={data} />}
       {active === "report" && <PitchReport athleteUuid={athleteUuid} />}
+      {active === "flight" && <PitchFlightView athleteUuid={athleteUuid} />}
       {active === "trends" && <MetricTrends athleteUuid={athleteUuid} />}
       {active === "dashboard" && <DashboardView athleteUuid={athleteUuid} />}
     </Stack>

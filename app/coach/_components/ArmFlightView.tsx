@@ -25,10 +25,9 @@ import {
   RUBBER_FT,
   VIEW_PRESETS,
   flightAt,
-  hitterCamera,
   mid,
   orbitBasis,
-  perspectiveProject,
+  spinAxisFromFlight,
   sub,
   type Basis,
   type Orbit,
@@ -39,6 +38,7 @@ import { fmt, fmtDate, swrOpts } from "./fetcher";
 import { trialKey } from "./pitchSyncNames";
 import { PitchPicker } from "./PitchPicker";
 import { PitchMetricsPanel } from "./PitchMetricsPanel";
+import { HitterViewPanel, SpinBall, ZONE_THIRDS, spinAngle, type Batter, type FlightBall } from "./ballFlight";
 
 const NO_TM_COLOR = "#9aa4ab";
 const colorOf = (t: ArmTrial) => (t.tm ? PITCH_COLORS[t.tm.code] : NO_TM_COLOR);
@@ -76,20 +76,6 @@ function toPose(fr: [number, ...V3[]]): Pose {
   return { shoulder, elbow: mid(elbowLat, elbowMed), elbowLat, elbowMed, wrist: mid(radius, ulna), radius, ulna, hand };
 }
 
-/** Fit points into a w×h box (equal scale on both axes), y up. */
-function fitter(points: Array<[number, number]>, w: number, h: number, pad = 24) {
-  const xs = points.map((p) => p[0]);
-  const ys = points.map((p) => p[1]);
-  const x0 = Math.min(...xs);
-  const x1 = Math.max(...xs);
-  const y0 = Math.min(...ys);
-  const y1 = Math.max(...ys);
-  const s = Math.min((w - 2 * pad) / Math.max(x1 - x0, 1e-6), (h - 2 * pad) / Math.max(y1 - y0, 1e-6));
-  const cx = (x0 + x1) / 2;
-  const cy = (y0 + y1) / 2;
-  return (p: [number, number]): [number, number] => [w / 2 + (p[0] - cx) * s, h / 2 - (p[1] - cy) * s];
-}
-
 // ---------------------------------------------------------------------------
 // Arm panel (orbit camera)
 // ---------------------------------------------------------------------------
@@ -111,14 +97,6 @@ const VIEW_HELP: Record<ViewId, string> = {
 };
 const FREE_START: Orbit = { az: 215, el: 22 };
 const clampZoom = (z: number) => Math.min(6, Math.max(0.35, z));
-
-/** Strike zone split into 9 (17 in wide incl. ball overlap ≈ ±0.83 ft, 1.5–3.5 ft high): the 4 inner lines. */
-const ZONE_THIRDS: Array<[V3, V3]> = [
-  [[-0.83 / 3, PLATE_FRONT_FT, 1.5], [-0.83 / 3, PLATE_FRONT_FT, 3.5]],
-  [[0.83 / 3, PLATE_FRONT_FT, 1.5], [0.83 / 3, PLATE_FRONT_FT, 3.5]],
-  [[-0.83, PLATE_FRONT_FT, 1.5 + 2 / 3], [0.83, PLATE_FRONT_FT, 1.5 + 2 / 3]],
-  [[-0.83, PLATE_FRONT_FT, 1.5 + 4 / 3], [0.83, PLATE_FRONT_FT, 1.5 + 4 / 3]],
-];
 
 const dotv = (a: V3, b: V3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 const cross3 = (a: V3, b: V3): V3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
@@ -402,16 +380,17 @@ function ArmPanel({
                   <g key={`fl-${trialKey(t)}`}>
                     {lines}
                     {ball && depth(ball) > NEAR && (
-                      <circle
-                        cx={P(ball)[0]}
-                        cy={P(ball)[1]}
-                        r={Math.max(2, Math.min(6, (0.121 * cam.k) / depth(ball)))}
-                        fill="#f5f8fa"
-                        fillOpacity={focused || !many ? 1 : 0.55}
-                        stroke={colorOf(t)}
-                        strokeOpacity={focused || !many ? 1 : 0.7}
-                        strokeWidth={1.5}
-                      />
+                      <g opacity={focused || !many ? 1 : 0.55}>
+                        <SpinBall
+                          x={P(ball)[0]}
+                          y={P(ball)[1]}
+                          R={Math.max(2, Math.min(14, (0.121 * cam.k) / depth(ball)))}
+                          axis={trialSpinAxis(t)}
+                          basis={{ r: basis.r, u: basis.u, f: viewDir }}
+                          angle={spinAngle(t.tm?.spinRate ?? null, ballMs)}
+                          color={colorOf(t)}
+                        />
+                      </g>
                     )}
                   </g>
                 );
@@ -502,98 +481,25 @@ function ArmPanel({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Flight panel (batter's eye, true perspective)
-// ---------------------------------------------------------------------------
+/** Spin axis of a paired pitch, from its own TrackMan flight (null without a flight or with no measurable bend). */
+function trialSpinAxis(t: ArmTrial): V3 | null {
+  return t.flight && t.tm ? spinAxisFromFlight(t.flight.path, t.tm.spinEff) : null;
+}
 
-function FlightPanel({ trials, focusKey, ms, batter }: { trials: ArmTrial[]; focusKey: string | null; ms: number; batter: "R" | "L" | "C" }) {
-  const W = 560;
-  const H = 440;
-  const withFlight = trials.filter((t) => t.flight);
-  const rel = withFlight.map((t) => t.flight!.path[0]!);
-  const target: V3 = rel.length
-    ? [rel.reduce((a, r) => a + r[1], 0) / rel.length, rel.reduce((a, r) => a + r[2], 0) / rel.length, rel.reduce((a, r) => a + r[3], 0) / rel.length]
-    : [0, 54, 5.5];
-  // Aim between the release window and the zone so both stay in frame.
-  const cam = hitterCamera(batter, [target[0] * 0.5, 30, (target[2] + 2.5) / 2]);
-  const zone: V3[] = [
-    [-0.83, PLATE_FRONT_FT, 1.5],
-    [0.83, PLATE_FRONT_FT, 1.5],
-    [0.83, PLATE_FRONT_FT, 3.5],
-    [-0.83, PLATE_FRONT_FT, 3.5],
-  ];
-  const pts: Array<[number, number]> = [];
-  const pr = (p: V3) => perspectiveProject(p, cam);
-  for (const z of zone) {
-    const q = pr(z);
-    if (q) pts.push(q);
-  }
-  for (const t of withFlight) for (const p of t.flight!.path) {
-    const q = pr([p[1], p[2], p[3]]);
-    if (q) pts.push(q);
-  }
-  if (!withFlight.length || pts.length < 3) {
-    return (
-      <Text size="sm" c="dimmed" py="xl" ta="center">
-        No TrackMan flight to draw for {trials.length === 1 ? "this pitch" : "these pitches"} (needs release point, plate location and break).
-      </Text>
-    );
-  }
-  const toScreen = fitter(pts, W, H, 30);
-  const S = (p: V3) => {
-    const q = pr(p);
-    return q ? toScreen(q) : null;
+/** An arm trial as a ball for the shared flight views (with its arm stick for the hitter's view). */
+function toFlightBall(t: ArmTrial): FlightBall | null {
+  if (!t.flight) return null;
+  const last = t.frames[t.frames.length - 1]![0];
+  return {
+    key: trialKey(t),
+    color: colorOf(t),
+    flight: t.flight,
+    spin: t.tm ? { rpm: t.tm.spinRate, eff: t.tm.spinEff, tilt: t.tm.tilt, axis: trialSpinAxis(t) } : null,
+    arm: (m) => {
+      const q = poseAt(t, Math.min(m, last));
+      return [q.shoulder, q.elbow, q.wrist, q.hand];
+    },
   };
-  const zs = zone.map((z) => S(z)).filter(Boolean) as Array<[number, number]>;
-  /** True perspective size of a baseball (2.9 in across) at that point, kept readable: tiny at release, grows into the plate. */
-  const ballRadius = (p: V3) => {
-    const c0 = S(p);
-    const c1 = S([p[0] + 0.121, p[1], p[2]]);
-    const r = c0 && c1 ? Math.hypot(c1[0] - c0[0], c1[1] - c0[1]) : 3;
-    return Math.min(14, Math.max(2.5, r));
-  };
-  const ordered = [...withFlight].sort((a, b) => Number(trialKey(a) === focusKey) - Number(trialKey(b) === focusKey));
-  const many = withFlight.length > 1;
-
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ background: "rgba(255,255,255,0.02)", borderRadius: 8 }} role="img" aria-label="Hitter's view of the pitches">
-      <polygon points={zs.map((p) => p.join(",")).join(" ")} fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.45)" strokeWidth={1.5} />
-      {ZONE_THIRDS.map(([a, b], i) => {
-        const p = S(a);
-        const q = S(b);
-        return p && q ? <line key={`zq${i}`} x1={p[0]} y1={p[1]} x2={q[0]} y2={q[1]} stroke="rgba(255,255,255,0.2)" strokeWidth={1} /> : null;
-      })}
-      {ordered.map((t) => {
-        const c = colorOf(t);
-        const focused = trialKey(t) === focusKey;
-        const op = !many || focused ? 1 : 0.35;
-        const path = t.flight!.path.map((p) => S([p[1], p[2], p[3]])).filter(Boolean) as Array<[number, number]>;
-        const flown = t.flight!.path.filter((p) => p[0] <= ms).map((p) => S([p[1], p[2], p[3]])).filter(Boolean) as Array<[number, number]>;
-        const ball = ms >= 0 ? S(flightAt(t.flight!.path, ms)) : null;
-        const now = poseAt(t, Math.min(ms, t.frames[t.frames.length - 1]![0]));
-        const arm = [now.shoulder, now.elbow, now.wrist, now.hand].map((p) => S(p)).filter(Boolean) as Array<[number, number]>;
-        const end = t.flight!.path[t.flight!.path.length - 1]!;
-        const endS = S([end[1], end[2], end[3]]);
-        const pl = (xs: Array<[number, number]>) => xs.map((p) => p.join(",")).join(" ");
-        return (
-          <g key={trialKey(t)} opacity={op}>
-            {/* faint light underlay so dark pitch colors (cutter brown) still read on the dark background */}
-            <polyline points={pl(path)} fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth={2.5} />
-            <polyline points={pl(path)} fill="none" stroke={c} strokeOpacity={0.5} strokeWidth={1.5} />
-            {flown.length > 1 && (
-              <>
-                <polyline points={pl(flown)} fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth={focused ? 5 : 4} />
-                <polyline points={pl(flown)} fill="none" stroke={c} strokeWidth={focused ? 3 : 2.5} />
-              </>
-            )}
-            {arm.length === 4 && <polyline points={pl(arm)} fill="none" stroke={c} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" opacity={0.9} />}
-            {ball && <circle cx={ball[0]} cy={ball[1]} r={ballRadius(flightAt(t.flight!.path, ms))} fill="#f5f8fa" stroke={c} strokeWidth={2} />}
-            {endS && ms >= t.flight!.flightMs && <circle cx={endS[0]} cy={endS[1]} r={5} fill={c} stroke="#f5f8fa" strokeWidth={1} />}
-          </g>
-        );
-      })}
-    </svg>
-  );
 }
 
 // ---------------------------------------------------------------------------
@@ -635,7 +541,7 @@ export function ArmFlightView({
   const [viewId, setViewId] = useState<ViewId>("pitcher");
   const [zoom, setZoom] = useState(1);
   const [orbit, setOrbit] = useState<Orbit>(VIEW_PRESETS.pitcher);
-  const [batter, setBatter] = useState<"R" | "L" | "C">("C");
+  const [batter, setBatter] = useState<Batter>("C");
   const [ms, setMs] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState("0.05");
@@ -760,10 +666,16 @@ export function ArmFlightView({
         <div style={{ minWidth: 0 }}>
           <Group justify="space-between" mb={4} wrap="nowrap">
             <Text fw={600} size="sm">Hitter&apos;s view</Text>
-            <SegmentedControl size="xs" value={batter} onChange={(v) => setBatter(v as "R" | "L" | "C")} data={[{ value: "C", label: "Catcher" }, { value: "R", label: "RHB eye" }, { value: "L", label: "LHB eye" }]} />
+            <SegmentedControl size="xs" value={batter} onChange={(v) => setBatter(v as Batter)} data={[{ value: "C", label: "Catcher" }, { value: "R", label: "RHB eye" }, { value: "L", label: "LHB eye" }]} />
           </Group>
           {d.registration ? (
-            <FlightPanel trials={shown} focusKey={fk} ms={msClamped} batter={batter} />
+            <HitterViewPanel
+              balls={shown.map(toFlightBall).filter((b): b is FlightBall => !!b)}
+              focusKey={fk}
+              ms={msClamped}
+              batter={batter}
+              emptyText={`No TrackMan flight to draw for ${shown.length === 1 ? "this pitch" : "these pitches"} (needs release point, plate location and break).`}
+            />
           ) : (
             <Text size="sm" c="dimmed">Needs at least two paired pitches with a TrackMan release point.</Text>
           )}
