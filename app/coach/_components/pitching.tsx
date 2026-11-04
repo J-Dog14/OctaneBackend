@@ -61,7 +61,7 @@ export function ArsenalBadge({ arsenal, size = "lg" }: { arsenal: SessionSummary
   if (!arsenal) return null;
   const tip = [
     `xArsenal ${arsenal.score} (${arsenal.label}) · graded as ${arsenal.compLevel}`,
-    arsenal.fit != null ? `Arsenal Fit ${Math.round(arsenal.fit)}` : null,
+    arsenal.fit != null ? `Arsenal Fit ${Math.round(arsenal.fit)} (10% of the arsenal grade)` : null,
     arsenal.slot?.angle != null ? `Arm slot ${Math.round(arsenal.slot.angle)}°${arsenal.slot.label ? ` (${arsenal.slot.label})` : ""}${arsenal.slot.source ? `, ${arsenal.slot.source}` : ""}` : null,
   ].filter(Boolean).join(" · ");
   return (
@@ -73,7 +73,7 @@ export function ArsenalBadge({ arsenal, size = "lg" }: { arsenal: SessionSummary
       </Tooltip>
       {arsenal.stuffPlus != null && (
         <Tooltip label="Arsenal 8-Stuff+ (100 = average MLB arsenal)">
-          <Badge color={stuffColor(arsenal.stuffPlus)} variant="outline" size={size}>
+          <Badge color={stuffColor(arsenal.stuffPlus)} variant="outline" size={size} title={arsenal.stuffVersion ?? undefined}>
             8-Stuff+ {Math.round(arsenal.stuffPlus)}
           </Badge>
         </Tooltip>
@@ -139,7 +139,7 @@ export function PitchTypeTable({ rows, compact = false }: { rows: PitchTypeSumma
     spin: rows.some((r) => r.spinRate != null),
     ext: !compact && rows.some((r) => r.extension != null),
     rel: !compact && rows.some((r) => r.relHeight != null),
-    vaa: !compact && rows.some((r) => r.vaa != null),
+    vaa: !compact && rows.some((r) => r.vaa != null || r.grade?.vaaEst != null),
     whiff: rows.some((r) => r.whiffPct != null),
     grade: rows.some((r) => r.grade != null),
     stuff: rows.some((r) => r.grade?.stuffPlus != null),
@@ -179,7 +179,15 @@ export function PitchTypeTable({ rows, compact = false }: { rows: PitchTypeSumma
               {show.spin && <Table.Td ta="right">{r.spinRate ?? "—"}</Table.Td>}
               <Table.Td ta="right">{fmt(r.ivb)}</Table.Td>
               <Table.Td ta="right">{fmt(r.hbArm)}</Table.Td>
-              {show.vaa && <Table.Td ta="right">{fmt(r.vaa)}</Table.Td>}
+              {show.vaa && (
+                <Table.Td ta="right">
+                  {r.vaa != null ? fmt(r.vaa) : r.grade?.vaaEstimated && r.grade.vaaEst != null ? (
+                    <Tooltip label="No VAA in this data; estimated by xArsenal from release height, extension, velo and IVB (about ±0.5°)">
+                      <span>{fmt(r.grade.vaaEst)} <Text span size="xs" c="dimmed">est.</Text></span>
+                    </Tooltip>
+                  ) : "—"}
+                </Table.Td>
+              )}
               {show.ext && <Table.Td ta="right">{fmt(r.extension)}</Table.Td>}
               {show.rel && <Table.Td ta="right">{fmt(r.relHeight)} / {fmt(r.relSide)}</Table.Td>}
               {show.whiff && (

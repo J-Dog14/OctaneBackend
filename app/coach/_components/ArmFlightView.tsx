@@ -14,18 +14,18 @@
  * The arm view is an orthographic orbit camera: presets, or drag to rotate.
  */
 
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { Suspense, lazy, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import useSWR from "swr";
 import { ActionIcon, Alert, Group, Loader, SegmentedControl, Select, SimpleGrid, Slider, Stack, Text, Tooltip } from "@mantine/core";
 import { PITCH_COLORS } from "@/lib/pitch-intel/pitch-types";
 import type { ArmFlightData, ArmTrial } from "@/lib/coach/armFlight/load";
+import { poseAt, type Pose } from "@/lib/coach/armFlight/pose";
 import type { SyncPitch } from "@/lib/coach/pitchSync";
 import {
   PLATE_FRONT_FT,
   RUBBER_FT,
   VIEW_PRESETS,
   flightAt,
-  mid,
   orbitBasis,
   spinAxisFromFlight,
   sub,
@@ -40,42 +40,11 @@ import { PitchPicker } from "./PitchPicker";
 import { PitchMetricsPanel } from "./PitchMetricsPanel";
 import { HitterViewPanel, SpinBall, ZONE_THIRDS, spinAngle, type Batter, type FlightBall } from "./ballFlight";
 
+// three.js is only downloaded when the Solid style is opened.
+const ArmSkeleton3D = lazy(() => import("./ArmSkeleton3D").then((m) => ({ default: m.ArmSkeleton3D })));
+
 const NO_TM_COLOR = "#9aa4ab";
 const colorOf = (t: ArmTrial) => (t.tm ? PITCH_COLORS[t.tm.code] : NO_TM_COLOR);
-type Pose = { shoulder: V3; elbow: V3; elbowLat: V3; elbowMed: V3; wrist: V3; radius: V3; ulna: V3; hand: V3 };
-
-/** Arm pose at `ms` from release (linear between frames, held at the window ends). */
-function poseAt(t: ArmTrial, ms: number): Pose {
-  const f = t.frames;
-  let i = 0;
-  if (ms <= f[0]![0]) i = 0;
-  else if (ms >= f[f.length - 1]![0]) i = f.length - 1;
-  else {
-    let lo = 0;
-    let hi = f.length - 1;
-    while (hi - lo > 1) {
-      const m = (lo + hi) >> 1;
-      if (f[m]![0] <= ms) lo = m;
-      else hi = m;
-    }
-    const a = f[lo]!;
-    const b = f[hi]!;
-    const w = (ms - a[0]) / (b[0] - a[0]);
-    const lerp = (k: number): V3 => {
-      const p = a[k] as V3;
-      const q = b[k] as V3;
-      return [p[0] + (q[0] - p[0]) * w, p[1] + (q[1] - p[1]) * w, p[2] + (q[2] - p[2]) * w];
-    };
-    return toPose([0, lerp(1), lerp(2), lerp(3), lerp(4), lerp(5), lerp(6)]);
-  }
-  return toPose(f[i]!);
-}
-
-function toPose(fr: [number, ...V3[]]): Pose {
-  const [, shoulder, elbowLat, elbowMed, radius, ulna, hand] = fr as [number, V3, V3, V3, V3, V3, V3];
-  return { shoulder, elbow: mid(elbowLat, elbowMed), elbowLat, elbowMed, wrist: mid(radius, ulna), radius, ulna, hand };
-}
-
 // ---------------------------------------------------------------------------
 // Arm panel (orbit camera)
 // ---------------------------------------------------------------------------
@@ -539,6 +508,7 @@ export function ArmFlightView({
   const { data: d, error, isLoading } = useSWR<ArmFlightData>(url, { ...swrOpts, keepPreviousData: true });
 
   const [viewId, setViewId] = useState<ViewId>("pitcher");
+  const [armStyle, setArmStyle] = useState<"lines" | "solid">("lines");
   const [zoom, setZoom] = useState(1);
   const [orbit, setOrbit] = useState<Orbit>(VIEW_PRESETS.pitcher);
   const [batter, setBatter] = useState<Batter>("C");
@@ -617,7 +587,12 @@ export function ArmFlightView({
       <SimpleGrid cols={{ base: 1, md: 2, xl: 3 }} spacing="md" style={{ alignItems: "start" }}>
         <div style={{ minWidth: 0 }}>
           <Group justify="space-between" mb={4} wrap="nowrap">
-            <Text fw={600} size="sm">Arm through release</Text>
+            <Group gap={8} wrap="nowrap">
+              <Text fw={600} size="sm">Arm through release</Text>
+              <Tooltip label="Solid = experimental 3D bones anchored on the arm markers" withArrow>
+                <SegmentedControl size="xs" value={armStyle} onChange={(v) => setArmStyle(v as "lines" | "solid")} data={[{ value: "lines", label: "Lines" }, { value: "solid", label: "Solid" }]} />
+              </Tooltip>
+            </Group>
             <Group gap={6} wrap="nowrap">
               <Group gap={2} wrap="nowrap">
                 <ActionIcon size="sm" variant="subtle" color="gray" aria-label="Zoom out" onClick={() => setZoom((z) => clampZoom(z / 1.25))}>
@@ -637,7 +612,22 @@ export function ArmFlightView({
               </Tooltip>
             </Group>
           </Group>
-          {shown.length ? (
+          {shown.length && armStyle === "solid" ? (
+            <Suspense fallback={<Loader size="sm" />}>
+              <ArmSkeleton3D
+                trials={shown}
+                focusKey={fk}
+                keyOf={trialKey}
+                colorOf={colorOf}
+                ms={Math.min(msClamped, armEnd)}
+                ballMs={msClamped}
+                lefty={d.throws === "L"}
+                registered={!!d.registration}
+                orbit={orbit}
+                zoom={zoom}
+              />
+            </Suspense>
+          ) : shown.length ? (
             <ArmPanel
               trials={shown}
               focusKey={fk}
@@ -657,11 +647,19 @@ export function ArmFlightView({
           ) : (
             <Text size="sm" c="dimmed" py="xl" ta="center">No arm marker data for the selected pitch.</Text>
           )}
-          <Text size="xs" c="dimmed" mt={4}>
-            Drag to rotate, scroll to zoom, double-click to reset. Forearm box = the marker wiring (radial wrist → medial elbow, ulnar wrist → lateral elbow); it shades
-            lighter as it turns face-on, so pronation shows as the box twisting. White bar + white dot = radial side of the wrist. Gray = upper arm. Dotted
-            = hand path.{d.registration ? " × = TrackMan release point." : ""}
-          </Text>
+          {armStyle === "solid" ? (
+            <Text size="xs" c="dimmed" mt={4}>
+              Experimental. Drag to rotate, scroll to zoom, right-drag to pan; a view button resets the camera. Bones are simple solids placed on the markers: humerus
+              (shoulder joint ~2 in below the acromion marker), ulna on the medial side, radius on the lateral side (it rolls over the ulna as the forearm pronates),
+              hand from the wrist to the hand marker with the fingers in a fixed grip.
+            </Text>
+          ) : (
+            <Text size="xs" c="dimmed" mt={4}>
+              Drag to rotate, scroll to zoom, double-click to reset. Forearm box = the marker wiring (radial wrist → medial elbow, ulnar wrist → lateral elbow); it shades
+              lighter as it turns face-on, so pronation shows as the box twisting. White bar + white dot = radial side of the wrist. Gray = upper arm. Dotted
+              = hand path.{d.registration ? " × = TrackMan release point." : ""}
+            </Text>
+          )}
         </div>
         <div style={{ minWidth: 0 }}>
           <Group justify="space-between" mb={4} wrap="nowrap">

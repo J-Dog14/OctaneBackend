@@ -71,6 +71,11 @@ export interface PitchGrade {
   stuffPlus: number | null;
   stuffPlusType: number | null;
   levers: XaLever[];
+  /** True when the Worker estimated VAA (none was sent); vaaEst is the estimate it used. Show "est.". */
+  vaaEstimated: boolean;
+  vaaEst: number | null;
+  /** Slot-adjusted IVB the Worker graded on (fastballs). */
+  ivbSlotAdj: number | null;
 }
 
 export interface ArsenalMove {
@@ -88,6 +93,8 @@ export interface ArsenalGrade {
   compLevel: XaLevel;
   slot: { angle: number | null; source: string | null; label: string | null } | null;
   moves: ArsenalMove[];
+  /** 8-Stuff+ model version, e.g. "8-Stuff+ v1". */
+  stuffVersion: string | null;
 }
 
 export interface XaGraded {
@@ -179,6 +186,9 @@ export function parseResult(r: unknown, level: XaLevel): XaGraded {
       stuffPlus: num(p.stuffPlus),
       stuffPlusType: num(p.stuffPlusType),
       levers: parseLevers(p.levers),
+      vaaEstimated: p.vaaEstimated === true || p.vaaEstimated === "true",
+      vaaEst: num(p.vaaEst),
+      ivbSlotAdj: num(p.ivbSlotAdj),
     });
   }
   const arsenalScore = num(res.arsenalScore);
@@ -195,6 +205,7 @@ export function parseResult(r: unknown, level: XaLevel): XaGraded {
       compLevel: level,
       slot,
       moves: parseMoves(res.moves),
+      stuffVersion: str(res.stuffPlusVersion),
     },
   };
 }

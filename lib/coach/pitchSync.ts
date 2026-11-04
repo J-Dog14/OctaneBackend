@@ -14,6 +14,7 @@ import { TrialLookup, withFootContactAliases } from "./biomech/extract";
 import { PITCH_CATEGORIES, type PitchCategory } from "./biomech/pitchCategory";
 import { SEG_AXES, SEG_EVENTS, SEGMENTS, SEGMENT_VARIABLES, segKey } from "./pitchSegments";
 import { gradeTrackmanPitches } from "@/lib/pitch-intel/xarsenal/pitchGrades";
+import { computeSegAt, type SegAtResult } from "./biomech/segAt";
 
 // ---------------------------------------------------------------------------
 // Metric catalogues (ids are what the UI selects on; keep them stable)
@@ -196,6 +197,8 @@ export interface SyncPitch {
   mech: Record<string, number | null>;
   /** Segment grid: `seg["Pitching_Elbow_Angle@Release_Z"]` (see pitchSegments.ts). */
   seg: Record<string, number | null>;
+  /** The computed (+10 ms) column: why it's empty, or which joints didn't reproduce V3D. */
+  segComputed: { skipped: string | null; unmatched: string[] };
 }
 
 export interface PitchSyncData {
@@ -240,6 +243,9 @@ type Row = {
   capture_time: string | null;
   velo3d: number | null;
   m: Record<string, unknown> | null;
+  events: Record<string, unknown> | null;
+  frame_rate: number | null;
+  handedness: string | null;
   pitch_uid: string | null;
   confidence: string | null;
   residual_s: number | null;
@@ -292,7 +298,8 @@ export async function buildPitchSync(athleteUuid: string, date?: string | null):
   const [rows, tmCount, athleteThrows, grades] = await Promise.all([
     prisma.$queryRawUnsafe<Row[]>(
       `SELECT t.pitch_category, t.trial_index, t.owner_filename, to_char(t.capture_time, 'YYYY-MM-DD"T"HH24:MI:SS') AS capture_time,
-              t.velocity_mph::float8 AS velo3d,
+              t.velocity_mph::float8 AS velo3d, to_jsonb(t) -> 'events' AS events,
+              td.frame_rate::float8 AS frame_rate, td.handedness,
               (SELECT jsonb_object_agg(e.key, e.value) FROM jsonb_each(t.metrics::jsonb) e
                 WHERE split_part(e.key, '.', 2) = ANY($3::text[])) AS m,
               l.pitch_uid, l.confidence, l.residual_s, l.clock_offset_s, l.notes,
@@ -301,6 +308,9 @@ export async function buildPitchSync(athleteUuid: string, date?: string | null):
               p.rel_height::float8 AS rel_height, p.rel_side::float8 AS rel_side, p.extension::float8 AS extension,
               p.vaa::float8 AS vaa, p.haa::float8 AS haa, p.spin_efficiency::float8 AS spin_efficiency, p.gyro::float8 AS gyro
          FROM public.f_pitching_trials t
+         LEFT JOIN public.f_pitching_time_data td
+                ON td.athlete_uuid = t.athlete_uuid AND td.session_date = t.session_date
+               AND td.pitch_category = t.pitch_category AND td.trial_index = t.trial_index
          LEFT JOIN pitch_intel.biomech_trackman_links l
                 ON l.athlete_uuid = t.athlete_uuid AND l.session_date = t.session_date
                AND l.pitch_category = t.pitch_category AND l.trial_index = t.trial_index
@@ -336,18 +346,66 @@ export async function buildPitchSync(athleteUuid: string, date?: string | null):
   // TrackMan reports HB and release side from the pitcher's view (+ = pitcher's right); flip lefties so arm side is +.
   const arm = throws === "L" ? -1 : 1;
 
+  // Angles V3D doesn't export (the +10 ms column), rebuilt from the stored segment orientations.
+  const lookups = rows.map((r) => new TrialLookup(r.m ?? {}));
+  const computedEvents = SEG_EVENTS.filter((e) => e.computedMs != null);
+  const computed = new Map<string, Map<string, SegAtResult>>();
+  for (const e of computedEvents) {
+    try {
+      computed.set(
+        e.id,
+        await computeSegAt(
+          (sql, ...params) => prisma.$queryRawUnsafe(sql, ...params),
+          athleteUuid,
+          sessionDate,
+          rows.map((r, i) => {
+            const h = (r.handedness ?? "").toUpperCase();
+            return {
+              category: r.pitch_category,
+              trialIndex: r.trial_index,
+              events: r.events,
+              frameRate: num(r.frame_rate),
+              hand: h.startsWith("L") ? "L" : h.startsWith("R") ? "R" : throws,
+              lookup: lookups[i]!,
+            };
+          }),
+          e.computedMs!,
+        ),
+      );
+    } catch (err) {
+      console.error(`[pitch-sync] computing ${e.id}:`, err);
+    }
+  }
+
   const pitches: SyncPitch[] = rows.map((r, i) => {
-    const lookup = new TrialLookup(r.m ?? {});
+    const lookup = lookups[i]!;
     const mech: Record<string, number | null> = {};
     for (const d of MECH) {
       const v = d.read(lookup);
       mech[d.id] = v != null && d.handed ? v * arm : v;
     }
     const seg: Record<string, number | null> = {};
-    for (const sd of SEGMENTS) {
-      for (const v of [sd.angle, sd.velocity]) {
-        if (!v) continue;
-        for (const e of SEG_EVENTS) for (const a of SEG_AXES) seg[segKey(v, e.id, a)] = lookup.get(`${v}@${e.id}_${a}`);
+    const segComputed: SyncPitch["segComputed"] = { skipped: null, unmatched: [] };
+    for (const e of SEG_EVENTS) {
+      const c = e.computedMs != null ? computed.get(e.id)?.get(`${r.pitch_category}:${r.trial_index}`) : undefined;
+      if (e.computedMs != null) {
+        segComputed.skipped = c ? c.skipped : "not computed";
+        if (c && !c.skipped) {
+          segComputed.unmatched = SEGMENTS.map((sd) => sd.angle).filter((v): v is string => !!v && !(v in c.angles));
+        }
+      }
+      for (const sd of SEGMENTS) {
+        for (const v of [sd.angle, sd.velocity]) {
+          if (!v) continue;
+          for (const [k, a] of SEG_AXES.entries()) {
+            seg[segKey(v, e.id, a)] =
+              e.computedMs == null
+                ? lookup.get(`${v}@${e.id}_${a}`)
+                : v === sd.angle
+                  ? (c?.angles[v as keyof SegAtResult["angles"]]?.[k] ?? null)
+                  : null; // angular velocities aren't reproduced
+          }
+        }
       }
     }
     const g = r.pitch_uid ? gradeBy.get(r.pitch_uid) : undefined;
@@ -401,6 +459,7 @@ export async function buildPitchSync(athleteUuid: string, date?: string | null):
         : ({} as Record<string, number | null>),
       mech,
       seg,
+      segComputed,
     };
   });
 

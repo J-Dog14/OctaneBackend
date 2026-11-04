@@ -1,18 +1,29 @@
 /**
  * Per-pitch biomechanics grid for Mechanics + Flight (client-safe, no server imports).
  *
- * Each segment = one Visual3D variable read at four events (foot contact, MER, release, +100 ms), X / Y / Z
+ * Each segment = one Visual3D variable read at four events (foot contact, MER, release, +10 ms), X / Y / Z
  * (X = sagittal, Y = frontal, Z = transverse). Angles and angular velocities are
  * separate variables in the V3D export; the UI switches between them.
  * Values arrive per pitch as `seg["<variable>@<event>_<axis>"]`.
  */
 
-export const SEG_EVENTS = [
+export interface SegEvent {
+  id: string;
+  label: string;
+  long: string;
+  /**
+   * Not in the V3D export: angles are rebuilt from the stored segment orientations at release +
+   * this many ms (lib/coach/biomech/segAt.ts). Angular velocities aren't available there.
+   */
+  computedMs?: number;
+}
+
+export const SEG_EVENTS: SegEvent[] = [
   { id: "Footstrike", label: "@ FC", long: "at foot contact" },
   { id: "Max_Shoulder_Rot", label: "@ MER", long: "at max external rotation" },
   { id: "Release", label: "@ Rel", long: "at ball release" },
-  { id: "Release100msAfter", label: "+100 ms", long: "100 ms after release" },
-] as const;
+  { id: "Release10msAfter", label: "+10 ms", long: "10 ms after release", computedMs: 10 },
+];
 
 export const SEG_AXES = ["X", "Y", "Z"] as const;
 export type SegAxis = (typeof SEG_AXES)[number];
@@ -43,5 +54,5 @@ export const segKey = (variable: string, event: string, axis: SegAxis) => `${var
 
 /** "Variable@Event" names to pull from the trial metrics JSON. */
 export const SEGMENT_VARIABLES: string[] = SEGMENTS.flatMap((s) =>
-  [s.angle, s.velocity].filter((v): v is string => !!v).flatMap((v) => SEG_EVENTS.map((e) => `${v}@${e.id}`)),
+  [s.angle, s.velocity].filter((v): v is string => !!v).flatMap((v) => SEG_EVENTS.filter((e) => e.computedMs == null).map((e) => `${v}@${e.id}`)),
 );

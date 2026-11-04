@@ -11,7 +11,7 @@ import { useState } from "react";
 import { Group, SimpleGrid, Stack, Text, Tooltip, UnstyledButton } from "@mantine/core";
 import type { SyncPitch } from "@/lib/coach/pitchSync";
 import type { ArmTrial } from "@/lib/coach/armFlight/load";
-import { SEG_AXES, SEG_EVENTS, SEGMENTS, segKey } from "@/lib/coach/pitchSegments";
+import { SEG_AXES, SEG_EVENTS, SEGMENTS, segKey, type SegEvent } from "@/lib/coach/pitchSegments";
 import { fmt } from "./fetcher";
 
 function mean(xs: Array<number | null | undefined>): number | null {
@@ -21,16 +21,16 @@ function mean(xs: Array<number | null | undefined>): number | null {
 
 const signed = (v: number | null, digits = 1) => (v == null ? "—" : `${v > 0 ? "+" : ""}${fmt(v, digits)}`);
 
-function Stat({ label, value, unit, help }: { label: string; value: React.ReactNode; unit?: string; help?: string }) {
+function Stat({ label, value, unit, help, big = false }: { label: string; value: React.ReactNode; unit?: string; help?: string; big?: boolean }) {
   const body = (
     <div style={{ minWidth: 0 }}>
-      <Text size="11px" c="dimmed" lh={1.15} truncate>
+      <Text size={big ? "13px" : "11px"} c="dimmed" lh={1.15} truncate mb={big ? 6 : 0}>
         {label}
       </Text>
-      <Text component="div" fw={600} size="sm" lh={1.3}>
+      <Text component="div" fw={600} size={big ? "24px" : "sm"} lh={big ? 1.15 : 1.3} style={{ fontVariantNumeric: "tabular-nums" }}>
         {value}
         {unit && value !== "—" ? (
-          <Text span size="10px" c="dimmed" fw={400}>
+          <Text span size={big ? "12px" : "10px"} c="dimmed" fw={400}>
             {" "}
             {unit}
           </Text>
@@ -85,7 +85,7 @@ const CELL = {
 } as const;
 
 /** Fixed column widths so every card lines up under the shared event header and nothing spills. */
-function SegTable({ children }: { children: React.ReactNode }) {
+function SegTable({ children, events }: { children: React.ReactNode; events: SegEvent[] }) {
   return (
     <table
       style={{
@@ -99,8 +99,8 @@ function SegTable({ children }: { children: React.ReactNode }) {
     >
       <colgroup>
         <col style={{ width: "12%" }} />
-        {SEG_EVENTS.map((e) => (
-          <col key={e.id} style={{ width: `${88 / SEG_EVENTS.length}%` }} />
+        {events.map((e) => (
+          <col key={e.id} style={{ width: `${88 / events.length}%` }} />
         ))}
       </colgroup>
       {children}
@@ -121,6 +121,7 @@ export function TrackmanStats({
   xaHelp,
   emptyText,
   pairedNote = "",
+  big = false,
 }: {
   values: Array<Record<string, number | null | undefined>>;
   names: string[];
@@ -131,6 +132,8 @@ export function TrackmanStats({
   xaHelp: string;
   emptyText: string;
   pairedNote?: string;
+  /** Larger numbers with more room (Pitching → Flight, where the column has space). */
+  big?: boolean;
 }) {
   const multi = total > 1;
   const fl = (id: string) => mean(values.map((v) => v[id] ?? null));
@@ -158,8 +161,9 @@ export function TrackmanStats({
           {emptyText}
         </Text>
       ) : (
-        <SimpleGrid cols={4} spacing={8} verticalSpacing={6}>
+        <SimpleGrid cols={4} spacing={big ? 20 : 8} verticalSpacing={big ? 36 : 6} pt={big ? 18 : 0}>
           <Stat
+            big={big}
             label="xArsenal"
             help={
               xa != null
@@ -169,17 +173,17 @@ export function TrackmanStats({
             value={xa == null ? "—" : String(Math.round(xa))}
             unit={stuff != null ? `Stuff+ ${Math.round(stuff)}` : undefined}
           />
-          <Stat label="Velo" value={f("velo")} unit="mph" />
-          <Stat label="Spin" value={f("spin", 0)} unit="rpm" />
-          <Stat label="Extension" value={f("extension")} unit="ft" />
-          <Stat label="HB (arm +)" value={f("hbArm")} unit="in" help="Horizontal break, arm side +" />
-          <Stat label="IVB" value={f("ivb")} unit="in" />
-          <Stat label="Spin eff" value={f("spinEff", 0)} unit="%" />
-          <Stat label="Gyro" value={f("gyro", 0)} unit="°" />
-          <Stat label="HAA" value={f("haa")} unit="°" />
-          <Stat label="VAA" value={f("vaa")} unit="°" />
-          <Stat label="Release side" value={f("relSideArm", 2)} unit="ft" help="Arm side +" />
-          <Stat label="Release ht" value={f("relHeight", 2)} unit="ft" />
+          <Stat big={big} label="Velo" value={f("velo")} unit="mph" />
+          <Stat big={big} label="Spin" value={f("spin", 0)} unit="rpm" />
+          <Stat big={big} label="Extension" value={f("extension")} unit="ft" />
+          <Stat big={big} label="HB (arm +)" value={f("hbArm")} unit="in" help="Horizontal break, arm side +" />
+          <Stat big={big} label="IVB" value={f("ivb")} unit="in" />
+          <Stat big={big} label="Spin eff" value={f("spinEff", 0)} unit="%" />
+          <Stat big={big} label="Gyro" value={f("gyro", 0)} unit="°" />
+          <Stat big={big} label="HAA" value={f("haa")} unit="°" />
+          <Stat big={big} label="VAA" value={f("vaa")} unit="°" />
+          <Stat big={big} label="Release side" value={f("relSideArm", 2)} unit="ft" help="Arm side +" />
+          <Stat big={big} label="Release ht" value={f("relHeight", 2)} unit="ft" />
         </SimpleGrid>
       )}
     </>
@@ -198,6 +202,8 @@ export function PitchMetricsPanel({
   xaStatus: { state: string; message: string | null } | null;
 }) {
   const [mode, setMode] = useState<"angle" | "velocity">("angle");
+  // The computed (+10 ms) column has angles only, so it's dropped in the velocity view.
+  const events = mode === "angle" ? SEG_EVENTS : SEG_EVENTS.filter((e) => e.computedMs == null);
   const n = pitches.length;
   if (!n) return null;
   const multi = n > 1;
@@ -319,14 +325,14 @@ export function PitchMetricsPanel({
         {[0, 1].map((i) => (
           // same side padding + border as the cards so the columns line up
           <div key={`h${i}`} style={{ padding: "0 7px" }}>
-            <SegTable>
+            <SegTable events={events}>
               <thead>
                 <tr>
                   <th />
-                  {SEG_EVENTS.map((e) => (
+                  {events.map((e) => (
                     <th
                       key={e.id}
-                      title={e.long}
+                      title={e.computedMs != null ? `${e.long} — rebuilt from the stored segment orientations (V3D doesn't export it); angles only` : e.long}
                       style={{
                         ...CELL,
                         fontWeight: 600,
@@ -346,7 +352,7 @@ export function PitchMetricsPanel({
           if (!variable) return null;
           const rows = SEG_AXES.map((a) => ({
             a,
-            vals: SEG_EVENTS.map((e) => mean(pitches.map((p) => p.seg[segKey(variable, e.id, a)] ?? null))),
+            vals: events.map((e) => mean(pitches.map((p) => p.seg[segKey(variable, e.id, a)] ?? null))),
           })).filter((r) => r.vals.some((v) => v != null));
           if (!rows.length) return null;
           return (
@@ -380,7 +386,7 @@ export function PitchMetricsPanel({
                   {mode === "angle" ? "°" : "°/s"}
                 </span>
               </div>
-              <SegTable>
+              <SegTable events={events}>
                 <tbody>
                   {rows.map((r) => (
                     <tr key={r.a}>
@@ -400,6 +406,20 @@ export function PitchMetricsPanel({
           );
         })}
       </SimpleGrid>
+      {(() => {
+        const ev = SEG_EVENTS.find((e) => e.computedMs != null);
+        if (!ev) return null;
+        const skipped = pitches.filter((p) => p.segComputed?.skipped);
+        const unmatched = [...new Set(pitches.flatMap((p) => p.segComputed?.unmatched ?? []))];
+        return (
+          <Text size="10px" c="dimmed" lh={1.3}>
+            {ev.label}: rebuilt from the stored segment orientations (V3D doesn&apos;t export it), checked per pitch against V3D at FC, MER and release.
+            {mode === "velocity" ? " Angles only, so it isn't shown with velocities." : ""}
+            {skipped.length ? ` Not available for ${skipped.length === pitches.length ? (multi ? "these pitches" : "this pitch") : `${skipped.length} of ${pitches.length}`} (${[...new Set(skipped.map((p) => p.segComputed.skipped))].join(", ")}).` : ""}
+            {unmatched.length ? ` Didn't reproduce V3D (left blank): ${unmatched.join(", ")}.` : ""}
+          </Text>
+        );
+      })()}
     </Stack>
   );
 }

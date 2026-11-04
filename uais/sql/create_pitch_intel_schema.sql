@@ -455,3 +455,12 @@ CREATE TABLE IF NOT EXISTS pitch_intel.trackman_pitch_grades (
     levers           JSONB,
     graded_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+-- 2026-11-02 Worker update (calibrated v3, slot-adjusted VAA, lefty adjustment, 8-Stuff+ v1):
+-- which grading run produced the row, plus the new per-pitch response fields.
+ALTER TABLE pitch_intel.trackman_pitch_grades ADD COLUMN IF NOT EXISTS grading_rev       TEXT;             -- GRADING_REV in pitchGrades.ts
+ALTER TABLE pitch_intel.trackman_pitch_grades ADD COLUMN IF NOT EXISTS stuff_version     TEXT;             -- Worker's stuffPlusVersion, e.g. "8-Stuff+ v1"
+ALTER TABLE pitch_intel.trackman_pitch_grades ADD COLUMN IF NOT EXISTS vaa_estimated     BOOLEAN;          -- Worker estimated VAA
+ALTER TABLE pitch_intel.trackman_pitch_grades ADD COLUMN IF NOT EXISTS ivb_slot_adj      DOUBLE PRECISION; -- slot-adjusted IVB used (fastballs)
+ALTER TABLE pitch_intel.trackman_pitch_grades ADD COLUMN IF NOT EXISTS slot_angle        DOUBLE PRECISION; -- arm angle the Worker used
+ALTER TABLE pitch_intel.trackman_pitch_grades ADD COLUMN IF NOT EXISTS slot_source       TEXT;             -- measured / estimated
+ALTER TABLE pitch_intel.trackman_pitch_grades ADD COLUMN IF NOT EXISTS slot_label        TEXT;

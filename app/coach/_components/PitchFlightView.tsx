@@ -234,6 +234,7 @@ export function PitchFlightView({ athleteUuid }: { athleteUuid: string }) {
                       : "Not graded yet. The nightly npm run pi:grade grades every pitch with the full TrackMan read (velo, spin, IVB, HB, extension, VAA, release height and side)."
                   }
                   emptyText="No pitch selected."
+                  big
                 />
               </Stack>
             </div>

@@ -9,8 +9,9 @@
  *   averages of the athlete's OTHER pitch types, so arsenal-relative rules (e.g. a
  *   changeup's velo gap to the fastball) still have a reference. Only the pitch's own
  *   grade is kept.
- * - `inputs_hash` covers everything sent; a pitch is re-graded only when it changes
- *   (re-tagged type, new level or hand, new session context) or with `force`.
+ * - `inputs_hash` covers everything sent plus GRADING_REV; a pitch is re-graded only when it
+ *   changes (re-tagged type, new level or hand, new session context), when GRADING_REV is
+ *   bumped (the Worker's grading changed), or with `force`.
  *
  * Called after app uploads (commitTrackman), by `npm run pi:grade` (nightly and backfill),
  * and lazily by the coach suite's Mechanics + Flight view for the session it shows.
@@ -90,6 +91,14 @@ function pitchIn(key: string, code: string, count: number, xs: Row[]): XaPitchIn
   };
 }
 
+/**
+ * Bump when Ryan's Worker changes how it grades. Every stored grade with an older rev then
+ * hashes differently, so the next `npm run pi:grade` (nightly or by hand) re-grades it.
+ * History: (none) = v3 launch · 2026-11-02 = calibrated v3, slot-adjusted VAA, lefty adjustment,
+ * extension below MLB, curve/two-fastball gaps, Fit reweight, 8-Stuff+ v1.
+ */
+export const GRADING_REV = "2026-11-02";
+
 const RETRIES = 5;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -163,7 +172,7 @@ export async function gradeTrackmanPitches(opts: GradeOptions = {}): Promise<Gra
       if (opts.sessionDate && row.session_date !== opts.sessionDate) continue;
       const pitches = [pitchIn(row.pitch_uid, row.pitch_type, 1, [row]), ...types.filter((c) => c !== row.pitch_type).map((c) => context.get(c)!)];
       const item: XaItemIn = { id: row.pitch_uid, hand, level, pitches };
-      const hash = createHash("sha1").update(JSON.stringify([hand, level, pitches])).digest("hex");
+      const hash = createHash("sha1").update(JSON.stringify([GRADING_REV, hand, level, pitches])).digest("hex");
       if (!opts.force && row.inputs_hash === hash) continue;
       todo.push({ row, item, hash });
     }
@@ -198,7 +207,9 @@ export async function gradeTrackmanPitches(opts: GradeOptions = {}): Promise<Gra
       }
     }
     const records = chunk.map((t) => {
-      const g = res.get(t.row.pitch_uid)?.pitches.get(t.row.pitch_uid) ?? null;
+      const item = res.get(t.row.pitch_uid);
+      const g = item?.pitches.get(t.row.pitch_uid) ?? null;
+      const slot = item?.arsenal?.slot ?? null;
       if (g) graded++;
       return {
         pitch_uid: t.row.pitch_uid,
@@ -212,19 +223,32 @@ export async function gradeTrackmanPitches(opts: GradeOptions = {}): Promise<Gra
         stuff_plus: g?.stuffPlus ?? null,
         stuff_plus_type: g?.stuffPlusType ?? null,
         levers: g?.levers?.length ? g.levers : null,
+        grading_rev: GRADING_REV,
+        stuff_version: item?.arsenal?.stuffVersion ?? null,
+        vaa_estimated: g ? g.vaaEstimated : null,
+        ivb_slot_adj: g?.ivbSlotAdj ?? null,
+        slot_angle: slot?.angle ?? null,
+        slot_source: slot?.source ?? null,
+        slot_label: slot?.label ?? null,
       };
     });
     await conn.exec(
       `INSERT INTO pitch_intel.trackman_pitch_grades
-              (pitch_uid, inputs_hash, hand, level, score, label, subtype, subtype_mix, stuff_plus, stuff_plus_type, levers, graded_at)
-       SELECT r.pitch_uid, r.inputs_hash, r.hand, r.level, r.score, r.label, r.subtype, r.subtype_mix, r.stuff_plus, r.stuff_plus_type, r.levers, NOW()
+              (pitch_uid, inputs_hash, hand, level, score, label, subtype, subtype_mix, stuff_plus, stuff_plus_type, levers,
+               grading_rev, stuff_version, vaa_estimated, ivb_slot_adj, slot_angle, slot_source, slot_label, graded_at)
+       SELECT r.pitch_uid, r.inputs_hash, r.hand, r.level, r.score, r.label, r.subtype, r.subtype_mix, r.stuff_plus, r.stuff_plus_type, r.levers,
+              r.grading_rev, r.stuff_version, r.vaa_estimated, r.ivb_slot_adj, r.slot_angle, r.slot_source, r.slot_label, NOW()
          FROM jsonb_to_recordset($1::jsonb) AS r(pitch_uid text, inputs_hash text, hand text, level text, score int, label text, subtype text,
-                                                 subtype_mix jsonb, stuff_plus float8, stuff_plus_type float8, levers jsonb)
+                                                 subtype_mix jsonb, stuff_plus float8, stuff_plus_type float8, levers jsonb,
+                                                 grading_rev text, stuff_version text, vaa_estimated boolean, ivb_slot_adj float8,
+                                                 slot_angle float8, slot_source text, slot_label text)
        ON CONFLICT (pitch_uid) DO UPDATE SET
               inputs_hash = EXCLUDED.inputs_hash, hand = EXCLUDED.hand, level = EXCLUDED.level, score = EXCLUDED.score,
               label = EXCLUDED.label, subtype = EXCLUDED.subtype, subtype_mix = EXCLUDED.subtype_mix,
               stuff_plus = EXCLUDED.stuff_plus, stuff_plus_type = EXCLUDED.stuff_plus_type, levers = EXCLUDED.levers,
-              graded_at = NOW()`,
+              grading_rev = EXCLUDED.grading_rev, stuff_version = EXCLUDED.stuff_version, vaa_estimated = EXCLUDED.vaa_estimated,
+              ivb_slot_adj = EXCLUDED.ivb_slot_adj, slot_angle = EXCLUDED.slot_angle, slot_source = EXCLUDED.slot_source,
+              slot_label = EXCLUDED.slot_label, graded_at = NOW()`,
       JSON.stringify(records),
     );
     sent += chunk.length;
