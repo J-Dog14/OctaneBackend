@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>8ctane — Athletes</title>
 <link rel="stylesheet" href="style.css">
-<link rel="stylesheet" href="athletes.css?v=20260930o">
+<link rel="stylesheet" href="athletes.css?v=20261104b">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
@@ -148,8 +148,8 @@
       <button class="tab" data-ptab="locations">Locations</button>
       <button class="tab" data-ptab="yoy">Pitch Metrics</button>
       <button class="tab" data-ptab="xarsenal">xArsenal</button>
-      <button class="tab" data-ptab="season-insight">Season Insight</button>
-      <button class="tab" data-ptab="outing-insight">Outing Insight</button>
+      <button class="tab" data-ptab="addpitches">Add Pitches</button>
+      <!-- AI tabs hidden while they are reworked (panels + JS kept): Season Insight, Outing Insight -->
       <button class="tab" data-ptab="outings">Outings</button>
       <button class="tab" data-ptab="compare">Compare</button>
       <button class="tab" data-ptab="history">Year-over-Year</button>
@@ -167,7 +167,7 @@
           <table class="data-table">
             <thead><tr>
               <th>Pitch</th><th>Total pitches</th><th>Usage</th>
-              <th>Avg velo</th><th title="8ctane xArsenal pitch grade — 60 ≈ MLB average">Grade</th><th>Whiff%</th><th>CSW%</th><th>xwOBA</th>
+              <th>Avg velo</th><th title="8ctane xArsenal pitch grade — 20-80 scale, 50 = MLB average">Grade</th><th>Whiff%</th><th>CSW%</th><th>xwOBA</th>
               <th>MLB avg whiff%</th>
             </tr></thead>
             <tbody id="season-arsenal-body"></tbody>
@@ -344,6 +344,11 @@
       <div id="xarsenal-content"></div>
     </div>
 
+    <!-- ADD PITCHES (arsenal sandbox) -->
+    <div class="ptab-panel" id="ptab-addpitches">
+      <div id="addpitches-content"></div>
+    </div>
+
     <div class="ptab-panel" id="ptab-outings">
       <div class="oc-toolbar">
         <div class="loc-filter-row">
@@ -420,6 +425,6 @@
 <script src="baselines-ref.js?v=20260527"></script>
 <script src="mlb-shape-match.js?v=20260725"></script>
 <script src="release-templates.js?v=20260930o"></script>
-<script src="athletes-v2.js?v=20260930q"></script>
+<script src="athletes-v2.js?v=20261104c"></script>
 </body>
 </html>

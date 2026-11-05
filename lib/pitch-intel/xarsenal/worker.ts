@@ -1,17 +1,20 @@
 /**
- * xArsenal v3 + 8-Stuff+ (Ryan, Oct 2026): graded by Ryan's 8ctane API Worker,
- * the single source every 8ctane app calls so all apps show identical grades.
- * The 8-Stuff+ model is private to the Worker, so grades can't be computed here.
+ * xArsenal + 8-Stuff+: graded by Ryan's 8ctane API Worker, the single source every 8ctane app
+ * calls so all apps show identical grades. The benchmarks and the 8-Stuff+ model are private to
+ * the Worker, so grades can't be computed here.
  *
  *   POST {PITCH_INTEL_XARSENAL_URL}/?action=scoreArsenal
- *   body: { items: [{ id, hand, level, pitches: [...] }] }  →  { results: [{ id, ...grades }] }
+ *   body: { items: [{ id, hand, level, veloWeighted, pitches: [...] }] }  →  { results: [{ id, ...grades }] }
  *
- * Only pitch averages go out (no names: ids are opaque keys). Results are cached
- * in memory for 6 h per identical request. Spec: "xArsenal v3 + 8-Stuff+ — Grading Rules".
+ * Contract: Ryan's handoff "8ctane Pitch Intelligence — Backend Handoff" (Nov 4 2026, commit 0a683d0),
+ * 05-XARSENAL-SPEC. Only pitch averages go out (no names: ids are opaque keys). Raw results are
+ * cached in memory for 6 h per identical request.
  *
- * Replaces lib/pitch-intel/xarsenal/score.ts + octane-engine.ts (the old v2 rules),
- * which nothing imports any more.
+ * The Worker's own labels / description / metric status use a pre-rescale cut, so parseResult
+ * replaces them with Ryan's frontend rules (./normalize.ts), like his app does.
  */
+
+import { XA_IMPORTANCE_RANK, XA_METRIC_LABEL, XA_METRIC_ORDER, xaDescribe, xaGrade, xaLabel, xaWhy } from "./normalize";
 
 export const DEFAULT_XARSENAL_URL = "https://8ctane-api.ryan-77b.workers.dev";
 const TIMEOUT_MS = 20_000;
@@ -20,7 +23,11 @@ export function xarsenalUrl(): string {
   return (process.env.PITCH_INTEL_XARSENAL_URL || DEFAULT_XARSENAL_URL).replace(/\/+$/, "");
 }
 
-/** v3 levels. MiLB, Indy, Summer ball, blank and anything else grade as MLB. */
+/**
+ * 8ctane grades at four levels only: MLB, College, High School, Youth. MiLB, Indy / Atlantic
+ * League, summer ball, blank and anything else go out as "MLB" (Joey, Nov 5 2026). The Worker
+ * itself would grade MiLB and Indy at their own levels; we don't use those on purpose.
+ */
 export type XaLevel = "MLB" | "College" | "High School" | "Youth";
 export function xaLevel(level: string | null | undefined): XaLevel {
   const s = (level ?? "").trim();
@@ -30,7 +37,20 @@ export function xaLevel(level: string | null | undefined): XaLevel {
   return "MLB";
 }
 
-/** One pitch type's averages, as the Worker takes them (HB: + = toward the pitcher's right; lefties as measured). */
+/** Level label before (or without) a response, in the Worker's names. */
+export function xaCompLevel(level: string | null | undefined): string {
+  const l = xaLevel(level);
+  return l === "Youth" ? "Youth (14U)" : l;
+}
+
+/**
+ * One pitch type's averages, as the Worker takes them.
+ * - hb: right-handed convention = Statcast −pfx_x × 12 (+ = toward 3B / the pitcher's right), lefties
+ *   NOT pre-flipped; the Worker mirrors them. Verified Nov 5 2026 on Cleavinger (LHP) and Weiss (RHP):
+ *   flipping it collapses both arsenals (sinkers / sweepers grade 20).
+ * - releaseSide: the Worker ignores the sign (identical grades with it negated, with and without arm
+ *   angle), so each source's raw value goes out.
+ */
 export interface XaPitchIn {
   key: string;
   code: string;
@@ -44,6 +64,7 @@ export interface XaPitchIn {
   armAngle?: number | null;
   releaseHeight?: number | null;
   releaseSide?: number | null;
+  /** Only when measured (TrackMan / Rapsodo / Hawk-Eye): an estimate must not be graded. */
   spinEfficiency?: number | null;
 }
 
@@ -60,37 +81,94 @@ export interface XaLever {
   text: string | null;
 }
 
-export interface PitchGrade {
-  /** xArsenal 20-80 (50 = MLB average for that shape). */
-  score: number;
+/** One metric row of a pitch grade: a 20-80 sub-score, its importance tier and the direction that helps. */
+export interface XaMetric {
+  key: string;
   label: string;
+  score: number;
+  importance: "primary" | "secondary" | "minor" | string;
+  direction: string | null;
+  /** Gap / pairing metrics only: the measured separation the Worker graded. */
+  value: number | null;
+}
+
+export interface PitchGrade {
+  /** xArsenal score (20-80 scale, 50 = MLB average for that shape). Can fall outside 20-80. */
+  score: number;
+  /** Score rounded to the nearest 5, clamped 20-80. */
+  grade: number;
+  /** From the grade (Ryan's cut), never the Worker's own label. */
+  label: string;
+  category: string | null;
   subtype: string;
-  /** Shapes the grade blends, e.g. { "4S Standard": 0.7, "4S Ride-Run": 0.3 }. */
+  displayType: string | null;
+  /** Shapes the grade blends, e.g. { "Sweeper": 48, "Lift Sweeper": 25 } (percent). */
   subtypeMix: Record<string, number> | null;
   /** 8-Stuff+ (100 = average MLB pitch) and vs. its own type. */
   stuffPlus: number | null;
   stuffPlusType: number | null;
   levers: XaLever[];
+  /** Metric rows with an importance and a score, primary → secondary → minor. */
+  metrics: XaMetric[];
+  /** "Carried by … Held back by …" (Ryan's xaWhy). */
+  why: string;
+  /** Fastball the gap metrics are measured against, e.g. "FF/SI". */
+  vsFastball: string | null;
   /** True when the Worker estimated VAA (none was sent); vaaEst is the estimate it used. Show "est.". */
   vaaEstimated: boolean;
   vaaEst: number | null;
   /** Slot-adjusted IVB the Worker graded on (fastballs). */
   ivbSlotAdj: number | null;
+  spinEfficiency: number | null;
+  spinEffEstimated: boolean;
 }
 
 export interface ArsenalMove {
   kind: "add" | "drop" | "rework" | string;
+  /** Pitch the move is about (drop / rework: the arsenal key; add: the suggested code, when given). */
+  key: string | null;
   title: string;
+  reason: string | null;
+  /** Add: the suggested shape ("assumes an average version"). HB arm-side positive is assumed (unverified, handoff #21). */
+  target: { velo: number | null; ivb: number | null; hb: number | null } | null;
+  /** Arsenal points gained. */
+  gain: number | null;
+  /** Add: Arsenal Fit points gained. */
+  fitGain: number | null;
+  /** Drop / rework: the pitch's current score. */
+  score: number | null;
+  /** Rework: lever directions to focus on. */
+  focus: string[];
+  /** One-line summary (kept for compact displays). */
   detail: string | null;
+}
+
+export interface ArsenalFit {
+  score: number;
+  parts: { coverage: number | null; platoon: number | null; speed: number | null; redundancy: number | null };
+  /** Movement directions covered at full credit (credit ≥ 0.5). */
+  strongDirections: string[];
+  bestArmSide: number | null;
+  bestGloveSide: number | null;
+  speedSpread: number | null;
+  speedEvenness: number | null;
+  duplicates: string[];
 }
 
 export interface ArsenalGrade {
   score: number;
+  grade: number;
   label: string;
+  /** Ryan's sentence: best / worst pitch and the arsenal grade. */
+  description: string;
+  /** The pitch-grade component of the arsenal score (not a plain mean). */
+  pitchScore: number | null;
   stuffPlus: number | null;
+  /** Arsenal Fit score (kept as a number for compact displays). */
   fit: number | null;
-  /** Level the Worker graded at (as sent). */
-  compLevel: XaLevel;
+  fitDetail: ArsenalFit | null;
+  /** Level the Worker graded at: MLB, College, High School or Youth (14U). */
+  compLevel: string;
   slot: { angle: number | null; source: string | null; label: string | null } | null;
   moves: ArsenalMove[];
   /** 8-Stuff+ model version, e.g. "8-Stuff+ v1". */
@@ -116,6 +194,7 @@ const str = (...vs: unknown[]): string | null => {
   for (const v of vs) if (typeof v === "string" && v.trim()) return v.trim();
   return null;
 };
+const bool = (v: unknown) => v === true || v === "true";
 
 function parseLevers(v: unknown): XaLever[] {
   if (!Array.isArray(v)) return [];
@@ -127,37 +206,67 @@ function parseLevers(v: unknown): XaLever[] {
 }
 
 function parseMix(v: unknown): Record<string, number> | null {
+  const out: Record<string, number> = {};
   if (isObj(v)) {
-    const out: Record<string, number> = {};
     for (const [k, w] of Object.entries(v)) if (num(w) != null) out[k] = num(w)!;
-    return Object.keys(out).length ? out : null;
-  }
-  if (Array.isArray(v)) {
-    const out: Record<string, number> = {};
-    for (const e of v.filter(isObj)) {
-      const k = str(e.subtype, e.name, e.key);
-      const w = num(e.weight ?? e.share ?? e.pct);
-      if (k && w != null) out[k] = w;
+  } else if (Array.isArray(v)) {
+    for (const e of v) {
+      if (Array.isArray(e) && typeof e[0] === "string" && num(e[1]) != null) out[e[0]] = num(e[1])!;
+      else if (isObj(e)) {
+        const k = str(e.subtype, e.name, e.key);
+        const w = num(e.share ?? e.weight ?? e.pct);
+        if (k && w != null) out[k] = w;
+      }
     }
-    return Object.keys(out).length ? out : null;
   }
-  return null;
+  if (!Object.keys(out).length) return null;
+  // Shares as percent (some responses use 0-1 weights).
+  if (Object.values(out).every((w) => w <= 1)) for (const k of Object.keys(out)) out[k] = Math.round(out[k]! * 100);
+  return out;
+}
+
+function parseMetrics(v: unknown): XaMetric[] {
+  if (!isObj(v)) return [];
+  const out: XaMetric[] = [];
+  for (const [key, m] of Object.entries(v)) {
+    if (!isObj(m)) continue;
+    const score = num(m.score);
+    const importance = str(m.importance);
+    if (score == null || !importance) continue; // Ryan shows only metrics with an importance and a score
+    out.push({ key, label: XA_METRIC_LABEL[key] ?? key, score: Math.round(score), importance, direction: str(m.direction), value: num(m.value) });
+  }
+  const ord = (k: string) => (XA_METRIC_ORDER.indexOf(k) + 1 || 99);
+  return out.sort((a, b) => (XA_IMPORTANCE_RANK[a.importance] ?? 3) - (XA_IMPORTANCE_RANK[b.importance] ?? 3) || ord(a.key) - ord(b.key));
 }
 
 function moveFrom(kind: string, m: unknown): ArsenalMove | null {
-  if (typeof m === "string") return { kind, title: m, detail: null };
+  if (typeof m === "string") return { kind, key: null, title: m, reason: null, target: null, gain: null, fitGain: null, score: null, focus: [], detail: null };
   if (!isObj(m)) return null;
   const k = str(m.type, m.kind, m.action)?.toLowerCase() ?? kind;
-  const title = str(m.title, m.label, m.pitch, m.subtype, m.name, m.code, m.key) ?? k;
-  const target = isObj(m.target) ? m.target : m;
-  const shape = [num(target.velocity ?? target.velo), num(target.ivb), num(target.hb)];
-  const shapeText = shape.some((x) => x != null)
-    ? `target ${shape[0] != null ? `${shape[0].toFixed(1)} mph` : ""}${shape[1] != null ? ` · ${shape[1].toFixed(1)}" IVB` : ""}${shape[2] != null ? ` · ${shape[2].toFixed(1)}" HB` : ""}`.trim()
+  const key = str(m.key, m.code);
+  const title = str(m.label, m.title, m.pitch, m.subtype, m.name) ?? key ?? k;
+  const t = isObj(m.target) ? m.target : null;
+  const target = t ? { velo: num(t.velo ?? t.velocity), ivb: num(t.ivb), hb: num(t.hb) } : null;
+  const gain = num(m.gain ?? m.arsenalGain ?? m.delta);
+  const fitGain = num(m.fitGain);
+  const score = num(m.score);
+  const focus = Array.isArray(m.levers) ? m.levers.map((l) => (isObj(l) ? str(l.direction, l.text) : str(l))).filter((x): x is string => !!x) : [];
+  const reason = str(m.reason, m.detail, m.description, m.summary, m.why);
+  const shape = target && (target.velo != null || target.ivb != null || target.hb != null)
+    ? `target ~${[
+      target.velo != null ? `${Math.round(target.velo)} mph` : null,
+      target.ivb != null ? `${Math.round(target.ivb)}" IVB` : null,
+      target.hb != null ? `${Math.abs(Math.round(target.hb))}" ${target.hb >= 0 ? "arm-side" : "glove-side"}` : null,
+    ].filter(Boolean).join(" · ")}`
     : null;
-  const gain = num(m.arsenalGain ?? m.gain ?? m.delta);
-  const detail = [str(m.reason, m.detail, m.description, m.summary, m.why), shapeText, gain != null ? `arsenal ${gain > 0 ? "+" : ""}${gain.toFixed(1)}` : null]
-    .filter(Boolean).join(" · ");
-  return { kind: k, title, detail: detail || null };
+  const detail = [
+    reason,
+    shape,
+    focus.length ? `focus: ${focus.join(", ")}` : null,
+    fitGain != null ? `Fit ${fitGain > 0 ? "+" : ""}${Math.round(fitGain)}` : null,
+    gain != null ? `arsenal ${gain > 0 ? "+" : ""}${Math.round(gain)}` : null,
+  ].filter(Boolean).join(" · ");
+  return { kind: k, key, title, reason, target, gain, fitGain, score, focus, detail: detail || null };
 }
 
 function parseMoves(v: unknown): ArsenalMove[] {
@@ -171,38 +280,79 @@ function parseMoves(v: unknown): ArsenalMove[] {
   return [];
 }
 
-export function parseResult(r: unknown, level: XaLevel): XaGraded {
+function parseFit(v: unknown): ArsenalFit | null {
+  const score = num(v);
+  if (score == null) return null;
+  const o = isObj(v) ? v : {};
+  const parts = isObj(o.parts) ? o.parts : {};
+  const d = isObj(o.detail) ? o.detail : {};
+  const dirs = Array.isArray(d.directions)
+    ? d.directions.filter(isObj).filter((x) => (num(x.credit) ?? 0) >= 0.5).map((x) => str(x.name)).filter((x): x is string => !!x)
+    : Array.isArray(d.strongDirections) ? d.strongDirections.map((x) => str(x)).filter((x): x is string => !!x) : [];
+  const dups = Array.isArray(d.duplicates)
+    ? d.duplicates.map((x) => (Array.isArray(x) ? x.join(" / ") : isObj(x) ? str(x.label, x.name, x.pair) ?? JSON.stringify(x) : str(x))).filter((x): x is string => !!x)
+    : [];
+  return {
+    score: Math.round(score),
+    parts: { coverage: num(parts.coverage), platoon: num(parts.platoon), speed: num(parts.speed), redundancy: num(parts.redundancy) },
+    strongDirections: dirs,
+    bestArmSide: num(d.bestArmSide),
+    bestGloveSide: num(d.bestGloveSide),
+    speedSpread: num(d.speedSpread),
+    speedEvenness: num(d.speedEvenness),
+    duplicates: dups,
+  };
+}
+
+export function parseResult(r: unknown, level: string | null | undefined): XaGraded {
   const res = isObj(r) ? r : {};
   const pitches = new Map<string, PitchGrade>();
   for (const p of Array.isArray(res.pitches) ? res.pitches.filter(isObj) : []) {
-    const score = num(p.score);
+    const raw = num(p.score);
     const key = str(p.key, p.code);
-    if (score == null || !key) continue;
+    if (raw == null || !key) continue;
+    const score = Math.round(raw);
+    const metrics = parseMetrics(p.metrics);
     pitches.set(key, {
-      score: Math.round(score),
-      label: str(p.gradeLabel, p.label) ?? "",
+      score,
+      grade: xaGrade(score)!,
+      label: xaLabel(score),
+      category: str(p.category),
       subtype: str(p.subtype, p.displayType) ?? "",
+      displayType: str(p.displayType),
       subtypeMix: parseMix(p.subtypeMix),
       stuffPlus: num(p.stuffPlus),
       stuffPlusType: num(p.stuffPlusType),
       levers: parseLevers(p.levers),
-      vaaEstimated: p.vaaEstimated === true || p.vaaEstimated === "true",
+      metrics,
+      why: metrics.length ? xaWhy(metrics) : "",
+      vsFastball: str(p.vsFastball),
+      vaaEstimated: bool(p.vaaEstimated),
       vaaEst: num(p.vaaEst),
       ivbSlotAdj: num(p.ivbSlotAdj),
+      spinEfficiency: num(p.spinEfficiency),
+      spinEffEstimated: bool(p.spinEffEstimated),
     });
   }
-  const arsenalScore = num(res.arsenalScore);
+  const raw = num(res.arsenalScore);
   const slot = isObj(res.slot)
     ? { angle: num(res.slot.armAngle ?? res.slot.angle ?? res.slot.degrees), source: str(res.slot.source), label: str(res.slot.label, res.slot.slotLabel) }
     : null;
+  const fitDetail = parseFit(res.arsenalFit);
+  if (raw == null || !pitches.size) return { pitches, arsenal: null };
+  const score = Math.round(raw);
   return {
     pitches,
-    arsenal: arsenalScore == null || !pitches.size ? null : {
-      score: Math.round(arsenalScore),
-      label: str(res.arsenalLabel) ?? "",
+    arsenal: {
+      score,
+      grade: xaGrade(score)!,
+      label: xaLabel(score),
+      description: xaDescribe([...pitches.entries()].map(([key, g]) => ({ key, score: g.score })), score),
+      pitchScore: num(res.arsenalPitchScore),
       stuffPlus: num(res.arsenalStuffPlus),
-      fit: num(res.arsenalFit),
-      compLevel: level,
+      fit: fitDetail?.score ?? null,
+      fitDetail,
+      compLevel: str(res.compLevel) ?? xaCompLevel(level),
       slot,
       moves: parseMoves(res.moves),
       stuffVersion: str(res.stuffPlusVersion),
@@ -234,14 +384,15 @@ function remember(key: string, raw: unknown) {
   cache.set(key, { at: Date.now(), raw });
 }
 
-async function post(items: XaItemIn[]): Promise<unknown[]> {
+/** Raw POST of a batch; every item gets veloWeighted: true (what Ryan's app always sends). */
+export async function postScoreArsenal(items: XaItemIn[]): Promise<unknown[]> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
     const res = await fetch(`${xarsenalUrl()}/?action=scoreArsenal`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ items }),
+      body: JSON.stringify({ items: items.map((it) => ({ ...it, veloWeighted: true })) }),
       cache: "no-store",
       signal: ctrl.signal,
     });
@@ -276,7 +427,7 @@ export async function gradeArsenals(items: XaItemIn[]): Promise<Map<string, XaGr
   const keyOf = (it: XaItemIn) => JSON.stringify([it.hand, it.level, it.pitches]);
   const missing = todo.filter((it) => cached(keyOf(it)) === undefined);
   if (missing.length) {
-    const results = await post(missing.map((it, i) => ({ ...it, id: String(i) })));
+    const results = await postScoreArsenal(missing.map((it, i) => ({ ...it, id: String(i) })));
     const byId = new Map(results.filter(isObj).map((r) => [String(r.id), r]));
     missing.forEach((it, i) => {
       const raw = byId.get(String(i));

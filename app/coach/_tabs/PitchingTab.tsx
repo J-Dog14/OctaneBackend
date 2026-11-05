@@ -2,10 +2,11 @@
 
 import { useMemo, useState } from "react";
 import useSWR from "swr";
-import { Alert, Badge, Button, Group, Loader, Paper, ScrollArea, SegmentedControl, Select, Stack, Table, Text } from "@mantine/core";
+import { Alert, Badge, Button, Group, Loader, Paper, ScrollArea, SegmentedControl, Select, SimpleGrid, Stack, Table, Text } from "@mantine/core";
 import type { ArsenalSnapshot, CoachPitching } from "@/lib/coach/pitching";
 import { fmt, fmtDate, pitchingKey, swrOpts } from "../_components/fetcher";
-import { ArsenalBadge, ArsenalMoves, MovementPlot, PitchTypeTable, WHIFF_MIN_SWINGS } from "../_components/pitching";
+import { ArsenalBadge, MovementPlot, PitchTypeTable, WHIFF_MIN_SWINGS } from "../_components/pitching";
+import { AddPitchesView, ArsenalFitCard, ArsenalMovesCard, GradeTrendChart, PitchCards, XA_FOOTNOTE, XaSummary } from "../_components/xarsenal";
 import { PitchReport } from "../_components/pitchReport";
 import { MetricTrends } from "../_components/metricTrends";
 import { PitchFlightView } from "../_components/PitchFlightView";
@@ -37,42 +38,70 @@ function ArsenalView({ d }: { d: CoachPitching }) {
   const all = useMemo(() => snapshots(d), [d]);
   const [key, setKey] = useState<string | null>(all[0]?.key ?? null);
   const [compareKey, setCompareKey] = useState<string | null>(null);
+  const [mode, setMode] = useState<"grades" | "add">("grades");
   const cur = all.find((s) => s.key === key) ?? all[0];
   const cmp = all.find((s) => s.key === compareKey);
   if (!cur) return <Text c="dimmed">No pitch data yet.</Text>;
   const options = all.map((s) => ({ value: s.key, label: s.label }));
+  const season = cur.key.startsWith("season:") ? Number(cur.key.slice(7)) : cur.source === "trackman" ? Number(cur.date.slice(0, 4)) : null;
   return (
     <Stack gap="md">
       {d.xaError && <Alert color="yellow">xArsenal / 8-Stuff+ grades are unavailable right now ({d.xaError}). Pitch data below is unaffected.</Alert>}
       <Group gap="sm" align="flex-end">
         <Select label="Showing" data={options} value={cur.key} onChange={setKey} w={380} allowDeselect={false} />
-        <Select label="Compare with" data={options.filter((o) => o.value !== cur.key)} value={compareKey} onChange={setCompareKey} w={380} clearable placeholder="Optional" />
+        {mode === "grades" && <Select label="Compare with" data={options.filter((o) => o.value !== cur.key)} value={compareKey} onChange={setCompareKey} w={380} clearable placeholder="Optional" />}
+        <SegmentedControl value={mode} onChange={(v) => setMode(v as "grades" | "add")} data={[{ value: "grades", label: "Grades" }, { value: "add", label: "Add pitches" }]} />
       </Group>
-      <div className="card" style={{ marginBottom: 0 }}>
-        <Group justify="space-between" mb="xs">
-          <SectionHead title="Pitch movement" sub={cmp ? "● current · ◆ comparison" : "dot size = usage"} />
-          <Group gap="xs">
-            <ArsenalBadge arsenal={cur.arsenal} size="md" />
-            {cmp && <ArsenalBadge arsenal={cmp.arsenal} size="md" />}
-          </Group>
-        </Group>
-        <MovementPlot sets={cmp ? [{ name: cur.label, rows: cur.byType, throws: d.athlete.throws }, { name: cmp.label, rows: cmp.byType, throws: d.athlete.throws }] : [{ name: cur.label, rows: cur.byType, throws: d.athlete.throws }]} />
-        <ArsenalMoves arsenal={cur.arsenal} />
-      </div>
-      <div className="card" style={{ marginBottom: 0 }}>
-        <SectionHead title={cur.label} sub="HB arm-side positive · IVB and HB in inches" />
-        <PitchTypeTable rows={cur.byType} />
-        {cmp && (
-          <>
-            <div style={{ height: 16 }} />
-            <SectionHead title={cmp.label} />
-            <PitchTypeTable rows={cmp.byType} />
-          </>
-        )}
-        <Text size="xs" c="dimmed" mt="xs">
-          xArsenal v3 (20-80, 50 = MLB average for that shape) and 8-Stuff+ (100 = average MLB pitch), graded by the 8ctane API; 5+ pitches of a type per session (10+ per Savant season). Whiff% marked * rests on fewer than {WHIFF_MIN_SWINGS} swings.
-        </Text>
-      </div>
+      {mode === "add" ? (
+        <AddPitchesView athleteUuid={d.athlete.athleteUuid} snapshotKey={cur.key} label={cur.label} rows={cur.byType} arsenal={cur.arsenal} throws={d.athlete.throws} />
+      ) : (
+        <>
+          <div className="card" style={{ marginBottom: 0 }}>
+            <Group justify="space-between" mb="xs">
+              <SectionHead title="Pitch movement" sub={cmp ? "● current · ◆ comparison" : "dot size = usage"} />
+              <Group gap="xs">
+                <ArsenalBadge arsenal={cur.arsenal} size="md" />
+                {cmp && <ArsenalBadge arsenal={cmp.arsenal} size="md" />}
+              </Group>
+            </Group>
+            <MovementPlot sets={cmp ? [{ name: cur.label, rows: cur.byType, throws: d.athlete.throws }, { name: cmp.label, rows: cmp.byType, throws: d.athlete.throws }] : [{ name: cur.label, rows: cur.byType, throws: d.athlete.throws }]} />
+          </div>
+          {cur.arsenal && (
+            <div className="card" style={{ marginBottom: 0 }}>
+              <XaSummary arsenal={cur.arsenal} rows={cur.byType} />
+              <SimpleGrid cols={{ base: 1, md: 2 }} spacing="xl" mt="md">
+                <ArsenalFitCard arsenal={cur.arsenal} />
+                <ArsenalMovesCard arsenal={cur.arsenal} />
+              </SimpleGrid>
+            </div>
+          )}
+          <div className="card" style={{ marginBottom: 0 }}>
+            <SectionHead title={cur.label} sub="HB arm-side positive · IVB and HB in inches" />
+            <PitchTypeTable rows={cur.byType} />
+            {cmp && (
+              <>
+                <div style={{ height: 16 }} />
+                <SectionHead title={cmp.label} />
+                <PitchTypeTable rows={cmp.byType} />
+              </>
+            )}
+            <Text size="xs" c="dimmed" mt="xs">
+              xArsenal (20-80, 50 = MLB average for that shape; grade = score rounded to 5) and 8-Stuff+ (8ctane run-value model, 100 = MLB average, not psStuff+), graded by the 8ctane API; 5+ pitches of a type per session (10+ and 3%+ per Savant season). Whiff% marked * rests on fewer than {WHIFF_MIN_SWINGS} swings.
+            </Text>
+          </div>
+          {cur.byType.some((r) => r.grade) && (
+            <div className="card" style={{ marginBottom: 0 }}>
+              <SectionHead title="Pitch grades" sub="sorted by grade" />
+              <PitchCards rows={cur.byType} />
+              <Text size="xs" c="dimmed" mt="xs">{XA_FOOTNOTE}</Text>
+            </div>
+          )}
+          <div className="card" style={{ marginBottom: 0 }}>
+            <SectionHead title="Grade by outing" sub={season ? `${season} · Savant games and Trackman sessions` : "all outings"} />
+            <GradeTrendChart athleteUuid={d.athlete.athleteUuid} season={season} />
+          </div>
+        </>
+      )}
     </Stack>
   );
 }

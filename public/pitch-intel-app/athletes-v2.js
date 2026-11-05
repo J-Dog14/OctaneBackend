@@ -16,6 +16,8 @@ const PITCH_NAMES = {
 
 const pc = pt => PITCH_COLORS[pt] || '#555566';
 const pn = pt => PITCH_NAMES[pt] || pt;
+// Escape any Sheet/CSV-sourced string before interpolating into HTML.
+const escapeHtml = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pf = v => parseFloat(v) || 0;
 function avg(arr) { return arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0; }
 function formatDate(dateStr) {
@@ -27,6 +29,7 @@ function formatDate(dateStr) {
 }
 
 let SCRIPT_URL = localStorage.getItem('8ctane_script_url') || '';
+const AI_ENABLED = false;   // flip to true (and restore the tab buttons in athletes.html) to bring the AI tabs back
 let currentAthlete = null;
 let athleteOutings = [];     // outings for the selected season (what every tab renders)
 let athleteOutingsAll = [];  // every outing for this athlete, all seasons
@@ -71,8 +74,10 @@ function renderTab(name) {
   if (name === 'locations') renderLocations();
   if (name === 'yoy')       renderYoY();
   if (name === 'report') { renderReport(); setReportSub(reportSub); }
-  if (name === 'season-insight') renderSeasonInsight();
-  if (name === 'outing-insight') initOutingInsight();
+  // AI tabs (season-insight / outing-insight) are hidden while they are reworked; renderers kept below.
+  if (AI_ENABLED && name === 'season-insight') renderSeasonInsight();
+  if (AI_ENABLED && name === 'outing-insight') initOutingInsight();
+  if (name === 'addpitches') renderAddPitches();
   if (name === 'compare') populateCompareSelectors();
   if (name === 'history') renderYearOverYear();
   if (name === 'xarsenal') renderXArsenalTab();
@@ -611,14 +616,31 @@ function setProfileSeason(val) {
 }
 
 /* ==================== CONFIG ==================== */
-function showConfigBanner() {
+function showConfigBanner(msg) {
   document.getElementById('config-banner').style.display = '';
   const input = document.getElementById('script-url-input');
   if (SCRIPT_URL) input.value = SCRIPT_URL;
+  // API secret field (shared secret required by the backend on every action)
+  let secretInput = document.getElementById('api-secret-input');
+  if (!secretInput) {
+    secretInput = document.createElement('input');
+    secretInput.type = 'password';
+    secretInput.id = 'api-secret-input';
+    secretInput.placeholder = 'API secret (from Script Properties)';
+    secretInput.className = 'url-input';
+    secretInput.style.marginTop = '8px';
+    secretInput.autocomplete = 'off';
+    input.insertAdjacentElement('afterend', secretInput);
+  }
+  const savedSecret = localStorage.getItem('8ctane_api_secret') || '';
+  if (savedSecret) secretInput.value = savedSecret;
+  if (msg) toast(msg, 'error');
 }
 
 function saveScriptUrl() {
   const url = document.getElementById('script-url-input').value.trim();
+  const secretEl = document.getElementById('api-secret-input');
+  const secret = secretEl ? secretEl.value.trim() : '';
   // Accept the Apps Script URL directly, or the Cloudflare Worker proxy
   // in front of it (*.workers.dev) — the proxy avoids Safari's echo 404s.
   const ok = url.startsWith('https://script.google.com') || /^https:\/\/[^/]+\.workers\.dev\/?$/.test(url);
@@ -627,6 +649,7 @@ function saveScriptUrl() {
   }
   SCRIPT_URL = url;
   localStorage.setItem('8ctane_script_url', url);
+  localStorage.setItem('8ctane_api_secret', secret);
   document.getElementById('config-banner').style.display = 'none';
   toast('Connected to Google Sheets ✓', 'success');
   loadRoster();
@@ -643,6 +666,7 @@ function saveScriptUrl() {
 function api(action, body = {}) {
   return new Promise((resolve, reject) => {
     if (!SCRIPT_URL) { showConfigBanner(); reject(new Error('No script URL configured')); return; }
+    const API_SECRET = localStorage.getItem('8ctane_api_secret') || '';
     const url = `${SCRIPT_URL}?action=${action}`;
     const xhr = new XMLHttpRequest();
     xhr.open('POST', url, true);
@@ -659,11 +683,16 @@ function api(action, body = {}) {
         reject(new Error('Invalid JSON response from server'));
         return;
       }
-      if (data.error) { reject(new Error(data.error)); return; }
+      if (data.error) {
+        if (data.code === 'auth_required') {
+          showConfigBanner('API secret required — paste it below to reconnect.');
+        }
+        reject(new Error(data.error)); return;
+      }
       resolve(data);
     };
     xhr.onerror = () => reject(new Error('Network error contacting Apps Script'));
-    xhr.send(JSON.stringify({ action, ...body }));
+    xhr.send(JSON.stringify({ action, token: API_SECRET, ...body }));
   });
 }
 
@@ -690,7 +719,7 @@ async function loadRoster() {
     cachedAthletes = athletes;
     renderRoster(athletes);
   } catch(e) {
-    grid.innerHTML = `<div class="empty-state">Could not connect to Google Sheets.<br><small>${e.message}</small></div>`;
+    grid.innerHTML = `<div class="empty-state">Could not connect to Google Sheets.<br><small>${escapeHtml(e.message)}</small></div>`;
   }
 }
 
@@ -708,22 +737,33 @@ function renderRoster(athletes) {
   empty.style.display = 'none';
 
   grid.innerHTML = athletes.map(a => {
-    const initials = a.name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
-    return `<div class="athlete-card" onclick="openProfile('${a.id}')">
-      <button class="card-delete-btn" onclick="event.stopPropagation();confirmDeleteAthlete('${a.id}','${a.name}')" title="Delete athlete">✕</button>
+    const id = escapeHtml(a.id);
+    const initials = escapeHtml(a.name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase());
+    return `<div class="athlete-card" data-athlete-id="${id}" role="button" tabindex="0">
+      <button class="card-delete-btn" data-delete-id="${id}" data-delete-name="${escapeHtml(a.name)}" title="Delete athlete">✕</button>
       <div class="athlete-card-header">
         <div class="athlete-avatar">${initials}</div>
         <div>
-          <div class="athlete-card-name">${a.name}</div>
-          <div class="athlete-card-meta">${a.throws}HP · ${a.team || '—'} · ${a.level || '—'}</div>
+          <div class="athlete-card-name">${escapeHtml(a.name)}</div>
+          <div class="athlete-card-meta">${escapeHtml(a.throws)}HP · ${escapeHtml(a.team || '—')} · ${escapeHtml(a.level || '—')}</div>
         </div>
       </div>
       <div class="athlete-card-footer">
-        <span class="outing-count-badge" id="badge-${a.id}">Loading outings...</span>
+        <span class="outing-count-badge" id="badge-${id}">Loading outings...</span>
         <span style="font-size:11px;color:var(--muted)">Click to view →</span>
       </div>
     </div>`;
   }).join('');
+
+  // Delegated listeners (avoids inline onclick quote-breakout on names/ids)
+  grid.querySelectorAll('.athlete-card').forEach(card => {
+    const open = () => openProfile(card.dataset.athleteId);
+    card.addEventListener('click', open);
+    card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
+  });
+  grid.querySelectorAll('.card-delete-btn').forEach(btn => {
+    btn.addEventListener('click', e => { e.stopPropagation(); confirmDeleteAthlete(btn.dataset.deleteId, btn.dataset.deleteName); });
+  });
 
   // Load outing counts async
   athletes.forEach(a => loadOutingCount(a.id));
@@ -771,13 +811,9 @@ function showAddAthlete() {
         <label class="form-label">Level</label>
         <select class="form-select" id="f-level">
           <option value="MLB">MLB</option>
-          <option value="AAA">AAA</option>
-          <option value="AA">AA</option>
-          <option value="A+">A+</option>
-          <option value="A">A</option>
           <option value="College">College</option>
           <option value="HS">High School</option>
-          <option value="Other">Other</option>
+          <option value="Youth">Youth</option>
         </select>
       </div>
     </div>
@@ -895,7 +931,7 @@ function showBulkImport() {
   // Populate athlete dropdown
   const sel = document.getElementById('bulk-athlete-select');
   sel.innerHTML = '<option value="">Select athlete...</option>' +
-    cachedAthletes.map(a => `<option value="${a.id}">${a.name} — ${a.team||''} ${a.level||''}</option>`).join('');
+    cachedAthletes.map(a => `<option value="${escapeHtml(a.id)}">${escapeHtml(a.name)} — ${escapeHtml(a.team||'')} ${escapeHtml(a.level||'')}</option>`).join('');
   sel.onchange = () => {
     const btn = document.getElementById('bulk-import-btn');
     const hasFile = bulkOutings.length > 0;
@@ -977,7 +1013,7 @@ function parseBulkCSV(text, filename) {
       <div class="bulk-outing-left">
         <div class="bulk-outing-date">${formatDate(o.date)}</div>
         <div>
-          <div class="bulk-outing-opp">vs. ${o.opponent||'Unknown'}</div>
+          <div class="bulk-outing-opp">vs. ${escapeHtml(o.opponent||'Unknown')}</div>
           <div class="bulk-outing-meta">${o.total_pitches} pitches · ${whiffPct}% whiff · ${o.ks}K ${o.walks}BB · ${ptags}</div>
         </div>
       </div>
@@ -1490,10 +1526,10 @@ function renderProfileHero() {
   document.getElementById('profile-avatar').textContent = initials;
   document.getElementById('profile-name').textContent = a.name;
   document.getElementById('profile-meta').innerHTML =
-    `<span class="hero-meta-item">${a.throws}HP</span>
-     <span class="hero-meta-item">${a.position}</span>
-     <span class="hero-meta-item">${a.team || '—'}</span>
-     <span class="hero-meta-item">${a.level || '—'}</span>`;
+    `<span class="hero-meta-item">${escapeHtml(a.throws)}HP</span>
+     <span class="hero-meta-item">${escapeHtml(a.position)}</span>
+     <span class="hero-meta-item">${escapeHtml(a.team || '—')}</span>
+     <span class="hero-meta-item">${escapeHtml(a.level || '—')}</span>`;
   document.getElementById('profile-hero').style.opacity = '1';
 
   // Last CSV updated — most recent outing import timestamp
@@ -1566,7 +1602,8 @@ function xaSeasonShape(outings, minCount = XA_MIN_COUNT, minShare = XA_MIN_SHARE
     if (!s || !s.count) return;
     const a = acc[pt] = acc[pt] || { count:0, sums:{}, ws:{} };
     a.count += s.count;
-    [['velocity','avgVelo'],['spinRate','avgSpin'],['ivb','avgIVB'],['hb','avgHB'],['extension','avgExt'],['vaa','avgVAA']].forEach(([k, f]) => {
+    [['velocity','avgVelo'],['spinRate','avgSpin'],['ivb','avgIVB'],['hb','avgHB'],['extension','avgExt'],['vaa','avgVAA'],
+     ['armAngle','avgArm'],['releaseHeight','avgRelHeight'],['releaseSide','avgRelSide']].forEach(([k, f]) => {
       const v = s[f]; if (v === null || v === undefined || v === '' || isNaN(+v)) return;
       a.sums[k] = (a.sums[k]||0) + (+v) * s.count; a.ws[k] = (a.ws[k]||0) + s.count;
     });
@@ -1575,8 +1612,8 @@ function xaSeasonShape(outings, minCount = XA_MIN_COUNT, minShare = XA_MIN_SHARE
   return Object.entries(acc)
     .filter(([pt, a]) => a.count >= minCount && a.count / (total||1) >= minShare)
     .map(([pt, a]) => {
-      const p = { key: pt, code: pt };
-      ['velocity','spinRate','ivb','hb','extension','vaa'].forEach(k => { p[k] = a.ws[k] ? +(a.sums[k] / a.ws[k]).toFixed(2) : null; });
+      const p = { key: pt, code: pt, count: a.count };   // count picks the primary fastball for off-speed gaps
+      ['velocity','spinRate','ivb','hb','extension','vaa','armAngle','releaseHeight','releaseSide'].forEach(k => { p[k] = a.ws[k] ? +(a.sums[k] / a.ws[k]).toFixed(2) : null; });
       return p;
     });
 }
@@ -1586,15 +1623,43 @@ async function getXArsenal(outings) {
   if (!pitches.length) return null;
   const body = { hand: currentAthlete?.throws || 'R', level: currentAthlete?.level || '', veloWeighted: true, pitches };
   const key = JSON.stringify(body);
-  if (!xaCache[key]) xaCache[key] = api('scoreArsenal', body).catch(e => { delete xaCache[key]; throw e; });
+  if (!xaCache[key]) xaCache[key] = api('scoreArsenal', body).then(xaNormalize).catch(e => { delete xaCache[key]; throw e; });
   return xaCache[key];
 }
 
-const xaClass = sc => sc == null ? 'v-num' : sc >= 70 ? 'v-good' : sc >= 55 ? 'v-num' : sc >= 45 ? 'v-warn' : 'v-bad';
-const XA_METRIC_LBL = { velocity:'Velo', spinRate:'Spin', ivb:'IVB', hb:'HB', extension:'Ext', vaa:'VAA', spinEfficiency:'Spin eff' };
+// 20-80 scouting scale: 50 = MLB average, 10 pts = 1 SD
+const xaClass = sc => sc == null ? 'v-num' : sc >= 60 ? 'v-good' : sc >= 50 ? 'v-num' : sc >= 40 ? 'v-warn' : 'v-bad';
+// Grade = score rounded to the nearest 5 (20-80). The label comes from that grade so the
+// number and the word always agree: 40 below avg · 45 fringe · 50 avg · 55 above avg ·
+// 60-65 plus · 70-75 plus-plus · 80 elite. Overrides the Worker's own labels/description.
+const XA_LABELS = [[80,'Elite'],[70,'Plus-Plus'],[60,'Plus'],[55,'Above Avg'],[50,'Average'],[45,'Fringe'],[40,'Below Avg'],[-Infinity,'Poor']];
+const xaGrade = sc => (sc == null || isNaN(sc)) ? '' : String(Math.max(20, Math.min(80, Math.round(sc / 5) * 5)));
+const xaShortLabel = sc => (sc == null || isNaN(sc)) ? '' : XA_LABELS.find(([t]) => +xaGrade(sc) >= t)[1];
+const xaLabelText = l => ({ 'Above Avg':'above average', 'Below Avg':'below average' })[l] || String(l || '').toLowerCase();
+function xaDescribe(res) {
+  const ps = (res.pitches || []).filter(r => r.score != null).sort((a, b) => b.score - a.score);
+  if (!ps.length) return '';
+  const best = ps[0], worst = ps[ps.length - 1];
+  const b = `The ${pn(best.key)} is ${+best.grade >= 70 ? 'a weapon' : 'the best pitch'} (${best.grade}, ${xaLabelText(best.gradeLabel)})`;
+  const w = ps.length > 1 && best.score - worst.score >= 5 ? `; the ${pn(worst.key)} grades lowest (${worst.grade}, ${xaLabelText(worst.gradeLabel)})` : '';
+  return `${b}${w}. Overall the arsenal grades out ${xaLabelText(res.arsenalLabel)} (${res.arsenalGrade}).`;
+}
+function xaNormalize(res) {
+  if (!res || !Array.isArray(res.pitches)) return res;
+  res.pitches.forEach(r => { r.grade = xaGrade(r.score); r.gradeLabel = xaShortLabel(r.score); });
+  res.arsenalGrade = xaGrade(res.arsenalScore); res.arsenalLabel = xaShortLabel(res.arsenalScore);
+  res.description = xaDescribe(res);
+  return res;
+}
+// 8-Stuff+ (100 = MLB avg pitch, 10 = 1 SD): green 110+, neutral 95–109, amber 85–94, red below
+const spClass = v => v == null ? 'v-num' : v >= 110 ? 'v-good' : v >= 95 ? 'v-num' : v >= 85 ? 'v-warn' : 'v-bad';
+const xaMix = r => (r.subtypeMix && r.subtypeMix.length > 1) ? r.subtypeMix.map(m => `${m.subtype} ${m.share}%`).join(' / ') : r.subtype;
+const XA_METRIC_LBL = { velocity:'Velo', spinRate:'Spin', ivb:'IVB', hb:'HB', extension:'Ext', vaa:'VAA', spinEfficiency:'Spin eff',
+  veloDiff:'Velo gap', ivbDiff:'IVB gap', hbDiff:'Run gap', spinDiff:'Spin gap',
+  pairVelo:'FB velo match', pairIvb:'FB ride sep.', pairRun:'FB run sep.', pairCut:'Sep. vs cutter' };
 function xaTitle(r) {
   const parts = Object.entries(r.metrics).filter(([, m]) => m.score !== null && m.importance).map(([k, m]) => `${XA_METRIC_LBL[k]} ${m.score}`);
-  return `xArsenal ${r.score} (${r.grade}, ${r.gradeLabel}) · graded as ${r.subtype}` +
+  return `xArsenal ${r.score} (${r.gradeLabel}, 20-80) · graded as ${xaMix(r)}` +
     (parts.length ? ` · ${parts.join(' · ')}` : '') +
     (r.spinEffEstimated && r.spinEfficiency !== null ? ` · spin eff ~${r.spinEfficiency}% (estimated)` : '');
 }
@@ -1610,11 +1675,12 @@ async function fillXArsenal(root, outings, summaryEl) {
       if (!r) { el.innerHTML = '<span class="v-num">—</span>'; el.title = 'Not graded — too few pitches or pitch type not covered'; return; }
       el.className = (el.dataset.xaBase || '') + ' ' + xaClass(r.score);
       el.title = xaTitle(r);
-      el.innerHTML = `<b>${r.score}</b> <span class="xa-letter">${r.grade}</span>`;
+      // 20-80: show the score and its scouting label (the old A-/B- letter grades are gone)
+      el.innerHTML = `<b>${r.score}</b> <span class="xa-letter">${xaShortLabel(r.score)}</span>` + (r.stuffPlus != null ? ` <span class="xa-sp ${spClass(r.stuffPlus)}" title="8-Stuff+ — 8ctane run-value model (100 = MLB average pitch, 10 = 1 SD). Not psStuff+.">${r.stuffPlus}</span>` : '');
     });
     if (summaryEl) {
       summaryEl.innerHTML = res && res.pitches.length
-        ? `<span class="xa-sum-lbl">xArsenal</span> <b class="${xaClass(res.arsenalScore)}">${res.arsenalScore}</b> <span class="xa-letter">${res.arsenalGrade}</span> <span class="xa-sum-sub">${res.arsenalLabel} · graded at ${res.compLevel} level</span>`
+        ? `<span class="xa-sum-lbl">xArsenal</span> <b class="${xaClass(res.arsenalScore)}">${res.arsenalScore}</b> <span class="xa-letter">${xaShortLabel(res.arsenalScore)}</span> <span class="xa-sum-sub">20-80 · graded at ${res.compLevel} level</span>` + (res.arsenalStuffPlus != null ? ` <span class="xa-sum-lbl">8-Stuff+</span> <b class="${spClass(res.arsenalStuffPlus)}">${res.arsenalStuffPlus}</b>` : '')
         : '';
     }
   } catch (e) {
@@ -1634,7 +1700,7 @@ async function getXArsenalByOuting(outings) {
   if (!items.length) return {};
   const key = JSON.stringify(items);
   if (!xaOutingCache[key]) xaOutingCache[key] = api('scoreArsenal', { items })
-    .then(res => { const m = {}; (res.results || []).forEach(r => { m[r.id] = r; }); return m; })
+    .then(res => { const m = {}; (res.results || []).forEach(r => { m[r.id] = xaNormalize(r); }); return m; })
     .catch(e => { delete xaOutingCache[key]; throw e; });
   return xaOutingCache[key];
 }
@@ -1664,31 +1730,123 @@ async function fillOutingGrades() {
 
 /* ==================== xARSENAL TAB ==================== */
 let xaTabChart = null;
+// Slot line under the arsenal summary (display only — never changes a grade)
+// Shows the count-weighted arm angle across all graded pitches (same number as the Outing
+// Card's Overall ARM°). If the Worker graded with a different slot angle, that is noted.
+const xaSlotName = a => a < 20 ? 'Sidearm' : a < 35 ? 'Low 3/4' : a < 50 ? '3/4' : a < 60 ? 'High 3/4' : 'Overhand';
+function xaSlotLine(res, inputs) {
+  const s = res.slot || {};
+  let sum = 0, w = 0;
+  Object.values(inputs || {}).forEach(p => { if (p.armAngle != null && p.count) { sum += p.armAngle * p.count; w += p.count; } });
+  const all = w ? sum / w : null;
+  const shown = all ?? s.armAngle;
+  if (shown == null) return '';
+  const note = all != null && s.armAngle != null && Math.round(all) !== Math.round(s.armAngle)
+    ? ` <span class="xa-muted">· grades use a ${Math.round(s.armAngle)}° slot</span>` : '';
+  const est = all == null && s.source === 'estimated' ? ' <span class="xa-muted">(est. from release)</span>' : '';
+  return `<div class="xa-slot">${xaSlotName(shown)} · ${Math.round(shown)}° arm angle${all != null ? ' <span class="xa-muted">(all pitches)</span>' : ''}${est}${note}</div>`;
+}
+// Arsenal Fit: how the pitches work together (20% of the arsenal grade)
+function xaFitCard(res) {
+  const f = res.arsenalFit; if (!f) return '';
+  const d = f.detail || {};
+  const part = (lbl, sc, note) => `<div class="xa-fit-part"><div class="xa-fit-lbl">${lbl}</div>
+      <div class="xa-mbar"><div class="xa-mfill ${xaClass(sc).replace('v-', 'xa-')}" style="width:${Math.max(0, Math.min(100, (sc - 20) / 60 * 100))}%"></div><div class="xa-mavg"></div></div>
+      <div class="xa-fit-sc ${xaClass(sc)}">${sc}</div><div class="xa-fit-note">${note}</div></div>`;
+  const dirs = (d.directions || []).filter(x => x.credit >= 0.5).map(x => x.name).join(', ') || 'none at full credit';
+  return `<div class="xa-fit-card">
+    <div class="xa-fit-hd">Arsenal Fit <span class="xa-fit-score ${xaClass(f.score)}">${f.score}</span>
+      <span class="xa-muted">· how the pitches work together · 20% of the arsenal grade (pitch grades ${res.arsenalPitchScore ?? '—'} = 80%)</span></div>
+    <div class="xa-fit-parts">
+      ${part('Movement coverage', f.parts.coverage, `Strong directions: ${escapeHtml(dirs)}`)}
+      ${part('Platoon coverage', f.parts.platoon, `Best arm-side ${d.bestArmSide ?? '—'} · best glove-side ${d.bestGloveSide ?? '—'}`)}
+      ${part('Speed layers', f.parts.speed, `${d.speedSpread ?? 0} mph spread${d.speedEvenness != null ? ` · ${d.speedEvenness}% even` : ''}`)}
+      ${part('Redundancy', f.parts.redundancy, (d.duplicates && d.duplicates.length) ? `Same look: ${escapeHtml(d.duplicates.join(', '))}` : 'No duplicate shapes')}
+    </div>
+  </div>`;
+}
+// Arsenal moves: up to 2 pitches to add, 1 to drop, 1 to rework
+function xaMovesCard(res) {
+  const m = res.moves; if (!m || (!m.add.length && !m.drop.length && !m.rework.length)) return '';
+  const side = hb => `${Math.abs(hb).toFixed(0)}" ${hb >= 0 ? 'arm-side' : 'glove-side'}`;
+  const sgn = n => (n > 0 ? '+' : '') + n;
+  const adds = m.add.map(a => `<li><span class="xa-move-tag xa-move-add">Add</span><b>${escapeHtml(a.label)}</b>
+      <span class="xa-muted">target ~${a.target.velo.toFixed(0)} mph · ${a.target.ivb.toFixed(0)}" IVB · ${side(a.target.hb)}</span>
+      <div class="xa-move-why">${escapeHtml(a.reason)} · Fit ${sgn(a.fitGain)}, arsenal ${sgn(a.gain)} (assumes an average version)</div></li>`).join('');
+  const drops = m.drop.map(d => `<li><span class="xa-move-tag xa-move-drop">Drop</span><b>${escapeHtml(pn(d.key))}</b> <span class="xa-muted">(${d.score})</span>
+      <div class="xa-move-why">${escapeHtml(d.reason)}${d.gain > 0 ? ` · arsenal ${sgn(d.gain)}` : ''}</div></li>`).join('');
+  const reworks = m.rework.map(w => `<li><span class="xa-move-tag xa-move-rework">Rework</span><b>${escapeHtml(pn(w.key))}</b> <span class="xa-muted">(${w.score})</span>
+      <div class="xa-move-why">${escapeHtml(w.reason)}${w.levers && w.levers.length ? ` · focus: ${w.levers.map(l => escapeHtml(l.direction)).join(', ')}` : ''}</div></li>`).join('');
+  return `<div class="xa-fit-card xa-moves">
+    <div class="xa-fit-hd">Arsenal moves <span class="xa-muted">· what would help this arsenal most</span></div>
+    <ul class="xa-move-list">${adds}${drops}${reworks}</ul>
+  </div>`;
+}
 function xaValue(k, p, r) {
-  const v = k === 'spinEfficiency' ? r.spinEfficiency : p?.[k];
+  const vs = r.vsFastball ? ' vs ' + r.vsFastball : '';
+  const g = r.metrics?.[k]?.value;
+  if (k === 'veloDiff') return g == null ? '—' : `${g.toFixed(1)} mph${vs}`;
+  if (k === 'ivbDiff') return g == null ? '—' : `${g.toFixed(1)}"${vs}`;
+  if (k === 'hbDiff') return g == null ? '—' : `${g > 0 ? '+' : ''}${g.toFixed(1)}" arm-side${vs}`;
+  if (k === 'spinDiff') return g == null ? '—' : `${Math.round(g)} rpm${vs}`;
+  if (k === 'pairVelo') return g == null ? '—' : `${g.toFixed(1)} mph apart${vs}`;
+  if (k === 'pairIvb' || k === 'pairRun' || k === 'pairCut') return g == null ? '—' : `${g.toFixed(1)}"${vs}`;
+  const vaaEst = k === 'vaa' && (p?.vaa == null) && r.vaaEst != null;
+  const v = k === 'spinEfficiency' ? r.spinEfficiency : vaaEst ? r.vaaEst : p?.[k];
   if (v === null || v === undefined || isNaN(v)) return '—';
   if (k === 'velocity') return (+v).toFixed(1) + ' mph';
   if (k === 'spinRate') return Math.round(v) + ' rpm';
-  if (k === 'ivb') return (+v).toFixed(1) + '"';
+  if (k === 'ivb') return (+v).toFixed(1) + '"' + (r.ivbSlotAdj != null ? ` <span class="xa-muted">(${r.ivbSlotAdj.toFixed(1)}" slot-adj.)</span>` : '');
   if (k === 'hb') return aiHB(v, aiIsLefty());
   if (k === 'extension') return (+v).toFixed(1) + ' ft';
-  if (k === 'vaa') return (+v).toFixed(1) + '°';
+  if (k === 'vaa') return (+v).toFixed(1) + '°' + (vaaEst ? ' <span class="xa-muted">est.</span>' : '');
   if (k === 'spinEfficiency') return '~' + v + '%' + (r.spinEffEstimated ? ' est.' : '');
   return v;
 }
-const XA_STATUS_LBL = { elite:'Elite', above_avg:'Above avg', avg:'Average', below_avg:'Below avg', poor:'Poor' };
-const XA_STATUS_CLS = { elite:'xa-s-elite', above_avg:'xa-s-above', avg:'xa-s-avg', below_avg:'xa-s-below', poor:'xa-s-poor' };
+// Metric status comes from the metric's own 20-80 score (same cut as pitch grades), not the
+// Worker's status band, so a 65 reads "Plus" everywhere and never "Elite".
+const xaStatusCls = sc => { const g = +xaGrade(sc); return g >= 70 ? 'xa-s-elite' : g >= 55 ? 'xa-s-above' : g >= 50 ? 'xa-s-avg' : g >= 40 ? 'xa-s-below' : 'xa-s-poor'; };
 
 function xaWhy(r) {
   const ms = Object.entries(r.metrics).filter(([, m]) => m.score !== null && (m.importance === 'primary' || m.importance === 'secondary'));
-  const strong = ms.filter(([, m]) => m.score >= 65).sort((a, b) => b[1].score - a[1].score);
-  const weak = ms.filter(([, m]) => m.score < 50).sort((a, b) => a[1].score - b[1].score);
+  const strong = ms.filter(([, m]) => m.score >= 58).sort((a, b) => b[1].score - a[1].score);
+  const weak = ms.filter(([, m]) => m.score < 45).sort((a, b) => a[1].score - b[1].score);
   const nm = ([k, m]) => `${XA_METRIC_LBL[k]} (${m.score})`;
   const parts = [];
   if (strong.length) parts.push(`Carried by ${strong.slice(0, 2).map(nm).join(' and ')}.`);
   if (weak.length) parts.push(`Held back by ${weak.slice(0, 2).map(nm).join(' and ')}.`);
   if (!parts.length) parts.push('Grades out evenly — no key metric far above or below average.');
-  return `Graded as a <b>${r.subtype}</b>. ` + parts.join(' ');
+  const mix = (r.subtypeMix && r.subtypeMix.length > 1) ? ` <span class="xa-muted">(${r.subtypeMix.map(m => `${m.share}% ${m.subtype}`).join(', ')})</span>` : '';
+  return `Graded as a <b>${r.subtype}</b>${mix}. ` + parts.join(' ');
+}
+
+// One xArsenal pitch card (used by the xArsenal tab and Add Pitches).
+// p = the shape that was sent to the Worker; opts.name / opts.color override the defaults.
+const XA_ORDER = ['velocity','veloDiff','spinRate','spinDiff','ivb','ivbDiff','hb','hbDiff','extension','vaa','spinEfficiency','pairVelo','pairIvb','pairRun','pairCut'];
+const XA_IMP_RANK = { primary:0, secondary:1, minor:2 };
+function xaCardHTML(r, p, opts = {}) {
+  const order = XA_ORDER, impRank = XA_IMP_RANK;
+  const name = opts.name || pn(r.key), color = opts.color || pc(r.key);
+  const rows = order.filter(k => r.metrics[k] && r.metrics[k].importance && r.metrics[k].score !== null)
+      .sort((a, b) => impRank[r.metrics[a].importance] - impRank[r.metrics[b].importance])
+      .map(k => { const m = r.metrics[k];
+        return `<div class="xa-mrow">
+          <div class="xa-mlbl">${XA_METRIC_LBL[k]} <span class="xa-imp xa-imp-${m.importance}">${m.importance}</span></div>
+          <div class="xa-mval">${xaValue(k, p, r)}</div>
+          <div class="xa-mbar"><div class="xa-mfill ${xaStatusCls(m.score)}" style="width:${Math.max(0, Math.min(100, (m.score - 20) / 60 * 100))}%"></div><div class="xa-mavg"></div></div>
+          <div class="xa-mscore"><b>${m.score}</b> <span>${xaShortLabel(m.score)}</span></div>
+        </div>`; }).join('');
+    const lev = (r.levers || []).map(l => `<li><b class="delta-good">+${l.gain}</b> with ${l.direction}${l.metric === 'spinEfficiency' && r.spinEffEstimated ? ' <span class="xa-muted">(estimated metric)</span>' : ''}</li>`).join('');
+    return `<div class="xa-card" style="border-top-color:${color}">
+      <div class="xa-card-hd">
+        <span class="pitch-dot" style="background:${color}"></span><span class="xa-card-name">${escapeHtml(name)}</span>
+        <span class="xa-card-score ${xaClass(r.score)}">${r.score}</span><span class="xa-card-grade">${r.grade}<br><small>${r.gradeLabel}</small></span>
+      </div>
+      ${r.stuffPlus != null ? `<div class="xa-sp-line">8-Stuff+ <b class="${spClass(r.stuffPlus)}">${r.stuffPlus}</b>${r.stuffPlusType != null ? ` <span class="xa-muted">· ${r.stuffPlusType} vs. other ${escapeHtml(r.displayType || '')}s</span>` : ''}</div>` : ''}
+      <div class="xa-why">${xaWhy(r)}</div>
+      <div class="xa-mrows">${rows}</div>
+      ${lev ? `<div class="xa-lev-hd">Biggest levers</div><ul class="xa-lev">${lev}</ul>` : '<div class="xa-lev-hd">Every key metric is already grading as good or better.</div>'}
+    </div>`;
 }
 
 async function renderXArsenalTab() {
@@ -1698,35 +1856,12 @@ async function renderXArsenalTab() {
   let res;
   try { res = await getXArsenal(athleteOutings); }
   catch (e) {
-    el.innerHTML = `<div class="empty-state">${/Unknown action/i.test(e.message||'') ? 'Grades need the updated Cloudflare Worker.' : 'Could not load grades: ' + e.message}</div>`;
+    el.innerHTML = `<div class="empty-state">${/Unknown action/i.test(e.message||'') ? 'Grades need the updated Cloudflare Worker.' : 'Could not load grades: ' + escapeHtml(e.message)}</div>`;
     return;
   }
   if (!res || !res.pitches.length) { el.innerHTML = '<div class="empty-state">Not enough pitch data this season to grade.</div>'; return; }
 
-  const order = ['velocity','spinRate','ivb','hb','extension','vaa','spinEfficiency'];
-  const impRank = { primary:0, secondary:1, minor:2 };
-  const cards = [...res.pitches].sort((a, b) => b.score - a.score).map(r => {
-    const p = inputs[r.key];
-    const rows = order.filter(k => r.metrics[k].importance && r.metrics[k].score !== null)
-      .sort((a, b) => impRank[r.metrics[a].importance] - impRank[r.metrics[b].importance])
-      .map(k => { const m = r.metrics[k];
-        return `<div class="xa-mrow">
-          <div class="xa-mlbl">${XA_METRIC_LBL[k]} <span class="xa-imp xa-imp-${m.importance}">${m.importance}</span></div>
-          <div class="xa-mval">${xaValue(k, p, r)}</div>
-          <div class="xa-mbar"><div class="xa-mfill ${XA_STATUS_CLS[m.status]}" style="width:${Math.min(100, m.score / 107 * 100)}%"></div><div class="xa-mavg"></div></div>
-          <div class="xa-mscore"><b>${m.score}</b> <span>${XA_STATUS_LBL[m.status]}</span></div>
-        </div>`; }).join('');
-    const lev = (r.levers || []).map(l => `<li><b class="delta-good">+${l.gain}</b> with ${l.direction}${l.metric === 'spinEfficiency' && r.spinEffEstimated ? ' <span class="xa-muted">(estimated metric)</span>' : ''}</li>`).join('');
-    return `<div class="xa-card" style="border-top-color:${pc(r.key)}">
-      <div class="xa-card-hd">
-        <span class="pitch-dot" style="background:${pc(r.key)}"></span><span class="xa-card-name">${pn(r.key)}</span>
-        <span class="xa-card-score ${xaClass(r.score)}">${r.score}</span><span class="xa-card-grade">${r.grade}<br><small>${r.gradeLabel}</small></span>
-      </div>
-      <div class="xa-why">${xaWhy(r)}</div>
-      <div class="xa-mrows">${rows}</div>
-      ${lev ? `<div class="xa-lev-hd">Biggest levers</div><ul class="xa-lev">${lev}</ul>` : '<div class="xa-lev-hd">Every key metric is already grading as good or better.</div>'}
-    </div>`;
-  }).join('');
+  const cards = [...res.pitches].sort((a, b) => b.score - a.score).map(r => xaCardHTML(r, inputs[r.key])).join('');
 
   el.innerHTML = `
     <div class="xa-summary-card">
@@ -1734,15 +1869,19 @@ async function renderXArsenalTab() {
       <div>
         <div class="xa-sum-title">xArsenal ${res.arsenalGrade} · ${res.arsenalLabel} <span class="xa-muted">— ${seasonLabel()} · graded at ${res.compLevel} level</span></div>
         <div class="xa-sum-desc">${res.description || ''}</div>
+        ${xaSlotLine(res, inputs)}
+        ${res.arsenalStuffPlus != null ? `<div class="xa-sp-line">8-Stuff+ <b class="${spClass(res.arsenalStuffPlus)}">${res.arsenalStuffPlus}</b> <span class="xa-muted">· 8ctane model trained on MLB run value · 100 = MLB average · not psStuff+</span></div>` : ''}
       </div>
     </div>
+    ${xaFitCard(res)}
+    ${xaMovesCard(res)}
     <div class="xa-cards">${cards}</div>
     <div class="section" style="margin-top:1.5rem">
       <div class="section-hd">Grade by outing</div>
       <div class="chart-card"><div class="chart-wrap" style="height:260px"><canvas id="xa-trend-chart" role="img" aria-label="xArsenal grade by outing"></canvas></div></div>
-      <div class="chart-footnote">Each point = that pitch's grade in one outing (min ${XA_OUTING_MIN} pitches) · 60 ≈ MLB average · Scale: 35 below avg, 60 avg, 80 good, 100 elite</div>
+      <div class="chart-footnote">Each point = that pitch's grade in one outing (min ${XA_OUTING_MIN} pitches) · 20-80 scouting scale: 40 below avg · 50 MLB avg · 60 plus · 70 plus-plus · 80 elite (10 pts = 1 SD)</div>
     </div>
-    <div class="chart-footnote">Bars show each metric's score (60 ≈ average, marked). "Primary" metrics drive most of the grade. Spin efficiency is estimated from velo, spin and movement. Levers = points gained if that one metric reached "good."</div>`;
+    <div class="chart-footnote">Bars show each metric on the 20-80 scale (50 = MLB average, marked). "Primary" metrics drive most of the grade. Spin efficiency is only graded when measured (Rapsodo/Hawk-Eye) — the Statcast/Trackman estimate is shown in the tooltip but not graded. Off-speed is graded mostly on its gaps from the primary fastball. Levers = points gained if that one metric reached Plus (60).</div>`;
 
   // Grade-by-outing chart
   try {
@@ -1759,10 +1898,291 @@ async function renderXArsenalTab() {
       options: { responsive:true, maintainAspectRatio:false,
         plugins:{ legend:{ labels:{ color:'#72747c', font:{ size:11, family:'DM Mono' } } },
           tooltip:{ callbacks:{ afterLabel: ctx => { const o = sortedO[ctx.dataIndex]; return o.opponent ? 'vs ' + o.opponent : ''; } } } },
-        scales:{ y:{ suggestedMin:30, suggestedMax:90, ticks:{ color:'#72747c' }, grid:{ color:'rgba(255,255,255,0.04)' } },
+        scales:{ y:{ suggestedMin:35, suggestedMax:70, ticks:{ color:'#72747c' }, grid:{ color:'rgba(255,255,255,0.04)' } },
                  x:{ ticks:{ color:'#72747c', maxRotation:0, autoSkip:true, maxTicksLimit:10 }, grid:{ display:false } } } }
     });
   } catch (e) {}
+}
+
+/* ==================== ADD PITCHES (arsenal sandbox) ==================== */
+// Test pitches the athlete doesn't throw yet. Enter a shape (or start from the
+// Worker's suggestion or a common MLB shape), optionally drop current pitches,
+// and grade the whole arsenal through the same Worker call as the xArsenal tab.
+// Compares against the current arsenal. Nothing is saved to the Sheet.
+const AP_CODES = ['FF','SI','FC','SL','ST','CU','KC','CH','FS'];
+const AP_MAX = 3;
+let apState = { athleteId: null, season: null, adds: [], drop: new Set(), seq: 0, base: null, lastKey: null };
+
+const apNum = v => (v === '' || v === null || v === undefined || isNaN(+v)) ? null : +v;
+const apSide = arm => `${Math.abs(arm).toFixed(0)}" ${arm >= 0 ? 'arm-side' : 'glove-side'}`;
+const apSgn = n => n == null ? '' : n > 0 ? `+${n}` : n < 0 ? `${n}` : '±0';
+const apDeltaCls = n => n == null || n === 0 ? 'ap-d0' : n > 0 ? 'ap-dpos' : 'ap-dneg';
+
+// Map a Worker "add" suggestion to an app pitch code
+function apCodeFromMove(a) {
+  if (a.code && AP_CODES.includes(a.code)) return a.code;
+  const l = String(a.label || '').toLowerCase();
+  if (/sweep/.test(l)) return 'ST';
+  if (/split/.test(l)) return 'FS';
+  if (/change|kick/.test(l)) return 'CH';
+  if (/cutter|cut\b/.test(l)) return 'FC';
+  if (/sinker|2-seam|two-seam/.test(l)) return 'SI';
+  if (/4-seam|four-seam|fastball/.test(l)) return 'FF';
+  if (/knuckle|k-curve/.test(l)) return 'KC';
+  if (/curve/.test(l)) return 'CU';
+  if (/slid|slutter|gyro/.test(l)) return 'SL';
+  return null;
+}
+
+// Current arsenal + the athlete's release (a new pitch comes out of the same slot)
+async function apLoadBase() {
+  const pitches = xaSeasonShape(athleteOutings);
+  const res = pitches.length ? await getXArsenal(athleteOutings) : null;
+  const wavg = k => { let s = 0, w = 0; pitches.forEach(p => { if (p[k] != null) { s += p[k] * p.count; w += p.count; } }); return w ? +(s / w).toFixed(2) : null; };
+  const fbs = pitches.filter(p => ['FF','SI','FA','FT'].includes(p.code)).sort((a, b) => b.count - a.count);
+  const fbVelo = fbs[0]?.velocity ?? (pitches.length ? Math.max(...pitches.map(p => p.velocity || 0)) || null : null);
+  return { pitches, res, fbVelo, fbCode: fbs[0]?.code || null,
+    slot: { extension: wavg('extension'), armAngle: wavg('armAngle'), releaseHeight: wavg('releaseHeight'), releaseSide: wavg('releaseSide') } };
+}
+
+// Starting shapes for a pitch type: Worker suggestion first, then common MLB shapes
+// (shape_baselines.json clusters). MLB velo is re-centered on this athlete's fastball.
+function apPresets(code) {
+  const base = apState.base, out = [];
+  (base?.res?.moves?.add || []).forEach(a => {
+    if (apCodeFromMove(a) === code && a.target) out.push({ label: `Suggested: ${a.label} · ~${a.target.velo.toFixed(0)} mph · ${a.target.ivb.toFixed(0)}" IVB · ${apSide(a.target.hb)}`,
+      velo: +a.target.velo.toFixed(1), ivb: +a.target.ivb.toFixed(1), arm: +a.target.hb.toFixed(1) });
+  });
+  const b = (typeof SHAPE_BASELINES !== 'undefined') ? SHAPE_BASELINES[code] : null;
+  if (b && b.clusters) {
+    const mlbFB = SHAPE_BASELINES.FF?.scaler_mean?.velo || 94.5;
+    b.clusters.filter(c => c.n >= b.n_total * 0.05).sort((x, y) => y.n - x.n).forEach((c, i) => {
+      const ivb = c.centroid.vb * 12, arm = -c.centroid.hb_norm * 12;   // baselines: feet, arm-side negative (as if RHP)
+      const velo = base?.fbVelo != null ? base.fbVelo + (c.centroid.velo - mlbFB) : c.centroid.velo;
+      out.push({ label: `Common MLB shape ${i + 1} · ${ivb.toFixed(0)}" IVB · ${apSide(arm)} · ${(c.centroid.velo - mlbFB).toFixed(0)} mph vs FB${c.metrics?.whiff_pct != null ? ` · ${c.metrics.whiff_pct}% whiff in MLB` : ''}`,
+        velo: +velo.toFixed(1), ivb: +ivb.toFixed(1), arm: +arm.toFixed(1) });
+    });
+  }
+  return out;
+}
+
+function apNewRow(code) {
+  const row = { id: ++apState.seq, code, velo: null, ivb: null, arm: null, spin: null, vaa: null, usage: 12 };
+  const pre = apPresets(code)[0];
+  if (pre) Object.assign(row, { velo: pre.velo, ivb: pre.ivb, arm: pre.arm });
+  return row;
+}
+
+async function renderAddPitches() {
+  const el = document.getElementById('addpitches-content');
+  if (!el) return;
+  const sameScope = apState.athleteId === currentAthlete?.id && apState.season === profileSeason;
+  if (apState.athleteId !== currentAthlete?.id) apState = { athleteId: currentAthlete?.id, season: profileSeason, adds: [], drop: new Set(), seq: 0, base: null, lastKey: null };
+  apState.season = profileSeason;
+  el.innerHTML = '<div class="ai-loading"><div class="loading-spinner"></div><p>Grading current arsenal...</p></div>';
+  try { apState.base = await apLoadBase(); }
+  catch (e) { el.innerHTML = `<div class="empty-state">Could not load grades: ${escapeHtml(e.message)}</div>`; return; }
+  if (!apState.base.res || !apState.base.pitches.length) { el.innerHTML = '<div class="empty-state">Not enough pitch data this season to grade. Pick a season with more outings.</div>'; return; }
+  const codes = new Set(apState.base.pitches.map(p => p.key));
+  apState.drop.forEach(k => { if (!codes.has(k)) apState.drop.delete(k); });
+  if (!apState.adds.length) {
+    const firstMove = (apState.base.res.moves?.add || []).map(apCodeFromMove).find(Boolean);
+    apState.adds.push(apNewRow(firstMove || AP_CODES.find(c => !codes.has(c)) || 'CH'));
+  }
+  el.innerHTML = `
+    <div class="ap-intro">
+      <div class="ap-title">Add Pitches</div>
+      <div class="ap-sub">Try a new pitch inside ${escapeHtml(currentAthlete?.name || 'this athlete')}'s current arsenal and see how the grades move. Shapes come out of his current release (${apState.base.slot.extension != null ? apState.base.slot.extension.toFixed(1) + ' ft extension' : 'extension unknown'}${apState.base.slot.armAngle != null ? ` · ${Math.round(apState.base.slot.armAngle)}° arm angle` : ''}). Nothing here is saved.</div>
+    </div>
+    <div class="ap-cur">
+      <div class="ap-cur-hd">Current arsenal <span class="xa-muted">· ${seasonLabel()} · xArsenal ${apState.base.res.arsenalScore} · uncheck a pitch to test dropping it</span></div>
+      <div class="ap-chips">${apState.base.res.pitches.slice().sort((a, b) => b.score - a.score).map(r => `
+        <label class="ap-chip${apState.drop.has(r.key) ? ' ap-chip-off' : ''}"><input type="checkbox" ${apState.drop.has(r.key) ? '' : 'checked'} onchange="apToggleDrop('${r.key}', !this.checked)">
+          <span class="pitch-dot" style="background:${pc(r.key)}"></span>${escapeHtml(pn(r.key))} <b class="${xaClass(r.score)}">${r.score}</b></label>`).join('')}</div>
+    </div>
+    <div id="ap-rows" class="ap-rows"></div>
+    <div class="ap-actions">
+      <button class="btn-ghost" id="ap-add-btn" onclick="apAddRow()">+ Add another pitch</button>
+      <button class="btn-primary" onclick="apRun()">Grade with these changes</button>
+    </div>
+    <div id="ap-result"></div>
+    <div class="chart-footnote">Grades the shape you enter at the athlete's level against the same private benchmarks as the xArsenal tab. It can't tell you whether he can throw the pitch, command it, or keep his other pitches intact while learning it. Off-speed is graded on its gaps from the primary fastball, so adding or dropping a fastball can move the off-speed grades too. Spin and VAA are optional; leave them blank and the Worker works without them (VAA is estimated).</div>`;
+  apRenderRows();
+  if (sameScope && apState.lastKey) apRun();
+}
+
+function apRenderRows() {
+  const wrap = document.getElementById('ap-rows'); if (!wrap) return;
+  wrap.innerHTML = apState.adds.map(a => {
+    const presets = apPresets(a.code);
+    const field = (k, lbl, unit, step, ph = '') => `<label class="ap-field"><span>${lbl}</span>
+      <span class="ap-inwrap"><input type="number" step="${step}" value="${a[k] ?? ''}" placeholder="${ph}" oninput="apSet(${a.id}, '${k}', this.value)">${unit ? `<i>${unit}</i>` : ''}</span></label>`;
+    return `<div class="ap-row" style="border-left-color:${pc(a.code)}">
+      <div class="ap-row-hd">
+        <select class="sel-input ap-code" onchange="apSetCode(${a.id}, this.value)" aria-label="Pitch type">
+          ${AP_CODES.map(c => `<option value="${c}" ${c === a.code ? 'selected' : ''}>New ${pn(c)}</option>`).join('')}
+        </select>
+        <select class="sel-input ap-preset" onchange="apApplyPreset(${a.id}, this.value)" aria-label="Starting shape">
+          <option value="">Start from a shape…</option>
+          ${presets.map((p, i) => `<option value="${i}">${escapeHtml(p.label)}</option>`).join('')}
+        </select>
+        <button class="ap-remove" onclick="apRemoveRow(${a.id})" title="Remove this pitch" aria-label="Remove this pitch">✕</button>
+      </div>
+      <div class="ap-fields">
+        ${field('velo', 'Velo', 'mph', '0.1')}
+        ${field('ivb', 'IVB', 'in', '0.1')}
+        <label class="ap-field"><span>HB</span>
+          <span class="ap-inwrap"><input type="number" step="0.1" min="0" value="${a.arm == null ? '' : Math.abs(a.arm)}" oninput="apSetHB(${a.id}, this.value, null)"><i>in</i>
+          <select class="ap-dir" onchange="apSetHB(${a.id}, null, this.value)" aria-label="Break direction">
+            <option value="arm" ${a.arm == null || a.arm >= 0 ? 'selected' : ''}>arm-side</option>
+            <option value="glove" ${a.arm != null && a.arm < 0 ? 'selected' : ''}>glove-side</option>
+          </select></span></label>
+        ${field('spin', 'Spin', 'rpm', '10', 'optional')}
+        ${field('vaa', 'VAA', '°', '0.1', 'optional')}
+        ${field('usage', 'Usage', '%', '1')}
+      </div>
+      <div class="ap-row-err" id="ap-err-${a.id}"></div>
+    </div>`;
+  }).join('');
+  const btn = document.getElementById('ap-add-btn'); if (btn) btn.disabled = apState.adds.length >= AP_MAX;
+}
+
+function apStale() { const r = document.getElementById('ap-result'); if (r && r.innerHTML) r.classList.add('ap-stale'); }
+function apSet(id, k, v) { const a = apState.adds.find(x => x.id === id); if (!a) return; a[k] = apNum(v); apStale(); }
+function apSetHB(id, mag, dir) {
+  const a = apState.adds.find(x => x.id === id); if (!a) return;
+  const curDir = a.arm != null && a.arm < 0 ? 'glove' : 'arm';
+  const m = mag !== null ? apNum(mag) : (a.arm == null ? null : Math.abs(a.arm));
+  const d = dir || curDir;
+  a.arm = m == null ? null : (d === 'glove' ? -Math.abs(m) : Math.abs(m));
+  apStale();
+}
+function apSetCode(id, code) {
+  const i = apState.adds.findIndex(x => x.id === id); if (i < 0) return;
+  const keep = apState.adds[i].usage;
+  apState.adds[i] = Object.assign(apNewRow(code), { id, usage: keep });
+  apRenderRows(); apStale();
+}
+function apApplyPreset(id, idx) {
+  const a = apState.adds.find(x => x.id === id); if (!a || idx === '') return;
+  const p = apPresets(a.code)[+idx]; if (!p) return;
+  Object.assign(a, { velo: p.velo, ivb: p.ivb, arm: p.arm });
+  apRenderRows(); apStale();
+}
+function apAddRow() {
+  if (apState.adds.length >= AP_MAX) return;
+  const have = new Set([...apState.base.pitches.map(p => p.key), ...apState.adds.map(a => a.code)]);
+  apState.adds.push(apNewRow(AP_CODES.find(c => !have.has(c)) || 'CH'));
+  apRenderRows(); apStale();
+}
+function apRemoveRow(id) { apState.adds = apState.adds.filter(x => x.id !== id); apRenderRows(); apStale(); }
+function apToggleDrop(key, off) {
+  off ? apState.drop.add(key) : apState.drop.delete(key);
+  document.querySelectorAll('.ap-chip input').forEach(cb => cb.closest('.ap-chip').classList.toggle('ap-chip-off', !cb.checked));
+  apStale();
+}
+
+// Build the scenario payload: kept pitches (as-is) + new pitches at the chosen usage
+function apScenario() {
+  const base = apState.base, lefty = aiIsLefty();
+  const keep = base.pitches.filter(p => !apState.drop.has(p.key));
+  const total = keep.reduce((t, p) => t + p.count, 0) || 100;
+  const errors = {};
+  const ok = apState.adds.filter(a => {
+    const miss = ['velo', 'ivb', 'arm'].filter(k => a[k] == null);
+    if (miss.length) { errors[a.id] = 'Needs velo, IVB and HB to grade.'; return false; }
+    if (a.velo < 50 || a.velo > 105) { errors[a.id] = 'Velo should be between 50 and 105 mph.'; return false; }
+    return true;
+  });
+  const sumU = ok.reduce((t, a) => t + Math.max(0, a.usage || 0), 0);
+  const denom = Math.max(10, 100 - Math.min(sumU, 90));
+  const added = ok.map(a => ({
+    key: `${a.code}_new${a.id}`, code: a.code,
+    count: Math.max(1, Math.round(total * Math.max(1, a.usage || 0) / denom)),   // usage share drives primary-fastball choice
+    velocity: a.velo, spinRate: a.spin, ivb: a.ivb,
+    hb: +(a.arm * (lefty ? -1 : 1)).toFixed(2),   // Worker expects the RHP sign convention (stored HB); it flips lefties itself
+    extension: base.slot.extension, vaa: a.vaa,
+    armAngle: base.slot.armAngle, releaseHeight: base.slot.releaseHeight, releaseSide: base.slot.releaseSide,
+  }));
+  return { keep, added, errors };
+}
+
+async function apRun() {
+  const out = document.getElementById('ap-result'); if (!out || !apState.base) return;
+  const { keep, added, errors } = apScenario();
+  apState.adds.forEach(a => { const e = document.getElementById(`ap-err-${a.id}`); if (e) e.textContent = errors[a.id] || ''; });
+  if (!added.length && !apState.drop.size) { out.className = ''; out.innerHTML = '<div class="empty-state">Fill in at least one new pitch, or uncheck a current pitch to test dropping it.</div>'; return; }
+  if (!keep.length && !added.length) { out.className = ''; out.innerHTML = '<div class="empty-state">Keep at least one pitch in the arsenal.</div>'; return; }
+  const body = { hand: currentAthlete?.throws || 'R', level: currentAthlete?.level || '', veloWeighted: true, pitches: [...keep, ...added] };
+  const key = JSON.stringify(body);
+  apState.lastKey = key;
+  out.className = ''; out.innerHTML = '<div class="ai-loading"><div class="loading-spinner"></div><p>Grading the new arsenal...</p></div>';
+  let res;
+  try {
+    if (!xaCache[key]) xaCache[key] = api('scoreArsenal', body).then(xaNormalize).catch(e => { delete xaCache[key]; throw e; });
+    res = await xaCache[key];
+  } catch (e) { out.innerHTML = `<div class="empty-state">Could not grade this arsenal: ${escapeHtml(e.message)}</div>`; return; }
+  if (apState.lastKey !== key) return;   // a newer run started
+  out.innerHTML = apResultHTML(apState.base.res, res, added);
+}
+
+function apResultHTML(before, after, added) {
+  const newKeys = new Map(added.map(p => [p.key, p]));
+  const nameOf = k => newKeys.has(k) ? `New ${pn(newKeys.get(k).code)}` : pn(k);
+  const colorOf = k => pc(newKeys.has(k) ? newKeys.get(k).code : k);
+  const d = (a, b) => (a == null || b == null) ? null : b - a;
+  const bf = before.arsenalFit?.parts || {}, af = after.arsenalFit?.parts || {};
+  const line = (lbl, a, b, note = '') => { const dd = d(a, b); return `<tr><td>${lbl}${note ? ` <span class="xa-muted">${note}</span>` : ''}</td><td class="mono">${a ?? '—'}</td><td class="mono">${b ?? '—'}</td><td class="mono ${apDeltaCls(dd)}">${dd == null ? '—' : apSgn(dd)}</td></tr>`; };
+  const totalD = d(before.arsenalScore, after.arsenalScore);
+
+  const bByKey = Object.fromEntries(before.pitches.map(r => [r.key, r]));
+  const aByKey = Object.fromEntries(after.pitches.map(r => [r.key, r]));
+  const keys = [...new Set([...after.pitches.map(r => r.key), ...before.pitches.map(r => r.key)])]
+    .sort((x, y) => (aByKey[y]?.score ?? -1) - (aByKey[x]?.score ?? -1));
+  const pitchRows = keys.map(k => {
+    const b = bByKey[k], a = aByKey[k], isNew = newKeys.has(k), dropped = !a && apState.drop.has(k);
+    const dd = (b && a) ? a.score - b.score : null;
+    return `<tr${dropped ? ' class="ap-dropped"' : ''}><td><span class="pitch-dot" style="background:${colorOf(k)}"></span> ${escapeHtml(nameOf(k))}${isNew ? ' <span class="ap-tag">new</span>' : ''}</td>
+      <td class="mono">${b ? `${b.score} <span class="xa-muted">${b.gradeLabel}</span>` : '—'}</td>
+      <td class="mono">${a ? `<span class="${xaClass(a.score)}">${a.score}</span> <span class="xa-muted">${a.gradeLabel}</span>` : dropped ? '<span class="xa-muted">dropped</span>' : '—'}</td>
+      <td class="mono ${apDeltaCls(dd)}">${dd == null ? '' : apSgn(dd)}</td></tr>`;
+  }).join('');
+
+  const newCards = after.pitches.filter(r => newKeys.has(r.key)).map(r => xaCardHTML(r, newKeys.get(r.key), { name: nameOf(r.key), color: colorOf(r.key) })).join('');
+  const missing = added.filter(p => !aByKey[p.key]).map(p => `New ${pn(p.code)}`);
+
+  return `
+    <div class="ap-verdict">
+      <div class="ap-v-side"><div class="ap-v-lbl">Now</div><div class="ap-v-num ${xaClass(before.arsenalScore)}">${before.arsenalScore}</div><div class="ap-v-grade">${before.arsenalGrade} · ${before.arsenalLabel}</div></div>
+      <div class="ap-v-arrow ${apDeltaCls(totalD)}">${totalD == null ? '→' : apSgn(totalD)}</div>
+      <div class="ap-v-side"><div class="ap-v-lbl">With changes</div><div class="ap-v-num ${xaClass(after.arsenalScore)}">${after.arsenalScore}</div><div class="ap-v-grade">${after.arsenalGrade} · ${after.arsenalLabel}</div></div>
+    </div>
+    ${missing.length ? `<div class="ap-warn">The Worker didn't grade: ${escapeHtml(missing.join(', '))}. Check the shape.</div>` : ''}
+    <div class="ap-grid">
+      <div class="xa-fit-card">
+        <div class="xa-fit-hd">What moved</div>
+        <div class="table-scroll"><table class="data-table ap-table">
+          <thead><tr><th></th><th>Now</th><th>With changes</th><th>Change</th></tr></thead>
+          <tbody>
+            ${line('xArsenal', before.arsenalScore, after.arsenalScore)}
+            ${line('Pitch grades', before.arsenalPitchScore, after.arsenalPitchScore, '80%')}
+            ${line('Arsenal Fit', before.arsenalFit?.score, after.arsenalFit?.score, '20%')}
+            ${line('· Movement coverage', bf.coverage, af.coverage)}
+            ${line('· Platoon coverage', bf.platoon, af.platoon)}
+            ${line('· Speed layers', bf.speed, af.speed)}
+            ${line('· Redundancy', bf.redundancy, af.redundancy)}
+            ${before.arsenalStuffPlus != null || after.arsenalStuffPlus != null ? line('8-Stuff+ (arsenal)', before.arsenalStuffPlus, after.arsenalStuffPlus) : ''}
+          </tbody></table></div>
+      </div>
+      <div class="xa-fit-card">
+        <div class="xa-fit-hd">Pitch by pitch</div>
+        <div class="table-scroll"><table class="data-table ap-table">
+          <thead><tr><th>Pitch</th><th>Now</th><th>With changes</th><th>Change</th></tr></thead>
+          <tbody>${pitchRows}</tbody></table></div>
+      </div>
+    </div>
+    ${newCards ? `<div class="section-hd" style="margin-top:1.25rem">New pitch grades</div><div class="xa-cards">${newCards}</div>` : ''}
+    ${xaMovesCard(after).replace('Arsenal moves', 'Next moves with these changes')}`;
 }
 
 /* ==================== PITCH USAGE BY BATTER SIDE (Savant-style) ==================== */
@@ -2012,7 +2432,7 @@ function renderOutingsList() {
     const whiffRate = o.whiffSwPct !== null && o.whiffSwPct !== undefined ? o.whiffSwPct.toFixed(1) : '—';
     return `<div class="outing-row">
       <div class="outing-date">${formatDate(o.date)}</div>
-      <div class="outing-opp">${o.opponent || '—'}</div>
+      <div class="outing-opp">${escapeHtml(o.opponent || '—')}</div>
       <div class="outing-stats">
         <div class="outing-stat"><div class="outing-stat-val">${o.total_pitches||0}</div><div class="outing-stat-lbl">Pitches</div></div>
         <div class="outing-stat"><div class="outing-stat-val">${whiffRate}${whiffRate !== '—' ? '%' : ''}</div><div class="outing-stat-lbl">Whiff%</div></div>
@@ -2026,11 +2446,14 @@ function renderOutingsList() {
           return `<span class="pitch-pill" style="background:${pc(pt)}22;color:${pc(pt)}">${pt} ${pct}%</span>`;
         }).join('')}
       </div>
-      <div class="outing-xa" data-xa-outing="${o.id}"></div>
-      ${o.notes ? `<div style="font-size:11px;color:var(--muted);font-style:italic;min-width:100%">${o.notes}</div>` : ''}
-      <button class="outing-delete-btn" onclick="event.stopPropagation();confirmDeleteOuting('${o.id}','${formatDate(o.date)}')" title="Delete outing">✕</button>
+      <div class="outing-xa" data-xa-outing="${escapeHtml(o.id)}"></div>
+      ${o.notes ? `<div style="font-size:11px;color:var(--muted);font-style:italic;min-width:100%">${escapeHtml(o.notes)}</div>` : ''}
+      <button class="outing-delete-btn" data-outing-id="${escapeHtml(o.id)}" data-outing-date="${escapeHtml(formatDate(o.date))}" title="Delete outing">✕</button>
     </div>`;
   }).join('');
+  container.querySelectorAll('.outing-delete-btn').forEach(btn => {
+    btn.addEventListener('click', e => { e.stopPropagation(); confirmDeleteOuting(btn.dataset.outingId, btn.dataset.outingDate); });
+  });
   fillOutingGrades();
   if (outingView === 'card') renderOutingCard(); else renderSeasonCard();
 }
@@ -2059,7 +2482,7 @@ async function gradeOutingForCard(o) {
   const body = { hand: currentAthlete?.throws || 'R', level: currentAthlete?.level || '', veloWeighted: true, pitches: xaSeasonShape([o], 1, 0) };
   if (!body.pitches.length) return null;
   const key = JSON.stringify(body);
-  if (!xaCardCache[key]) xaCardCache[key] = api('scoreArsenal', body).catch(e => { delete xaCardCache[key]; throw e; });
+  if (!xaCardCache[key]) xaCardCache[key] = api('scoreArsenal', body).then(xaNormalize).catch(e => { delete xaCardCache[key]; throw e; });
   return xaCardCache[key];
 }
 
@@ -2179,7 +2602,7 @@ async function renderOutingCard() {
   const list = outingsNewestFirst();
   if (!list.length) { wrap.innerHTML = '<div class="empty-state">No outings yet.</div>'; sel.innerHTML = ''; return; }
   if (!list.some(o => o.id === selectedOutingId)) selectedOutingId = list[0].id;
-  sel.innerHTML = list.map(o => `<option value="${o.id}" ${o.id === selectedOutingId ? 'selected' : ''}>${formatDate(o.date)}${o.opponent ? ' vs ' + o.opponent : ''} · ${o.total_pitches || 0}p</option>`).join('');
+  sel.innerHTML = list.map(o => `<option value="${escapeHtml(o.id)}" ${o.id === selectedOutingId ? 'selected' : ''}>${escapeHtml(formatDate(o.date))}${o.opponent ? ' vs ' + escapeHtml(o.opponent) : ''} · ${o.total_pitches || 0}p</option>`).join('');
   const o = list.find(x => x.id === selectedOutingId);
   return renderCard(wrap, o, {
     sub: `${formatDate(o.date)}${o.opponent ? ' vs ' + o.opponent : ''}`,
@@ -2288,7 +2711,7 @@ async function renderCard(wrap, o, opts) {
           ${(() => { const zw = zoneWhiffPct(rows.map(([, s]) => s)); return `<td><span class="oc-cell" style="${zw !== null ? divColor(zw, 15, 10, true) : ''}">${zw !== null ? zw.toFixed(1) + '%' : '—'}</span></td>`; })()}
           <td><span class="oc-cell" style="${xwAll !== null ? divColor(xwAll, .370, .12, false) : ''}">${xwAll !== null ? xwAll.toFixed(3).replace(/^0/, '') : '—'}</span></td></tr>
       </tbody></table></div>
-    <div class="oc-foot"><span>${opts.season ? 'Season averages · grades use the season shape (min 10 pitches) · ' : ''}Grade = 8ctane xArsenal (60 ≈ MLB average) · Whiff% per swing · Z-Whiff% = whiffs on in-zone swings · Red = good for the pitcher, blue = bad${!rows.some(([, s]) => s.mv && s.mv.length) ? ' · Re-import for per-pitch dots and arm angle' : ''}</span><span class="oc-brand">8CTANE BASEBALL · Pitch Intelligence</span></div>
+    <div class="oc-foot"><span>${opts.season ? 'Season averages · grades use the season shape (min 10 pitches) · ' : ''}Grade = 8ctane xArsenal (20-80, 50 = MLB average) · Whiff% per swing · Z-Whiff% = whiffs on in-zone swings · Red = good for the pitcher, blue = bad${!rows.some(([, s]) => s.mv && s.mv.length) ? ' · Re-import for per-pitch dots and arm angle' : ''}</span><span class="oc-brand">8CTANE BASEBALL · Pitch Intelligence</span></div>
   </div>`;
 
   // grades
@@ -2299,8 +2722,8 @@ async function renderCard(wrap, o, opts) {
     wrap.querySelectorAll('[data-oc-grade]').forEach(el => {
       const r = el.dataset.ocGrade === '__all' ? (res ? { score: res.arsenalScore, grade: res.arsenalGrade, gradeLabel: res.arsenalLabel } : null) : by[el.dataset.ocGrade];
       if (!r) { el.textContent = '—'; return; }
-      el.textContent = r.score; el.setAttribute('style', divColor(r.score, 60, 25, true));
-      el.title = r.subtype ? xaTitle(r) : `xArsenal ${r.score} (${r.grade}, ${r.gradeLabel})`;
+      el.textContent = r.score; el.setAttribute('style', divColor(r.score, 50, 15, true));
+      el.title = r.subtype ? xaTitle(r) : `xArsenal ${r.score} (${r.gradeLabel}, 20-80)`;
     });
   } catch(e) { wrap.querySelectorAll('[data-oc-grade]').forEach(el => { el.textContent = '—'; }); }
 }
@@ -2342,6 +2765,13 @@ function showExportData() {
       <button class="btn-ghost" onclick="closeModal()">Cancel</button>
       <button class="btn-primary" id="ex-go" onclick="runExportData()">Download CSV</button>
     </div>`);
+  // Delegated listeners for quick-range buttons (avoids inline onclick date injection)
+  document.querySelectorAll('#modal-body [data-ex-from]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.getElementById('ex-from').value = btn.dataset.exFrom;
+      document.getElementById('ex-to').value = btn.dataset.exTo;
+    });
+  });
 }
 
 function csvCell(v) { if (v === null || v === undefined) return ''; const s = String(v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; }
@@ -2947,7 +3377,7 @@ Respond with JSON only (no markdown):
     const analysis = await callClaudeProxy(prompt);
     renderSeasonInsightHTML(analysis, pitchSummary, total);
   } catch(e) {
-    container.innerHTML = `<div class="empty-state">Could not generate insights: ${e.message}</div>`;
+    container.innerHTML = `<div class="empty-state">Could not generate insights: ${escapeHtml(e.message)}</div>`;
   }
 }
 
@@ -3041,7 +3471,7 @@ function initOutingInsight() {
   const sel = document.getElementById('outing-insight-sel');
   const sorted = [...athleteOutings].sort((a,b) => b.date.localeCompare(a.date));
   sel.innerHTML = '<option value="">Select an outing...</option>' +
-    sorted.map(o => `<option value="${o.id}">${formatDate(o.date)} vs. ${o.opponent||'—'} (${o.total_pitches||0} pitches)</option>`).join('');
+    sorted.map(o => `<option value="${escapeHtml(o.id)}">${escapeHtml(formatDate(o.date))} vs. ${escapeHtml(o.opponent||'—')} (${o.total_pitches||0} pitches)</option>`).join('');
   document.getElementById('outing-insight-content').innerHTML = '';
 }
 
@@ -3098,7 +3528,7 @@ Respond with JSON only (no markdown):
     const analysis = await callClaudeProxy(prompt);
     renderOutingInsightHTML(analysis, outing, pm, total);
   } catch(e) {
-    container.innerHTML = `<div class="empty-state">Could not generate insights: ${e.message}</div>`;
+    container.innerHTML = `<div class="empty-state">Could not generate insights: ${escapeHtml(e.message)}</div>`;
   }
 }
 
@@ -4501,7 +4931,7 @@ async function renderYearOverYear() {
     const res = await api('getAthletes');
     allAthletes = res.athletes;
   } catch(e) {
-    container.innerHTML = `<div class="empty-state">Could not load athlete history: ${e.message}</div>`;
+    container.innerHTML = `<div class="empty-state">Could not load athlete history: ${escapeHtml(e.message)}</div>`;
     return;
   }
 
@@ -4557,7 +4987,7 @@ async function renderYearOverYear() {
 
   if (yoySeasons.length < 2) {
     const nm = stripYearSuffix(currentAthlete.name);
-    container.innerHTML = `<div class="empty-state">Only one season of data found for ${nm}.<br><small>Import outings from another season (into this record or a "${nm} (YYYY)" record) and each year will show up here.</small></div>`;
+    container.innerHTML = `<div class="empty-state">Only one season of data found for ${escapeHtml(nm)}.<br><small>Import outings from another season (into this record or a "${escapeHtml(nm)} (YYYY)" record) and each year will show up here.</small></div>`;
     return;
   }
 
@@ -4703,7 +5133,7 @@ function renderYearOverYearHTML() {
 
 function populateCompareSelectors() {
   const sorted = [...athleteOutings].sort((a,b)=>b.date.localeCompare(a.date));
-  const options = sorted.map(o => `<option value="${o.id}">${formatDate(o.date)} vs. ${o.opponent||'Unknown'}</option>`).join('');
+  const options = sorted.map(o => `<option value="${escapeHtml(o.id)}">${escapeHtml(formatDate(o.date))} vs. ${escapeHtml(o.opponent||'Unknown')}</option>`).join('');
   ['compare-sel-1','compare-sel-2'].forEach((id,i) => {
     const sel = document.getElementById(id);
     sel.innerHTML = '<option value="">Select outing...</option>' + options;
@@ -4799,7 +5229,7 @@ function closeModal(e) {
 function toast(msg, type='success') {
   const el = document.createElement('div');
   el.className = `toast ${type}`;
-  el.innerHTML = `<span>${type==='success'?'✓':'⚠'}</span> ${msg}`;
+  el.innerHTML = `<span>${type==='success'?'✓':'⚠'}</span> ${escapeHtml(msg)}`;
   document.body.appendChild(el);
   setTimeout(() => el.remove(), 3500);
 }

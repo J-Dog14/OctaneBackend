@@ -6,7 +6,7 @@
 
 import { getDb } from "./db";
 import { PITCH_LABELS, isPitchCode, type PitchCode } from "./pitch-types";
-import { gradeArsenals, xaLevel, type ArsenalGrade, type PitchGrade } from "./xarsenal/worker";
+import { gradeArsenals, xaLevel, type ArsenalGrade, type PitchGrade, type XaPitchIn } from "./xarsenal/worker";
 
 /** Pitches of one type needed in a session to grade it (same as Ryan's per-outing grades). */
 export const SESSION_GRADE_MIN = 5;
@@ -74,13 +74,39 @@ export interface GradeGroup {
   level: string | null;
   /** Pitches of a type needed to grade it (0 = grade every row with a velocity). */
   minCount: number;
-  /** Savant's release_pos_x is catcher's view: -1 turns it into the pitcher's-right-positive side the Worker wants. */
+  /** Share of the group's pitches a type needs (Ryan's season filter: 0.03). Default 0. */
+  minShare?: number;
+  /** Multiplies release side before sending. Default 1 (raw); the Worker ignores the sign anyway (checked Nov 5 2026). */
   relSideSign?: 1 | -1;
   setArsenal: (a: ArsenalGrade | null) => void;
 }
 
+/** The Worker payload for one pitch-type table: Ryan's filters, HB in the Worker's sign convention. */
+export function workerPitches(g: Pick<GradeGroup, "rows" | "throws" | "minCount" | "minShare" | "relSideSign">): XaPitchIn[] {
+  return g.rows
+    .filter((r) => r.pitchType !== "OTHER" && (r.count == null || r.count >= g.minCount) && r.velo != null && r.ivb != null && r.hbArm != null)
+    // Share of every pitch in the group, OTHER and small types included (Ryan's xaSeasonShape).
+    .filter((r) => !g.minShare || r.count == null || r.count / (g.rows.reduce((t, x) => t + (x.count ?? 0), 0) || 1) >= g.minShare)
+    .map((r) => ({
+      key: r.pitchType,
+      code: r.pitchType,
+      count: r.count,
+      velocity: r.velo!,
+      spinRate: r.spinRate,
+      ivb: r.ivb!,
+      // The Worker takes HB as measured (+ = pitcher's right) and mirrors lefties itself.
+      hb: g.throws === "L" ? -r.hbArm! : r.hbArm!,
+      extension: r.extension,
+      vaa: r.vaa,
+      armAngle: r.armAngle ?? null,
+      releaseHeight: r.relHeight,
+      releaseSide: r.relSide == null ? null : r.relSide * (g.relSideSign ?? 1),
+      spinEfficiency: r.spinEfficiency,
+    }));
+}
+
 /**
- * Grades several pitch-type tables (seasons, sessions, reports) with xArsenal v3 + 8-Stuff+
+ * Grades several pitch-type tables (seasons, sessions, reports) with xArsenal + 8-Stuff+
  * in one call to Ryan's Worker. Returns an error message when the Worker can't be reached
  * (every grade is then null), else null.
  */
@@ -89,24 +115,7 @@ export async function gradeGroups(groups: GradeGroup[]): Promise<string | null> 
     id: String(i),
     hand: (g.throws ?? "R") as "R" | "L",
     level: xaLevel(g.level),
-    pitches: g.rows
-      .filter((r) => r.pitchType !== "OTHER" && (r.count == null || r.count >= g.minCount) && r.velo != null && r.ivb != null && r.hbArm != null)
-      .map((r) => ({
-        key: r.pitchType,
-        code: r.pitchType,
-        count: r.count,
-        velocity: r.velo!,
-        spinRate: r.spinRate,
-        ivb: r.ivb!,
-        // The Worker takes HB as measured (+ = pitcher's right) and mirrors lefties itself.
-        hb: g.throws === "L" ? -r.hbArm! : r.hbArm!,
-        extension: r.extension,
-        vaa: r.vaa,
-        armAngle: r.armAngle ?? null,
-        releaseHeight: r.relHeight,
-        releaseSide: r.relSide == null ? null : r.relSide * (g.relSideSign ?? 1),
-        spinEfficiency: r.spinEfficiency,
-      })),
+    pitches: workerPitches(g),
   }));
   try {
     const graded = await gradeArsenals(items);

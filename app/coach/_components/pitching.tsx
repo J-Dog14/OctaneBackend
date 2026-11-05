@@ -23,6 +23,7 @@ import {
 import { PITCH_COLORS, PITCH_LABELS, type PitchCode } from "@/lib/pitch-intel/pitch-types";
 import type { PitchTypeSummary, SessionSummary } from "@/lib/pitch-intel/sessions";
 import type { VeloPoint } from "@/lib/coach/pitching";
+import { stuffPlusColor, xaColor } from "@/lib/pitch-intel/xarsenal/normalize";
 import { fmt } from "./fetcher";
 
 const AXIS_TICK = { fill: "rgba(255,255,255,0.5)", fontSize: 11 };
@@ -38,30 +39,18 @@ const TOOLTIP_STYLE = {
 /** Whiff% per pitch type needs ~30 swings to mean much. */
 export const WHIFF_MIN_SWINGS = 30;
 
-/** xArsenal v3 (20-80, 50 = MLB average): Plus and up green, Average neutral, Fringe amber, Below red. */
-export function gradeColor(score: number | null | undefined): string {
-  if (score == null) return "gray";
-  if (score >= 60) return "green";
-  if (score >= 55) return "teal";
-  if (score >= 45) return "gray";
-  if (score >= 40) return "yellow";
-  return "red";
-}
+/** xArsenal (20-80, 50 = MLB average), Ryan's xaClass: 60+ green, 50+ neutral, 40+ amber, below red. */
+export const gradeColor = xaColor;
 
-/** 8-Stuff+ colors from the rules doc: green 110+, neutral 95–109, amber 85–94, red below 85. */
-export function stuffColor(v: number | null | undefined): string {
-  if (v == null) return "gray";
-  if (v >= 110) return "green";
-  if (v >= 95) return "gray";
-  if (v >= 85) return "yellow";
-  return "red";
-}
+/** 8-Stuff+ (Ryan's spClass): green 110+, neutral 95–109, amber 85–94, red below 85. */
+export const stuffColor = stuffPlusColor;
 
 export function ArsenalBadge({ arsenal, size = "lg" }: { arsenal: SessionSummary["arsenal"]; size?: "sm" | "md" | "lg" }) {
   if (!arsenal) return null;
   const tip = [
-    `xArsenal ${arsenal.score} (${arsenal.label}) · graded as ${arsenal.compLevel}`,
-    arsenal.fit != null ? `Arsenal Fit ${Math.round(arsenal.fit)} (10% of the arsenal grade)` : null,
+    `xArsenal ${arsenal.score} → grade ${arsenal.grade} (${arsenal.label}) · graded at ${arsenal.compLevel} level`,
+    arsenal.pitchScore != null ? `Pitch grades ${Math.round(arsenal.pitchScore)} (80%)` : null,
+    arsenal.fit != null ? `Arsenal Fit ${Math.round(arsenal.fit)} (20%)` : null,
     arsenal.slot?.angle != null ? `Arm slot ${Math.round(arsenal.slot.angle)}°${arsenal.slot.label ? ` (${arsenal.slot.label})` : ""}${arsenal.slot.source ? `, ${arsenal.slot.source}` : ""}` : null,
   ].filter(Boolean).join(" · ");
   return (
@@ -72,7 +61,7 @@ export function ArsenalBadge({ arsenal, size = "lg" }: { arsenal: SessionSummary
         </Badge>
       </Tooltip>
       {arsenal.stuffPlus != null && (
-        <Tooltip label="Arsenal 8-Stuff+ (100 = average MLB arsenal)">
+        <Tooltip label="Arsenal 8-Stuff+ · 8ctane model trained on MLB run value · 100 = MLB average · not psStuff+">
           <Badge color={stuffColor(arsenal.stuffPlus)} variant="outline" size={size} title={arsenal.stuffVersion ?? undefined}>
             8-Stuff+ {Math.round(arsenal.stuffPlus)}
           </Badge>
@@ -92,7 +81,8 @@ export function PitchGradeBadge({ grade }: { grade: PitchTypeSummary["grade"] })
   return (
     <Tooltip multiline maw={340} label={
       <div>
-        <div>{grade.subtype}{grade.label ? ` · ${grade.label}` : ""}</div>
+        <div>{grade.subtype} · grade {grade.grade} ({grade.label})</div>
+        {grade.why && <div style={{ opacity: 0.8 }}>{grade.why}</div>}
         {mix && <div style={{ opacity: 0.8 }}>Blend: {mix}</div>}
         {levers.length > 0 && <div style={{ marginTop: 4 }}>Levers: {levers.join(" · ")}</div>}
       </div>
@@ -105,26 +95,9 @@ export function PitchGradeBadge({ grade }: { grade: PitchTypeSummary["grade"] })
 export function StuffPlusBadge({ grade }: { grade: PitchTypeSummary["grade"] }) {
   if (grade?.stuffPlus == null) return <>—</>;
   return (
-    <Tooltip label={`8-Stuff+ ${Math.round(grade.stuffPlus)} vs. all MLB pitches${grade.stuffPlusType != null ? ` · ${Math.round(grade.stuffPlusType)} vs. its own type` : ""}`}>
+    <Tooltip label={`8-Stuff+ ${Math.round(grade.stuffPlus)} vs. all MLB pitches${grade.stuffPlusType != null ? ` · ${Math.round(grade.stuffPlusType)} vs. its own type` : ""} · not psStuff+`}>
       <Badge size="sm" variant="outline" color={stuffColor(grade.stuffPlus)}>{Math.round(grade.stuffPlus)}</Badge>
     </Tooltip>
-  );
-}
-
-/** Add / drop / rework suggestions from the arsenal grade. */
-export function ArsenalMoves({ arsenal }: { arsenal: SessionSummary["arsenal"] }) {
-  if (!arsenal?.moves.length) return null;
-  const color: Record<string, string> = { add: "green", drop: "red", rework: "yellow" };
-  return (
-    <div style={{ marginTop: 8 }}>
-      <Text size="xs" c="dimmed" mb={4}>Arsenal moves</Text>
-      {arsenal.moves.map((m, i) => (
-        <Group key={i} gap={6} wrap="nowrap" align="flex-start" mb={2}>
-          <Badge size="xs" variant="light" color={color[m.kind] ?? "gray"} style={{ flexShrink: 0 }}>{m.kind}</Badge>
-          <Text size="xs"><b>{m.title}</b>{m.detail ? ` · ${m.detail}` : ""}</Text>
-        </Group>
-      ))}
-    </div>
   );
 }
 
@@ -181,7 +154,7 @@ export function PitchTypeTable({ rows, compact = false }: { rows: PitchTypeSumma
               <Table.Td ta="right">{fmt(r.hbArm)}</Table.Td>
               {show.vaa && (
                 <Table.Td ta="right">
-                  {r.vaa != null ? fmt(r.vaa) : r.grade?.vaaEstimated && r.grade.vaaEst != null ? (
+                  {r.vaa != null ? fmt(r.vaa) : r.grade?.vaaEst != null ? (
                     <Tooltip label="No VAA in this data; estimated by xArsenal from release height, extension, velo and IVB (about ±0.5°)">
                       <span>{fmt(r.grade.vaaEst)} <Text span size="xs" c="dimmed">est.</Text></span>
                     </Tooltip>

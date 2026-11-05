@@ -862,7 +862,7 @@
 .xa-mval { font-family:'DM Mono',monospace; color:var(--muted); font-size:11px; }
 .xa-mbar { position:relative; height:8px; background:var(--surface2); border-radius:4px; }
 .xa-mfill { height:100%; border-radius:4px; }
-.xa-mavg { position:absolute; top:-3px; bottom:-3px; left:56%; width:1px; background:var(--muted); opacity:.6; }
+.xa-mavg { position:absolute; top:-3px; bottom:-3px; left:50%; width:1px; background:var(--muted); opacity:.6; }
 .xa-mscore { font-family:'DM Mono',monospace; text-align:right; }
 .xa-mscore span { font-size:10px; color:var(--muted); }
 .xa-s-elite { background:#22c55e; } .xa-s-above { background:#84cc16; } .xa-s-avg { background:#9ca3af; }
@@ -983,3 +983,96 @@
 .oc-rel { position:relative; width:100%; height:0; overflow:hidden; border-radius:8px; }
 .oc-rel-layer { position:absolute; inset:0; width:100%; height:100%; }
 .oc-rel-img { position:absolute; max-width:none; pointer-events:none; filter:drop-shadow(0 4px 6px rgba(0,0,0,.45)); }
+
+/* xArsenal v3 — slot line + Arsenal Fit card */
+.xa-slot { margin-top:.35rem; font-size:.8rem; color:var(--muted); }
+.xa-fit-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:.9rem 1rem; margin:1rem 0; }
+.xa-fit-hd { font-weight:600; margin-bottom:.6rem; display:flex; align-items:baseline; gap:.5rem; flex-wrap:wrap; }
+.xa-fit-score { font-size:1.15rem; font-weight:700; }
+.xa-fit-parts { display:grid; gap:.45rem; }
+.xa-fit-part { display:grid; grid-template-columns: 140px 1fr 36px; grid-template-rows:auto auto; column-gap:.6rem; align-items:center; }
+.xa-fit-lbl { font-size:.82rem; }
+.xa-fit-sc { font-weight:700; text-align:right; font-size:.85rem; }
+.xa-fit-note { grid-column: 1 / -1; font-size:.74rem; color:var(--muted); }
+.xa-fit-part .xa-mbar { position:relative; height:6px; border-radius:3px; background:rgba(255,255,255,.06); }
+.xa-fit-part .xa-mfill { height:100%; border-radius:3px; background:var(--muted); }
+.xa-fit-part .xa-good { background:#3fb950; } .xa-fit-part .xa-num { background:#8b949e; } .xa-fit-part .xa-warn { background:#d29922; } .xa-fit-part .xa-bad { background:#f85149; }
+@media (max-width: 520px) { .xa-fit-part { grid-template-columns: 110px 1fr 32px; } }
+
+/* xArsenal v3 — arsenal moves */
+.xa-move-list { list-style:none; margin:0; padding:0; display:grid; gap:.55rem; }
+.xa-move-list li { font-size:.85rem; }
+.xa-move-tag { display:inline-block; font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; padding:1px 6px; border-radius:4px; margin-right:.45rem; }
+.xa-move-add { background:rgba(63,185,80,.18); color:#3fb950; }
+.xa-move-drop { background:rgba(248,81,73,.18); color:#f85149; }
+.xa-move-rework { background:rgba(210,153,34,.18); color:#d29922; }
+.xa-move-why { font-size:.76rem; color:var(--muted); margin-top:.15rem; }
+
+/* 8-Stuff+ */
+.xa-sp { font-size:.72rem; font-weight:700; padding:0 4px; border-radius:4px; border:1px solid currentColor; margin-left:4px; }
+.xa-sp-line { font-size:.8rem; margin:.25rem 0 .1rem; }
+
+/* ---- ROSTER: dense tile grid (more athletes per row) ---- */
+/* body is a flex column, so auto margins shrink a view to its content (one card wide).
+   width:100% lets each view fill the screen up to its max-width. */
+.view { width: 100%; box-sizing: border-box; }
+#view-roster { max-width: 1600px; }
+.athlete-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: .75rem; }
+.athlete-grid > .loading-state, .athlete-grid > .empty-state { grid-column: 1 / -1; }
+.athlete-grid .athlete-card { padding: .9rem 1rem; }
+.athlete-grid .athlete-card-header { margin-bottom: .6rem; gap: 10px; }
+.athlete-grid .athlete-avatar { width: 36px; height: 36px; font-size: 14px; }
+.athlete-grid .athlete-card-name { font-size: 17px; }
+.athlete-grid .athlete-card-meta { overflow-wrap: anywhere; }
+.athlete-grid .athlete-card-footer { margin-top: .6rem; }
+@media (max-width: 600px) { .athlete-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); } }
+
+/* ---- ADD PITCHES (arsenal sandbox) ---- */
+.ap-intro { margin-bottom: 1rem; }
+.ap-title { font-family:'Barlow Condensed',sans-serif; font-size:24px; font-weight:700; }
+.ap-sub { color:var(--muted); font-size:13px; max-width:72ch; line-height:1.5; margin-top:.2rem; }
+.ap-cur { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:.8rem 1rem; margin-bottom:1rem; }
+.ap-cur-hd { font-weight:600; margin-bottom:.55rem; }
+.ap-chips { display:flex; flex-wrap:wrap; gap:.5rem; }
+.ap-chip { display:inline-flex; align-items:center; gap:.4rem; font-size:13px; padding:.3rem .6rem; border:1px solid var(--border2); border-radius:6px; background:var(--surface2); cursor:pointer; }
+.ap-chip b { font-family:'DM Mono',monospace; font-weight:500; }
+.ap-chip .pitch-dot, .ap-table .pitch-dot { width:9px; height:9px; border-radius:50%; display:inline-block; }
+.ap-chip input { accent-color: var(--cyan); margin:0; }
+.ap-chip-off { opacity:.45; text-decoration: line-through; }
+.ap-rows { display:grid; gap:.75rem; }
+.ap-row { background:var(--surface); border:1px solid var(--border); border-left:4px solid var(--border2); border-radius:8px; padding:.8rem 1rem; }
+.ap-row-hd { display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; margin-bottom:.7rem; }
+.ap-row-hd .sel-input { width:auto; margin:0; }
+.ap-code { font-family:'Barlow Condensed',sans-serif; font-size:16px; font-weight:700; }
+.ap-preset { flex:1; min-width:220px; max-width:520px; }
+.ap-remove { margin-left:auto; background:none; border:1px solid transparent; color:var(--muted); cursor:pointer; font-size:14px; padding:4px 8px; border-radius:4px; }
+.ap-remove:hover, .ap-remove:focus-visible { color:var(--danger); border-color:var(--border); }
+.ap-fields { display:grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap:.6rem .75rem; }
+.ap-field { display:flex; flex-direction:column; gap:.25rem; font-size:11px; color:var(--muted); }
+.ap-field:has(.ap-dir) { grid-column: span 2; }
+.ap-inwrap { display:flex; align-items:center; gap:.35rem; }
+.ap-inwrap input, .ap-dir { background:var(--surface2); border:1px solid var(--border2); color:var(--text); border-radius:5px; padding:.4rem .5rem; font-family:'DM Mono',monospace; font-size:13px; width:100%; min-width:0; }
+.ap-dir { width:auto; font-family:inherit; font-size:12px; }
+.ap-inwrap input:focus, .ap-dir:focus { outline:none; border-color:var(--cyan); }
+.ap-inwrap i { font-style:normal; color:var(--muted); font-size:11px; }
+.ap-row-err { color:var(--warn); font-size:12px; margin-top:.4rem; }
+.ap-row-err:empty { display:none; }
+.ap-actions { display:flex; gap:.6rem; justify-content:flex-end; flex-wrap:wrap; margin:1rem 0 1.25rem; }
+.ap-actions .btn-ghost:disabled { opacity:.4; cursor:not-allowed; }
+#ap-result { transition: opacity .2s; }
+#ap-result.ap-stale { opacity:.45; }
+#ap-result.ap-stale::before { content:"Changes not graded yet — press Grade with these changes."; display:block; color:var(--warn); font-size:12px; margin-bottom:.5rem; }
+.ap-verdict { display:flex; align-items:center; justify-content:center; gap:2rem; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:1.1rem 1.4rem; }
+.ap-v-side { text-align:center; }
+.ap-v-lbl { font-size:12px; color:var(--muted); }
+.ap-v-num { font-family:'DM Mono',monospace; font-size:52px; line-height:1.05; }
+.ap-v-grade { font-size:12px; color:var(--muted); }
+.ap-v-arrow { font-family:'DM Mono',monospace; font-size:28px; padding:.2rem .7rem; border-radius:6px; background:var(--surface2); }
+.ap-dpos { color:var(--good); } .ap-dneg { color:var(--danger); } .ap-d0 { color:var(--muted); }
+.ap-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:0 1rem; }
+.ap-table td, .ap-table th { white-space:nowrap; }
+.ap-table tr.ap-dropped td { color:var(--muted); text-decoration: line-through; }
+.ap-tag { font-size:10px; padding:1px 5px; border-radius:3px; background:var(--cyan-dim); color:var(--cyan); border:1px solid var(--cyan-mid); }
+.ap-warn { color:var(--warn); font-size:12px; margin-top:.6rem; }
+@media (max-width: 600px) { .ap-verdict { gap:1rem; } .ap-v-num { font-size:40px; } .ap-field:has(.ap-dir) { grid-column: span 1; } }
+@media (prefers-reduced-motion: reduce) { #ap-result { transition:none; } }

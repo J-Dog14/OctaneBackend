@@ -21,7 +21,9 @@ import {
 } from "@/lib/pitch-intel/sessions";
 
 /** Pitches of one type needed in a Savant season to grade it. */
-const SEASON_GRADE_MIN = 10;
+export const SEASON_GRADE_MIN = 10;
+/** ...and this share of the season's pitches (Ryan's XA_MIN_SHARE). */
+export const SEASON_GRADE_MIN_SHARE = 0.03;
 const GAMES_LIMIT = 60;
 
 export interface SavantSeason {
@@ -291,9 +293,8 @@ export async function getCoachPitching(athleteUuid: string): Promise<CoachPitchi
   const seasons = await savantSeasons(athleteUuid);
   const seasonXaError = await gradeGroups(
     seasons.map((s) => ({
-      rows: s.byType, throws, level, minCount: SEASON_GRADE_MIN,
-      // Savant release_pos_x is catcher's view; the Worker wants + = pitcher's right.
-      relSideSign: -1 as const,
+      rows: s.byType, throws, level, minCount: SEASON_GRADE_MIN, minShare: SEASON_GRADE_MIN_SHARE,
+      // Raw Statcast release_pos_x, as Ryan's app sends it; the Worker ignores its sign (checked Nov 5 2026).
       setArsenal: (a) => (s.arsenal = a),
     })),
   );

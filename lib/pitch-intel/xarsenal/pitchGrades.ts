@@ -1,5 +1,5 @@
 /**
- * xArsenal v3 + 8-Stuff+ for every single TrackMan pitch (server-only), stored in
+ * xArsenal + 8-Stuff+ for every single TrackMan pitch (server-only), stored in
  * pitch_intel.trackman_pitch_grades.
  *
  * - Only pitches with the full TrackMan read are graded: velo, spin, IVB, HB, extension,
@@ -95,9 +95,10 @@ function pitchIn(key: string, code: string, count: number, xs: Row[]): XaPitchIn
  * Bump when Ryan's Worker changes how it grades. Every stored grade with an older rev then
  * hashes differently, so the next `npm run pi:grade` (nightly or by hand) re-grades it.
  * History: (none) = v3 launch · 2026-11-02 = calibrated v3, slot-adjusted VAA, lefty adjustment,
- * extension below MLB, curve/two-fastball gaps, Fit reweight, 8-Stuff+ v1.
+ * extension below MLB, curve/two-fastball gaps, Fit reweight, 8-Stuff+ v1 · 2026-11-04 = Ryan's
+ * handoff (commit 0a683d0): veloWeighted sent, labels from the rounded grade (Ryan's xaNormalize).
  */
-export const GRADING_REV = "2026-11-02";
+export const GRADING_REV = "2026-11-04";
 
 const RETRIES = 5;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));

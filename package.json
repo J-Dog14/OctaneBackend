@@ -17,6 +17,7 @@
     "videos:setup": "prisma db execute --file uais/sql/create_coach_videos.sql --schema prisma/schema.prisma",
     "videos:cors": "npx --yes tsx scripts/videos/r2-cors.ts",
     "test:videos": "npx --yes tsx --test tests/videos.test.ts",
+    "test:xarsenal": "npx --yes tsx --test tests/xarsenal.test.ts",
     "test:populations:db": "node --test tests/population-db.integration.cjs",
     "pitchtype:keys": "prisma db execute --file prisma/migrations/20261103000000_pitch_category_keys/migration.sql --schema prisma/schema.prisma",
     "pitchtype:events": "prisma db execute --file prisma/migrations/20261104000000_pitching_events/migration.sql --schema prisma/schema.prisma",
