@@ -15,6 +15,7 @@
     "hub:setup": "prisma db execute --file uais/sql/create_coach_client_hub.sql --schema prisma/schema.prisma",
     "hub:sync": "npx --yes tsx scripts/client-hub/sync.ts",
     "videos:setup": "prisma db execute --file uais/sql/create_coach_videos.sql --schema prisma/schema.prisma",
+    "blast:setup": "prisma db execute --file uais/sql/create_hitting_intel_schema.sql --schema prisma/schema.prisma",
     "videos:cors": "npx --yes tsx scripts/videos/r2-cors.ts",
     "test:videos": "npx --yes tsx --test tests/videos.test.ts",
     "test:xarsenal": "npx --yes tsx --test tests/xarsenal.test.ts",

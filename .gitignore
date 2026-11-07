@@ -62,4 +62,6 @@ next-env.d.ts
 
 # TrackMan portal pulls (athlete names / birth dates, browser sign-in)
 trackman_out/
+blast_out/
+.blast_profile/
 .trackman_profile/
